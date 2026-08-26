@@ -42,7 +42,7 @@ export function crearApp() {
       // Sin origen: peticiones del propio servidor, de la app movil o de curl.
       if (!origen) return callback(null, true);
       if (entorno.origenesPermitidos.includes(origen)) return callback(null, true);
-      if (entorno.modo !== 'production' && /^http:\/\/localhost:\d+$/.test(origen)) {
+      if (entorno.modo !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(origen)) {
         return callback(null, true);
       }
       log.aviso('Origen bloqueado por CORS', { origen });

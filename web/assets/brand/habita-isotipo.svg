@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Habita">
+  <title>Habita</title>
+  <defs>
+    <linearGradient id="habita-degrade" x1="3.4" y1="0" x2="96.6" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0450D2"/>
+      <stop offset="0.35" stop-color="#0189E8"/>
+      <stop offset="1" stop-color="#05C8A6"/>
+    </linearGradient>
+    <mask id="habita-mascara">
+      <!-- Coordenadas en el sistema original de la marca (porcentaje del lienzo),
+           reencuadradas para que el isotipo ocupe todo el viewBox. -->
+      <g transform="translate(-34.05 -29.41) scale(1.6807)">
+        <!-- Silueta: dos torres + travesano + cuerpo de la casa -->
+        <path fill="#fff" d="M22.3 24 A10 6.5 0 0 1 42.3 24 L42.3 36.2 A3 3 0 0 0 45.3 39.2
+                             L54.7 39.2 A3 3 0 0 0 57.7 36.2 L57.7 24 A10 6.5 0 0 1 77.7 24
+                             L77.7 74 A3 3 0 0 1 74.7 77 L25.3 77 A3 3 0 0 1 22.3 74 Z"/>
+        <!-- Contorno blanco del techo (se recorta) -->
+        <path fill="#000" d="M32.5 82 L32.5 56.7 L48.4 44.8 Q50 43.6 51.6 44.8 L67.5 56.7 L67.5 82 Z"/>
+        <!-- Casa (vuelve a pintarse dentro del recorte) -->
+        <path fill="#fff" d="M36.9 82 L36.9 59.1 L48.6 50.3 Q50 49.3 51.4 50.3 L63.3 59.1 L63.3 82 Z"/>
+        <!-- Ventanas de las torres -->
+        <rect fill="#000" x="26.2" y="26.8" width="3.1" height="3.6" rx="0.75"/>
+        <rect fill="#000" x="26.2" y="33.4" width="3.1" height="3.6" rx="0.75"/>
+        <rect fill="#000" x="26.2" y="39.7" width="3.1" height="3.6" rx="0.75"/>
+        <rect fill="#000" x="70.7" y="26.8" width="3.1" height="3.6" rx="0.75"/>
+        <rect fill="#000" x="70.7" y="33.4" width="3.1" height="3.6" rx="0.75"/>
+        <rect fill="#000" x="70.7" y="39.7" width="3.1" height="3.6" rx="0.75"/>
+        <!-- Ventana de la casa -->
+        <rect fill="#000" x="46.55" y="59.4" width="2.85" height="2.9" rx="0.6"/>
+        <rect fill="#000" x="50.6" y="59.4" width="2.85" height="2.9" rx="0.6"/>
+        <rect fill="#000" x="46.55" y="63.5" width="2.85" height="2.9" rx="0.6"/>
+        <rect fill="#000" x="50.6" y="63.5" width="2.85" height="2.9" rx="0.6"/>
+      </g>
+    </mask>
+  </defs>
+  <rect width="100" height="100" fill="url(#habita-degrade)" mask="url(#habita-mascara)"/>
+</svg>

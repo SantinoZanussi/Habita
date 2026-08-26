@@ -76,6 +76,10 @@ service cloud.firestore {
       return rol() == 'responsable_obra' && complejoDelToken() == cid;
     }
 
+    function esResponsableDeObra(cid, obraId) {
+      return esResponsableObra(cid) && obraId in claims().get('obraIds', []);
+    }
+
     // La unidad del residente autenticado.
     function esMiUnidad(unidadId) {
       return unidadDelToken() == unidadId;
@@ -271,7 +275,7 @@ service cloud.firestore {
 
       match /obras/{obraId} {
         allow get, list: if esAdmin(cid)
-                         || esResponsableObra(cid)
+                         || esResponsableDeObra(cid, obraId)
                          || (esResidente(cid) && (
                               resource.data.tipo == 'comun'
                               || resource.data.get('unidadId', '') == unidadDelToken()
@@ -279,7 +283,7 @@ service cloud.firestore {
         allow write: if false;
 
         match /partidas/{partidaId} {
-          allow get, list: if esAdmin(cid) || esResponsableObra(cid) || esResidente(cid);
+          allow get, list: if esAdmin(cid) || esResponsableDeObra(cid, obraId) || esResidente(cid);
           allow write: if false;        // el camino critico lo recalcula el backend
         }
 
@@ -287,7 +291,7 @@ service cloud.firestore {
         // Un avance mal cargado se corrige cargando un avance correctivo,
         // nunca editando el original. Asi el historial de la obra es auditable.
         match /avances/{avanceId} {
-          allow get, list: if esAdmin(cid) || esResponsableObra(cid) || esResidente(cid);
+          allow get, list: if esAdmin(cid) || esResponsableDeObra(cid, obraId) || esResidente(cid);
           allow create: if false;       // solo backend (deduplica por idempotencyKey)
           allow update: if false;       // NADIE
           allow delete: if false;       // NADIE

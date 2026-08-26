@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0C2440">
+  <meta name="description" content="Panel de administración de Habita">
+  <title>Habita — Panel de administración</title>
+  <link rel="icon" href="/assets/brand/habita-isotipo.png">
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/app.css">
+</head>
+<body>
+  <div id="conectividad" class="network-banner" hidden>Estás sin conexión. Mostramos la última información disponible.</div>
+
+  <main id="login" class="login-shell">
+    <section class="login-brand" aria-label="Presentación de Habita">
+      <div class="login-brand__glow"></div>
+      <img src="/assets/brand/habita-logotipo.png" alt="Habita" class="login-logo">
+      <div class="login-copy">
+        <span class="eyebrow eyebrow--dark">Administración residencial, finalmente conectada</span>
+        <h1>Un solo sistema para<br><span>todo tu complejo.</span></h1>
+        <p>Expensas que cierran al centavo, accesos auditables y reclamos priorizados en tiempo real.</p>
+      </div>
+      <div class="login-proof">
+        <div><strong>152</strong><span>unidades conectadas</span></div>
+        <div><strong>5</strong><span>roles con permisos propios</span></div>
+        <div><strong>24/7</strong><span>trazabilidad del complejo</span></div>
+      </div>
+    </section>
+    <section class="login-form-wrap">
+      <form id="form-login" class="login-card">
+        <img src="/assets/brand/habita-isotipo.svg" alt="" class="login-mark">
+        <div>
+          <span class="eyebrow">Panel de administración</span>
+          <h2>Bienvenido de nuevo</h2>
+          <p>Ingresá con tu cuenta para gestionar el complejo.</p>
+        </div>
+        <label>Correo electrónico<input id="login-email" type="email" autocomplete="username" value="admin@habita.demo" required></label>
+        <label>Contraseña<input id="login-password" type="password" autocomplete="current-password" value="Habita2026!" required></label>
+        <button class="button button--primary button--wide" type="submit"><span>Ingresar al panel</span><span aria-hidden="true">→</span></button>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+        <div class="demo-access">
+          <span>Demo local</span>
+          <button type="button" class="link-button" data-demo-login="admin@habita.demo">Usar administrador</button>
+          <small>Contraseña: Habita2026!</small>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <div id="aplicacion" class="app-shell" hidden>
+    <aside class="sidebar">
+      <a class="brand" href="#dashboard" aria-label="Habita inicio"><img src="/assets/brand/habita-isotipo.svg" alt=""><span>Habita</span></a>
+      <nav id="navegacion" class="nav" aria-label="Secciones principales">
+        <button class="nav__item is-active" data-section="dashboard"><span class="nav__icon">⌂</span>Dashboard</button>
+        <button class="nav__item" data-section="unidades"><span class="nav__icon">▦</span>Unidades</button>
+        <button class="nav__item" data-section="expensas"><span class="nav__icon">▤</span>Expensas</button>
+        <button class="nav__item" data-section="cobranza"><span class="nav__icon">$</span>Cobranza</button>
+        <button class="nav__item" data-section="accesos"><span class="nav__icon">◇</span>Accesos</button>
+        <button class="nav__item" data-section="reclamos"><span class="nav__icon">!</span>Reclamos</button>
+        <button class="nav__item" data-section="amenities"><span class="nav__icon">⌁</span>Amenities</button>
+        <button class="nav__item" data-section="obras"><span class="nav__icon">△</span>Obras</button>
+        <button class="nav__item" data-section="configuracion"><span class="nav__icon">⚙</span>Configuración</button>
+      </nav>
+      <div class="sidebar__footer">
+        <div class="environment"><span class="status-dot"></span><span><strong>Entorno demo</strong><small>Firebase conectado</small></span></div>
+        <button id="salir" class="nav__item nav__item--quiet"><span class="nav__icon">↪</span>Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <button id="menu-movil" class="icon-button menu-button" aria-label="Abrir menú">☰</button>
+        <div class="complex-switch"><span class="complex-switch__mark">H</span><span><small>Complejo activo</small><strong id="complejo-nombre">Torre del Parque</strong></span></div>
+        <div class="topbar__actions">
+          <span class="live-pill"><span class="status-dot"></span>Tiempo real</span>
+          <button class="icon-button" title="Notificaciones" aria-label="Notificaciones">♢<span class="notification-dot"></span></button>
+          <button id="perfil" class="profile"><span class="avatar">JP</span><span><strong id="usuario-nombre">Juan Pérez</strong><small>Administrador</small></span></button>
+        </div>
+      </header>
+
+      <div class="content">
+        <section id="section-dashboard" class="page is-visible"></section>
+        <section id="section-unidades" class="page"></section>
+        <section id="section-expensas" class="page"></section>
+        <section id="section-cobranza" class="page"></section>
+        <section id="section-accesos" class="page"></section>
+        <section id="section-reclamos" class="page"></section>
+        <section id="section-amenities" class="page"></section>
+        <section id="section-obras" class="page"></section>
+        <section id="section-configuracion" class="page"></section>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal" hidden>
+    <button class="modal__backdrop" data-close-modal aria-label="Cerrar"></button>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal__header"><div><span id="modal-eyebrow" class="eyebrow"></span><h2 id="modal-title"></h2></div><button class="icon-button" data-close-modal aria-label="Cerrar">×</button></div>
+      <div id="modal-body" class="modal__body"></div>
+    </div>
+  </div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="/config.js"></script>
+  <script type="module" src="/assets/js/app.js?v=fase2-1"></script>
+</body>
+</html>

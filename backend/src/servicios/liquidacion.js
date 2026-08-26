@@ -249,11 +249,14 @@ export async function estadoDeCuenta({ complejoId, unidadId }) {
   const complejo = aObjeto(await rutas.complejo(complejoId).get());
   if (!complejo) throw errores.noEncontrado('El complejo');
 
-  const periodos = await rutas.periodos(complejoId)
-    .where('estado', '==', 'cerrado').orderBy('__name__', 'desc').limit(12).get();
+  const periodosSnapshot = await rutas.periodos(complejoId)
+    .where('estado', '==', 'cerrado').get();
+  const periodos = periodosSnapshot.docs
+    .sort((a, b) => b.id.localeCompare(a.id))
+    .slice(0, 12);
 
   const liquidaciones = [];
-  for (const periodoDoc of periodos.docs) {
+  for (const periodoDoc of periodos) {
     const detalle = aObjeto(await rutas.detalle(complejoId, periodoDoc.id).doc(unidadId).get());
     if (!detalle) continue;
     const periodo = periodoDoc.data();

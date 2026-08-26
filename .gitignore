@@ -38,6 +38,7 @@ mobile/lib/firebase_options.dart
 
 # build del panel web
 web/dist/
+web/assets/js/*.map
 
 # sistema operativo y editores
 .DS_Store
