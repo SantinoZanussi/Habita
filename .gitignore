@@ -1,0 +1,55 @@
+# dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# entorno y secretos: nunca se commitean
+.env
+.env.local
+.env.*.local
+*.serviceaccount.json
+firebase/clave-servicio*.json
+backend/clave-servicio*.json
+
+# firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+firebase-export-*/
+emulador-datos/
+
+# flutter / dart
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/key.properties
+mobile/**/GeneratedPluginRegistrant.*
+mobile/lib/firebase_options.dart
+*.iml
+
+# build del panel web
+web/dist/
+
+# sistema operativo y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# temporales del repo
+_srv.mjs
+_*.html
+*.log
+coverage/

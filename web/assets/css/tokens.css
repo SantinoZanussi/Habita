@@ -1,0 +1,132 @@
+/* Generado por tools/generar-tokens.mjs desde brand/tokens.json. No editar a mano. */
+:root {
+  /* --- color --- */
+  --color-marca-degrade-inicio: #0450D2; /* Isotipo: arranque del degrade */
+  --color-marca-degrade-medio: #0189E8; /* Isotipo: medio del degrade */
+  --color-marca-degrade-fin: #05C8A6; /* Isotipo: cierre del degrade */
+  --color-primario-100: #E8F3FC; /* Fondos de seccion, tarjetas, hover suave */
+  --color-primario-200: #C7E1F5; /* Divisores suaves, bordes de tarjeta activa */
+  --color-primario-300: #8DC3EE; /* Bordes de foco, estados deshabilitados sobre celeste */
+  --color-primario-500: #3E9BE4; /* Color de marca: botones, elementos activos, iconos */
+  --color-primario-600: #2F82C6; /* Hover de boton primario */
+  --color-primario-700: #22689F; /* Presionado de boton primario */
+  --color-azul-500: #1F5484; /* Iconos sobre fondo claro, subtitulos */
+  --color-azul-700: #14395E; /* Titulos, encabezado del panel, texto sobre blanco */
+  --color-azul-900: #0C2440; /* Barra lateral del panel, fondos oscuros */
+  --color-neutro-0: #FFFFFF; /* Superficie principal */
+  --color-neutro-50: #F7FAFC; /* Fondo de aplicacion */
+  --color-neutro-100: #EEF3F7; /* Filas alternas de tabla, fondos sutiles */
+  --color-neutro-200: #DCE5EC; /* Bordes y separadores */
+  --color-neutro-300: #C3D0DA; /* Bordes de campo de formulario */
+  --color-neutro-500: #5C6D7C; /* Texto secundario */
+  --color-neutro-700: #2C3E4D; /* Texto de enfasis medio */
+  --color-neutro-900: #16232E; /* Texto principal */
+  --color-estado-exito-fondo: #E3F5ED; /* Chip 'Al dia' / 'Resuelto' */
+  --color-estado-exito-borde: #B6E4D0; /* Borde del chip de exito */
+  --color-estado-exito: #1F9D6B; /* Al dia, pagado, resuelto, acceso permitido */
+  --color-estado-exito-texto: #146B48; /* Texto sobre fondo de exito */
+  --color-estado-aviso-fondo: #FCF2E0; /* Chip 'Pendiente' / 'En progreso' */
+  --color-estado-aviso-borde: #F2DCB0; /* Borde del chip de aviso */
+  --color-estado-aviso: #E0A030; /* Pendiente, en progreso, por vencer */
+  --color-estado-aviso-texto: #8A5E11; /* Texto sobre fondo de aviso */
+  --color-estado-error-fondo: #FBE9E6; /* Chip 'Vencido' / 'Critico' */
+  --color-estado-error-borde: #F2C4BD; /* Borde del chip de error */
+  --color-estado-error: #D8503F; /* Vencido, rechazado, partida critica */
+  --color-estado-error-texto: #9B3123; /* Texto sobre fondo de error */
+  --color-estado-info-fondo: #E8F3FC; /* Chip informativo */
+  --color-estado-info: #3E9BE4; /* Informativo, en revision */
+  --color-estado-info-texto: #14395E; /* Texto sobre fondo informativo */
+  --color-grafico-serie1: #3E9BE4; /* Serie principal (recaudado) */
+  --color-grafico-serie2: #14395E; /* Serie secundaria (pendiente) */
+  --color-grafico-serie3: #1F9D6B; /* Tercera serie */
+  --color-grafico-serie4: #E0A030; /* Cuarta serie */
+  --color-grafico-serie5: #D8503F; /* Quinta serie */
+  --color-grafico-serie6: #8DC3EE; /* Sexta serie / relleno suave */
+  --color-grafico-grilla: #DCE5EC; /* Lineas de grilla y ejes */
+  --color-sombra-tinte: 20, 57, 94; /* RGB del azul profundo, base de todas las sombras */
+
+  /* --- alias semanticos: lo que consume la UI --- */
+  --fondo: var(--color-neutro-50);
+  --superficie: var(--color-neutro-0);
+  --superficie-suave: var(--color-primario-100);
+  --superficie-alterna: var(--color-neutro-100);
+  --borde: var(--color-neutro-200);
+  --borde-fuerte: var(--color-neutro-300);
+  --borde-marca: var(--color-primario-200);
+  --texto: var(--color-neutro-900);
+  --texto-suave: var(--color-neutro-500);
+  --texto-medio: var(--color-neutro-700);
+  --texto-titulo: var(--color-azul-700);
+  --texto-invertido: var(--color-neutro-0);
+  --marca: var(--color-primario-500);
+  --marca-hover: var(--color-primario-600);
+  --marca-activo: var(--color-primario-700);
+  --lateral: var(--color-azul-900);
+  --degrade-marca: linear-gradient(100deg, var(--color-marca-degrade-inicio) 0%, var(--color-marca-degrade-medio) 42%, var(--color-marca-degrade-fin) 100%);
+
+  /* --- tipografia --- */
+  --fuente-titulos: 'Sora', Tahoma, 'Segoe UI', sans-serif;
+  --fuente-texto: 'Archivo', Tahoma, 'Segoe UI', sans-serif;
+  --fuente-tabla: 'Archivo Narrow', 'Archivo', Tahoma, sans-serif;
+  --texto-display: 700 40px/1.1 var(--fuente-titulos);
+  --texto-display-espaciado: -0.8px;
+  --texto-titulo1: 600 28px/1.2 var(--fuente-titulos);
+  --texto-titulo1-espaciado: -0.4px;
+  --texto-titulo2: 600 22px/1.25 var(--fuente-titulos);
+  --texto-titulo2-espaciado: -0.2px;
+  --texto-titulo3: 600 18px/1.3 var(--fuente-titulos);
+  --texto-titulo3-espaciado: 0px;
+  --texto-cifra: 600 30px/1.15 var(--fuente-titulos);
+  --texto-cifra-espaciado: -0.5px;
+  --texto-cifra-chica: 600 20px/1.2 var(--fuente-titulos);
+  --texto-cifra-chica-espaciado: -0.2px;
+  --texto-cuerpo-grande: 400 16px/1.55 var(--fuente-texto);
+  --texto-cuerpo-grande-espaciado: 0px;
+  --texto-cuerpo: 400 14px/1.5 var(--fuente-texto);
+  --texto-cuerpo-espaciado: 0px;
+  --texto-cuerpo-chico: 400 13px/1.45 var(--fuente-texto);
+  --texto-cuerpo-chico-espaciado: 0px;
+  --texto-etiqueta: 600 12px/1.35 var(--fuente-texto);
+  --texto-etiqueta-espaciado: 0.4px;
+  --texto-micro: 500 11px/1.3 var(--fuente-texto);
+  --texto-micro-espaciado: 0.3px;
+
+  /* --- espaciado --- */
+  --e0: 0px;
+  --e1: 4px;
+  --e2: 8px;
+  --e3: 12px;
+  --e4: 16px;
+  --e5: 20px;
+  --e6: 24px;
+  --e8: 32px;
+  --e10: 40px;
+  --e12: 48px;
+  --e16: 64px;
+
+  /* --- radio --- */
+  --radio-chico: 8px;
+  --radio-medio: 12px;
+  --radio-grande: 16px;
+  --radio-xl: 22px;
+  --radio-pastilla: 999px;
+
+  /* --- sombra --- */
+  --sombra-chica: 0 1px 2px rgba(20,57,94,0.06), 0 1px 3px rgba(20,57,94,0.05);
+  --sombra-media: 0 2px 4px rgba(20,57,94,0.05), 0 6px 16px rgba(20,57,94,0.08);
+  --sombra-grande: 0 8px 24px rgba(20,57,94,0.10), 0 2px 6px rgba(20,57,94,0.06);
+  --sombra-foco: 0 0 0 3px rgba(62,155,228,0.35);
+
+  /* --- movimiento --- */
+  --ms-rapido: 120ms;
+  --ms-normal: 220ms;
+  --ms-lento: 380ms;
+
+  /* --- capas --- */
+  --z-base: 0;
+  --z-elevado: 10;
+  --z-encabezado: 100;
+  --z-menu: 500;
+  --z-modal: 1000;
+  --z-aviso: 2000;
+}

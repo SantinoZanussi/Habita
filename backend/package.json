@@ -1,0 +1,19 @@
+{
+  "name": "@habita/backend",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend de Habita: unica fuente de verdad de la logica de negocio y unico lugar donde viven los secretos de las APIs externas.",
+  "main": "src/servidor.js",
+  "scripts": {
+    "dev": "node --watch src/servidor.js",
+    "start": "node src/servidor.js",
+    "test": "node --test --test-reporter=spec \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.0.2"
+  }
+}

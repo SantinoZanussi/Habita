@@ -1,0 +1,28 @@
+{
+  "name": "habita",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Habita - un solo sistema para todo tu complejo. Monorepo: backend Node, panel web, app Flutter y configuracion de Firebase.",
+  "type": "module",
+  "workspaces": [
+    "backend"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "tokens": "node tools/generar-tokens.mjs",
+    "marca": "node tools/generar-marca.mjs",
+    "emu": "node tools/emuladores.mjs",
+    "seed": "node tools/sembrar.mjs",
+    "backend": "npm run dev --workspace backend",
+    "web": "node tools/servidor-web.mjs",
+    "test": "npm run test --workspace backend",
+    "test:reglas": "node --test firebase/tests/*.test.mjs",
+    "verificar": "npm run tokens && npm run test"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase-tools": "^13.31.1"
+  }
+}

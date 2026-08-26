@@ -1,0 +1,322 @@
+rules_version = '2';
+
+// ============================================================================
+//  Habita - Reglas de seguridad de Firestore
+// ============================================================================
+//
+//  Modelo multi-tenant: todo cuelga de complejos/{complejoId}.
+//
+//  El rol y el complejoId viajan en CUSTOM CLAIMS del token de Firebase Auth,
+//  no en un documento que el cliente pueda leer o modificar. Las claims las
+//  escribe el backend con el Admin SDK (POST /usuarios/:uid/rol).
+//
+//  Roles:
+//    superadmin        - la administradora: toda su cartera de complejos
+//    admin_complejo    - todo dentro de SU complejo; unico que cierra periodos
+//    guardia           - solo valida accesos y lee autorizaciones vigentes
+//    responsable_obra  - solo partidas y avances de SU obra
+//    residente         - solo SU unidad
+//
+//  Principio general: LAS LECTURAS VAN DIRECTO A FIRESTORE (es lo que da el
+//  tiempo real), LAS ESCRITURAS CON LOGICA DE NEGOCIO PASAN POR EL BACKEND.
+//  Por eso muchas colecciones tienen `create/update: if false`: el cliente no
+//  puede tocarlas y el Admin SDK del backend no pasa por estas reglas.
+//  Que el cliente no pueda escribir una liquidacion no es un descuido: es el
+//  motivo por el que nadie puede alterar su propia expensa desde el celular.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+
+    function auten() {
+      return request.auth != null;
+    }
+
+    function claims() {
+      return request.auth.token;
+    }
+
+    function rol() {
+      return auten() ? claims().get('rol', '') : '';
+    }
+
+    function complejoDelToken() {
+      return auten() ? claims().get('complejoId', '') : '';
+    }
+
+    function unidadDelToken() {
+      return auten() ? claims().get('unidadId', '') : '';
+    }
+
+    // El superadmin lleva la lista de complejos de su cartera en la claim.
+    function esSuperadmin(cid) {
+      return rol() == 'superadmin' && cid in claims().get('complejos', []);
+    }
+
+    // Pertenece al complejo con cualquier rol operativo.
+    function pertenece(cid) {
+      return complejoDelToken() == cid || esSuperadmin(cid);
+    }
+
+    function esAdmin(cid) {
+      return (rol() == 'admin_complejo' && complejoDelToken() == cid) || esSuperadmin(cid);
+    }
+
+    function esGuardia(cid) {
+      return rol() == 'guardia' && complejoDelToken() == cid;
+    }
+
+    function esResidente(cid) {
+      return rol() == 'residente' && complejoDelToken() == cid;
+    }
+
+    function esResponsableObra(cid) {
+      return rol() == 'responsable_obra' && complejoDelToken() == cid;
+    }
+
+    // La unidad del residente autenticado.
+    function esMiUnidad(unidadId) {
+      return unidadDelToken() == unidadId;
+    }
+
+    function soloCambia(campos) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+    }
+
+    // ------------------------------------------------------------- usuarios
+
+    // El perfil publico de un usuario. El rol REAL vive en la claim del token;
+    // este documento es un espejo para mostrar nombres en la UI. Aunque alguien
+    // lograra escribir "rol": "admin_complejo" aca, no ganaria un solo permiso.
+    match /usuarios/{uid} {
+      allow get: if auten() && (
+        request.auth.uid == uid ||
+        esAdmin(resource.data.complejoId) ||
+        esGuardia(resource.data.complejoId)
+      );
+      allow list: if auten() && esAdmin(complejoDelToken());
+
+      // El usuario edita solo sus datos de contacto. Rol, complejo y unidad
+      // los asigna el backend.
+      allow update: if auten() && request.auth.uid == uid &&
+                    soloCambia(['nombre', 'telefono', 'tokenFcm', 'actualizadoEn']);
+      allow create, delete: if false;   // solo backend
+    }
+
+    // ------------------------------------------------------------- complejos
+
+    match /complejos/{cid} {
+      allow get, list: if auten() && pertenece(cid);
+
+      // La configuracion (tipo de complejo, nomenclatura, metodos de acceso)
+      // la cambia el admin. El alta y la baja del complejo, solo el superadmin.
+      allow update: if esAdmin(cid) && soloCambia([
+        'nombre', 'tipo', 'tipoUnidad', 'nomenclaturaAporte', 'metodosAcceso',
+        'modulosActivos', 'politicaRedondeo', 'indiceIndexacion', 'direccion',
+        'coordenadas', 'diaVencimiento', 'tasaMoraMensual', 'porcentajeFondoReserva',
+        'puntosAcceso', 'actualizadoEn'
+      ]);
+      allow create, delete: if false;   // solo backend (alta de complejo)
+
+      // ----------------------------------------------------------- unidades
+
+      match /unidades/{unidadId} {
+        // CASO DE DEFENSA 1: un residente intenta leer la unidad de un vecino.
+        // La regla compara contra la claim del token, no contra un campo del
+        // documento, asi que no hay forma de falsearlo desde el cliente.
+        allow get: if esAdmin(cid)
+                   || esGuardia(cid)
+                   || (esResidente(cid) && esMiUnidad(unidadId));
+        allow list: if esAdmin(cid) || esGuardia(cid);
+        allow write: if false;          // ABM por backend (valida coeficientes)
+      }
+
+      // ---------------------------------------------------------- amenities
+
+      match /amenities/{amenityId} {
+        allow get, list: if pertenece(cid);
+        allow write: if false;          // ABM por backend
+      }
+
+      // Las reservas se leen completas dentro del complejo: el calendario de
+      // disponibilidad necesita ver los horarios ocupados. El documento no
+      // expone datos personales, solo la unidad que reservo.
+      match /reservas/{reservaId} {
+        allow get, list: if pertenece(cid) && !esGuardia(cid);
+        allow write: if false;          // el backend valida superposicion y cupo
+      }
+
+      // ----------------------------------------------------- autorizaciones
+
+      match /autorizaciones/{autorizacionId} {
+        allow get, list: if esAdmin(cid)
+                         || esGuardia(cid)
+                         || (esResidente(cid) && esMiUnidad(resource.data.unidadId))
+                         || (esResponsableObra(cid) && resource.data.tipo == 'obra');
+
+        // Un residente puede crear una autorizacion de visita para SU unidad.
+        // Se valida en la regla lo que no se puede confiar al cliente: que la
+        // autorizacion nazca sin usos consumidos y con vigencia coherente.
+        allow create: if esResidente(cid)
+                      && request.resource.data.unidadId == unidadDelToken()
+                      && request.resource.data.autorizadoPorUid == request.auth.uid
+                      && request.resource.data.tipo == 'visita'
+                      && request.resource.data.usosConsumidos == 0
+                      && request.resource.data.usosPermitidos is int
+                      && request.resource.data.usosPermitidos > 0
+                      && request.resource.data.usosPermitidos <= 10
+                      && request.resource.data.vigenciaHasta > request.resource.data.vigenciaDesde
+                      && request.resource.data.estado == 'vigente';
+
+        // El residente solo puede revocar la suya. Consumir un uso es una
+        // operacion atomica que hace el backend: si el cliente pudiera tocar
+        // usosConsumidos, dos guardias podrian validar el mismo QR a la vez.
+        allow update: if esResidente(cid)
+                      && esMiUnidad(resource.data.unidadId)
+                      && soloCambia(['estado', 'actualizadoEn'])
+                      && request.resource.data.estado == 'revocada';
+        allow delete: if false;
+      }
+
+      // ------------------------------------------------------ eventosAcceso
+
+      // CASO DE DEFENSA 3: coleccion APPEND-ONLY.
+      // Ni el admin ni el superadmin pueden editar o borrar un evento de acceso.
+      // Un sistema que registra quien entro a un barrio no puede permitir que
+      // alguien reescriba la historia. El registro lo escribe el backend dentro
+      // de la misma transaccion que consume el uso de la autorizacion.
+      match /eventosAcceso/{eventoId} {
+        allow get, list: if esAdmin(cid)
+                         || esGuardia(cid)
+                         || (esResidente(cid) && esMiUnidad(resource.data.unidadId));
+        allow create: if false;         // solo backend, dentro de la transaccion
+        allow update: if false;         // NADIE. Ni el admin.
+        allow delete: if false;         // NADIE. Ni el admin.
+      }
+
+      // ------------------------------------------------------------ reclamos
+
+      match /reclamos/{reclamoId} {
+        allow get, list: if esAdmin(cid)
+                         || (esResidente(cid) && esMiUnidad(resource.data.unidadId));
+        // El residente crea el reclamo; la clasificacion por IA la escribe
+        // despues el backend, porque la API key no puede vivir en el celular.
+        allow create: if esResidente(cid)
+                      && request.resource.data.unidadId == unidadDelToken()
+                      && request.resource.data.autorUid == request.auth.uid
+                      && request.resource.data.estado == 'pendiente'
+                      && request.resource.data.descripcion is string
+                      && request.resource.data.descripcion.size() >= 10
+                      && request.resource.data.descripcion.size() <= 1000;
+        allow update, delete: if false; // cambios de estado por backend (con historial)
+      }
+
+      match /proveedores/{proveedorId} {
+        allow get, list: if esAdmin(cid);
+        allow write: if false;
+      }
+
+      // ------------------------------------------------------------ periodos
+
+      match /periodos/{periodoId} {
+        // El residente ve el periodo solo cuando esta cerrado: un borrador con
+        // numeros a medio cargar no tiene por que llegarle.
+        allow get, list: if esAdmin(cid)
+                         || (esResidente(cid) && resource.data.estado == 'cerrado');
+
+        // CASO DE DEFENSA 2: un guardia intenta escribir en periodos -> denegado.
+        // Y tampoco puede el admin desde el cliente: liquidar es el motor del
+        // backend, que es el unico lugar donde la suma cierra exacta.
+        allow write: if false;
+
+        match /detalle/{unidadId} {
+          allow get: if esAdmin(cid) || (esResidente(cid) && esMiUnidad(unidadId));
+          allow list: if esAdmin(cid);
+          allow write: if false;
+        }
+      }
+
+      // --------------------------------------------------------------- pagos
+
+      match /pagos/{pagoId} {
+        allow get, list: if esAdmin(cid)
+                         || (esResidente(cid) && esMiUnidad(resource.data.unidadId));
+        // Los pagos los escribe el webhook de Mercado Pago contra el backend.
+        allow write: if false;
+      }
+
+      // ------------------------------------------------------------ consumos
+
+      match /consumos/{consumoId} {
+        allow get, list: if esAdmin(cid)
+                         || (esResidente(cid) && esMiUnidad(resource.data.unidadId));
+        allow write: if false;
+      }
+
+      // ------------------------------------------------------- notificaciones
+
+      // Las notificaciones son avisos de la administracion (corte de agua,
+      // convocatoria a asamblea). Se leen dentro del complejo: no llevan datos
+      // sensibles y el residente necesita listarlas para su bandeja.
+      // El envio dirigido a una unidad puntual se filtra en la consulta del
+      // cliente y se vuelve a validar en el push que manda el backend.
+      match /notificaciones/{notificacionId} {
+        allow get, list: if pertenece(cid);
+        allow write: if false;
+      }
+
+      // --------------------------------------------------------------- obras
+
+      match /obras/{obraId} {
+        allow get, list: if esAdmin(cid)
+                         || esResponsableObra(cid)
+                         || (esResidente(cid) && (
+                              resource.data.tipo == 'comun'
+                              || resource.data.get('unidadId', '') == unidadDelToken()
+                            ));
+        allow write: if false;
+
+        match /partidas/{partidaId} {
+          allow get, list: if esAdmin(cid) || esResponsableObra(cid) || esResidente(cid);
+          allow write: if false;        // el camino critico lo recalcula el backend
+        }
+
+        // Coleccion APPEND-ONLY, igual que eventosAcceso.
+        // Un avance mal cargado se corrige cargando un avance correctivo,
+        // nunca editando el original. Asi el historial de la obra es auditable.
+        match /avances/{avanceId} {
+          allow get, list: if esAdmin(cid) || esResponsableObra(cid) || esResidente(cid);
+          allow create: if false;       // solo backend (deduplica por idempotencyKey)
+          allow update: if false;       // NADIE
+          allow delete: if false;       // NADIE
+        }
+      }
+
+      // ---------------------------------------------------------- candidatos
+
+      match /candidatos/{candidatoId} {
+        allow get, list: if esAdmin(cid);
+        allow write: if false;
+      }
+    }
+
+    // ------------------------------------------------------------ contactos
+
+    // Consultas del formulario de la landing. Las escribe el backend tras
+    // validar y pasar el antispam; nadie las lee desde el cliente.
+    match /contactos/{contactoId} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------- cierre global
+
+    // Firestore ya deniega por defecto todo lo que ninguna regla permita, asi
+    // que esta clausula no agrega seguridad: queda escrita a proposito para
+    // dejar explicito que ninguna coleccion nueva nace abierta por accidente.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
