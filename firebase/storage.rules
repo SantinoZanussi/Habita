@@ -19,6 +19,14 @@ service firebase.storage {
     function claims() { return request.auth.token; }
     function rol() { return auten() ? claims().get('rol', '') : ''; }
     function miComplejo() { return auten() ? claims().get('complejoId', '') : ''; }
+    function pertenece(cid) {
+      return miComplejo() == cid
+             || (rol() == 'superadmin' && cid in claims().get('complejos', []));
+    }
+    function esAdmin(cid) {
+      return (rol() == 'admin_complejo' && miComplejo() == cid)
+             || (rol() == 'superadmin' && cid in claims().get('complejos', []));
+    }
 
     function esImagen() {
       return request.resource.contentType.matches('image/(jpeg|png|webp|heic)');
@@ -29,29 +37,41 @@ service firebase.storage {
     }
 
     // --- fotos de reclamos ---------------------------------------------------
-    match /complejos/{cid}/reclamos/{archivo} {
-      allow read: if auten() && miComplejo() == cid;
-      allow write: if auten() && miComplejo() == cid
-                   && rol() in ['residente', 'admin_complejo']
+    match /complejos/{cid}/reclamos/{uid}/{archivo} {
+      allow read: if pertenece(cid)
+                  && (esAdmin(cid) || (rol() == 'residente' && request.auth.uid == uid));
+      allow write: if pertenece(cid)
+                   && (esAdmin(cid) || (rol() == 'residente' && request.auth.uid == uid))
                    && esImagen() && pesoRazonable(8);
+    }
+
+    // Compatibilidad de lectura administrativa para archivos creados antes de
+    // separar las fotos por usuario. Los clientes nuevos no pueden escribir aca.
+    match /complejos/{cid}/reclamos/{archivo} {
+      allow read: if esAdmin(cid);
+      allow write: if false;
     }
 
     // --- fotos de avance de obra ---------------------------------------------
     // Se pueden crear pero nunca reemplazar: el avance es append-only tambien
     // en el archivo, no solo en el documento.
     match /complejos/{cid}/obras/{obraId}/{archivo} {
-      allow read: if auten() && miComplejo() == cid;
-      allow create: if auten() && miComplejo() == cid
-                    && rol() in ['responsable_obra', 'admin_complejo']
-                    && esImagen() && pesoRazonable(8);
+      allow read: if esAdmin(cid)
+                  || (miComplejo() == cid && rol() == 'responsable_obra'
+                      && obraId in claims().get('obraIds', []));
+      allow create: if (
+                      esAdmin(cid)
+                      || (miComplejo() == cid && rol() == 'responsable_obra'
+                          && obraId in claims().get('obraIds', []))
+                    ) && esImagen() && pesoRazonable(8);
       allow update, delete: if false;
     }
 
     // --- capturas del control de acceso --------------------------------------
     // Las escribe el backend con el Admin SDK. El cliente solo lee.
     match /complejos/{cid}/accesos/{archivo} {
-      allow read: if auten() && miComplejo() == cid
-                  && rol() in ['admin_complejo', 'guardia'];
+      allow read: if esAdmin(cid)
+                  || (miComplejo() == cid && rol() == 'guardia');
       allow write: if false;
     }
 

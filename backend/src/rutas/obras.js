@@ -33,7 +33,7 @@ router.post('/:obraId/partidas', exigirRol(ROLES.ADMIN, ROLES.SUPERADMIN), asinc
 }));
 
 router.post('/:obraId/avances', exigirRol(ROLES.RESPONSABLE_OBRA, ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
-  if (req.usuario.rol === ROLES.RESPONSABLE_OBRA && !req.usuario.obraIds.includes(req.params.obraId)) throw errores.sinPermiso('No estás asignado a esta obra.');
+  exigirObraAsignada(req);
   res.status(201).json(await registrarAvance({
     complejoId: req.complejoId, obraId: req.params.obraId, autorUid: req.usuario.uid,
     partidaId: req.body.partidaId, porcentaje: Number(req.body.porcentaje), fotoUrl: req.body.fotoUrl,
@@ -43,12 +43,19 @@ router.post('/:obraId/avances', exigirRol(ROLES.RESPONSABLE_OBRA, ROLES.ADMIN, R
 }));
 
 router.post('/:obraId/sincronizar', exigirRol(ROLES.RESPONSABLE_OBRA, ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
+  exigirObraAsignada(req);
   res.json(await sincronizarCola({ complejoId: req.complejoId, obraId: req.params.obraId, avances: req.body.avances ?? [], autorUid: req.usuario.uid }));
 }));
 
 router.post('/:obraId/recalcular', exigirRol(ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
   res.json(await recalcularCronograma({ complejoId: req.complejoId, obraId: req.params.obraId }));
 }));
+
+function exigirObraAsignada(req) {
+  if (req.usuario.rol === ROLES.RESPONSABLE_OBRA && !req.usuario.obraIds.includes(req.params.obraId)) {
+    throw errores.sinPermiso('No estás asignado a esta obra.');
+  }
+}
 
 export default router;
 

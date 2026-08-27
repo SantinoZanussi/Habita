@@ -91,14 +91,13 @@ service cloud.firestore {
 
     // ------------------------------------------------------------- usuarios
 
-    // El perfil publico de un usuario. El rol REAL vive en la claim del token;
-    // este documento es un espejo para mostrar nombres en la UI. Aunque alguien
-    // lograra escribir "rol": "admin_complejo" aca, no ganaria un solo permiso.
+    // El rol REAL vive en la claim del token; este documento es un espejo para
+    // mostrar el perfil en la UI. Puede contener telefono y token FCM, por eso
+    // la guardia no lo lee: los eventos de acceso ya incluyen el nombre visible.
     match /usuarios/{uid} {
       allow get: if auten() && (
         request.auth.uid == uid ||
-        esAdmin(resource.data.complejoId) ||
-        esGuardia(resource.data.complejoId)
+        esAdmin(resource.data.complejoId)
       );
       allow list: if auten() && esAdmin(complejoDelToken());
 
@@ -283,7 +282,12 @@ service cloud.firestore {
         allow write: if false;
 
         match /partidas/{partidaId} {
-          allow get, list: if esAdmin(cid) || esResponsableDeObra(cid, obraId) || esResidente(cid);
+          allow get, list: if esAdmin(cid)
+                           || esResponsableDeObra(cid, obraId)
+                           || (esResidente(cid) && (
+                                get(/databases/$(database)/documents/complejos/$(cid)/obras/$(obraId)).data.tipo == 'comun'
+                                || get(/databases/$(database)/documents/complejos/$(cid)/obras/$(obraId)).data.get('unidadId', '') == unidadDelToken()
+                              ));
           allow write: if false;        // el camino critico lo recalcula el backend
         }
 
@@ -291,7 +295,12 @@ service cloud.firestore {
         // Un avance mal cargado se corrige cargando un avance correctivo,
         // nunca editando el original. Asi el historial de la obra es auditable.
         match /avances/{avanceId} {
-          allow get, list: if esAdmin(cid) || esResponsableDeObra(cid, obraId) || esResidente(cid);
+          allow get, list: if esAdmin(cid)
+                           || esResponsableDeObra(cid, obraId)
+                           || (esResidente(cid) && (
+                                get(/databases/$(database)/documents/complejos/$(cid)/obras/$(obraId)).data.tipo == 'comun'
+                                || get(/databases/$(database)/documents/complejos/$(cid)/obras/$(obraId)).data.get('unidadId', '') == unidadDelToken()
+                              ));
           allow create: if false;       // solo backend (deduplica por idempotencyKey)
           allow update: if false;       // NADIE
           allow delete: if false;       // NADIE

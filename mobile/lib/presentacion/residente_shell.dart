@@ -1173,8 +1173,9 @@ class _NuevoReclamoScreenState extends State<NuevoReclamoScreen> {
       String? fotoUrl;
       if (foto != null) {
         final bytes = await foto!.readAsBytes();
+        final uid = FirebaseAuth.instance.currentUser!.uid;
         final ruta =
-            'complejos/${widget.complejoId}/reclamos/${DateTime.now().microsecondsSinceEpoch}.jpg';
+            'complejos/${widget.complejoId}/reclamos/$uid/${DateTime.now().microsecondsSinceEpoch}.jpg';
         final ref = FirebaseStorage.instance.ref(ruta);
         await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
         fotoUrl = await ref.getDownloadURL();

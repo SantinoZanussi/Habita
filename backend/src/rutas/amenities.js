@@ -24,10 +24,14 @@ router.post('/:amenityId/reservas', exigirRol(ROLES.RESIDENTE, ROLES.ADMIN, ROLE
   }));
 }));
 
-router.delete('/reservas/:reservaId', asincrono(async (req, res) => {
-  const unidadId = req.usuario.rol === ROLES.RESIDENTE ? req.usuario.unidadId : null;
-  res.json(await cancelarReserva({ complejoId: req.complejoId, reservaId: req.params.reservaId, actorUid: req.usuario.uid, unidadId }));
-}));
+router.delete(
+  '/reservas/:reservaId',
+  exigirRol(ROLES.RESIDENTE, ROLES.ADMIN, ROLES.SUPERADMIN),
+  asincrono(async (req, res) => {
+    const unidadId = req.usuario.rol === ROLES.RESIDENTE ? req.usuario.unidadId : null;
+    res.json(await cancelarReserva({ complejoId: req.complejoId, reservaId: req.params.reservaId, actorUid: req.usuario.uid, unidadId }));
+  })
+);
 
 function validarAmenity(datos) {
   if (String(datos?.nombre ?? '').trim().length < 2 || Number(datos?.capacidad) < 1) {

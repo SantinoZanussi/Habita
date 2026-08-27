@@ -30910,7 +30910,7 @@ function renderCobranza() {
     <div class="metrics">
       ${metric("Total liquidado", dinero(r2.liquidado), r2.periodoId ?? "Sin per\xEDodo", "$")}
       ${metric("Recaudado", dinero(r2.recaudado), `${numero(r2.porcentajeRecaudado)}% cobrado`, "\u2713")}
-      ${metric("Saldo pendiente", dinero(r2.morosidadTotal), `${r2.unidadesMorosas ?? 0} unidades`, "!", true)}
+      ${metric("Saldo pendiente", dinero(r2.saldoPendienteTotal ?? r2.morosidadTotal), `${r2.unidadesConSaldo ?? r2.unidadesMorosas ?? 0} unidades`, "!", true)}
       ${metric("Unidades al d\xEDa", Math.max(0, (r2.cantidadUnidades ?? estado.unidades.length) - (r2.unidadesMorosas ?? 0)), "Sobre el total activo", "\u25CB")}
     </div>
     <div class="grid grid--2"><article class="card"><div class="card__header"><div><h3>Evoluci\xF3n de la recaudaci\xF3n</h3><p>\xDAltimos per\xEDodos cerrados</p></div></div>${graficoBarras(r2.serie ?? [])}</article><article class="card"><div class="card__header"><div><h3>Antig\xFCedad de deuda</h3><p>Distribuci\xF3n del saldo pendiente</p></div></div>${donutMorosidad(r2)}</article></div>
@@ -31094,7 +31094,14 @@ function graficoBarras(serie) {
 function donutMorosidad(r2) {
   const tramos = r2.porTramo ?? [];
   const colores = ["#5979db", "#67acd2", "#f16b5f", "#14395e"];
-  return `<div class="donut-wrap"><div class="donut"><span class="donut__center"><strong>${dinero(r2.morosidadTotal)}</strong><small>Total</small></span></div><div class="donut-legend">${tramos.map((t2, i2) => `<div class="donut-legend__row"><i style="--c:${colores[i2]}"></i><span>${safe(t2.etiqueta)}</span><strong>${dinero(t2.monto)} (${numero(t2.porcentaje)}%)</strong></div>`).join("") || "<p>Sin deuda registrada.</p>"}</div></div>`;
+  let acumulado = 0;
+  const segmentos = tramos.map((t2, i2) => {
+    const inicio = acumulado;
+    acumulado += Number(t2.porcentaje ?? 0);
+    return `${colores[i2]} ${inicio}% ${acumulado}%`;
+  });
+  const fondo = Number(r2.morosidadTotal ?? 0) > 0 ? `conic-gradient(${segmentos.join(",")})` : "var(--superficie-suave)";
+  return `<div class="donut-wrap"><div class="donut" style="background:${fondo}"><span class="donut__center"><strong>${dinero(r2.morosidadTotal)}</strong><small>Deuda vencida</small></span></div><div class="donut-legend">${tramos.map((t2, i2) => `<div class="donut-legend__row"><i style="--c:${colores[i2]}"></i><span>${safe(t2.etiqueta)}</span><strong>${dinero(t2.monto)} (${numero(t2.porcentaje)}%)</strong></div>`).join("") || "<p>Sin deuda vencida.</p>"}</div></div>`;
 }
 function donutGastos({ ordinario, extraordinario, fondo, total }) {
   return `<div class="donut-wrap"><div class="donut" style="background:conic-gradient(#24a6bd 0 ${Math.round(ordinario / Math.max(total, 1) * 100)}%,#3c8f79 0 ${Math.round((ordinario + extraordinario) / Math.max(total, 1) * 100)}%,#7aa59a 0)"><span class="donut__center"><strong>${dinero(total)}</strong><small>Total</small></span></div><div class="donut-legend"><div class="donut-legend__row"><i style="--c:#24a6bd"></i><span>Gastos ordinarios</span><strong>${dinero(ordinario)}</strong></div><div class="donut-legend__row"><i style="--c:#3c8f79"></i><span>Gastos extraordinarios</span><strong>${dinero(extraordinario)}</strong></div><div class="donut-legend__row"><i style="--c:#7aa59a"></i><span>Fondo de reserva</span><strong>${dinero(fondo)}</strong></div></div></div>`;

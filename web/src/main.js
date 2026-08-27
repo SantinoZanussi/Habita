@@ -230,7 +230,7 @@ function renderCobranza() {
     <div class="metrics">
       ${metric('Total liquidado', dinero(r.liquidado), r.periodoId ?? 'Sin período', '$')}
       ${metric('Recaudado', dinero(r.recaudado), `${numero(r.porcentajeRecaudado)}% cobrado`, '✓')}
-      ${metric('Saldo pendiente', dinero(r.morosidadTotal), `${r.unidadesMorosas ?? 0} unidades`, '!', true)}
+      ${metric('Saldo pendiente', dinero(r.saldoPendienteTotal ?? r.morosidadTotal), `${r.unidadesConSaldo ?? r.unidadesMorosas ?? 0} unidades`, '!', true)}
       ${metric('Unidades al día', Math.max(0, (r.cantidadUnidades ?? estado.unidades.length) - (r.unidadesMorosas ?? 0)), 'Sobre el total activo', '○')}
     </div>
     <div class="grid grid--2"><article class="card"><div class="card__header"><div><h3>Evolución de la recaudación</h3><p>Últimos períodos cerrados</p></div></div>${graficoBarras(r.serie ?? [])}</article><article class="card"><div class="card__header"><div><h3>Antigüedad de deuda</h3><p>Distribución del saldo pendiente</p></div></div>${donutMorosidad(r)}</article></div>
@@ -433,7 +433,16 @@ function graficoBarras(serie) {
 function donutMorosidad(r) {
   const tramos = r.porTramo ?? [];
   const colores = ['#5979db','#67acd2','#f16b5f','#14395e'];
-  return `<div class="donut-wrap"><div class="donut"><span class="donut__center"><strong>${dinero(r.morosidadTotal)}</strong><small>Total</small></span></div><div class="donut-legend">${tramos.map((t, i) => `<div class="donut-legend__row"><i style="--c:${colores[i]}"></i><span>${safe(t.etiqueta)}</span><strong>${dinero(t.monto)} (${numero(t.porcentaje)}%)</strong></div>`).join('') || '<p>Sin deuda registrada.</p>'}</div></div>`;
+  let acumulado = 0;
+  const segmentos = tramos.map((t, i) => {
+    const inicio = acumulado;
+    acumulado += Number(t.porcentaje ?? 0);
+    return `${colores[i]} ${inicio}% ${acumulado}%`;
+  });
+  const fondo = Number(r.morosidadTotal ?? 0) > 0
+    ? `conic-gradient(${segmentos.join(',')})`
+    : 'var(--superficie-suave)';
+  return `<div class="donut-wrap"><div class="donut" style="background:${fondo}"><span class="donut__center"><strong>${dinero(r.morosidadTotal)}</strong><small>Deuda vencida</small></span></div><div class="donut-legend">${tramos.map((t, i) => `<div class="donut-legend__row"><i style="--c:${colores[i]}"></i><span>${safe(t.etiqueta)}</span><strong>${dinero(t.monto)} (${numero(t.porcentaje)}%)</strong></div>`).join('') || '<p>Sin deuda vencida.</p>'}</div></div>`;
 }
 function donutGastos({ ordinario, extraordinario, fondo, total }) { return `<div class="donut-wrap"><div class="donut" style="background:conic-gradient(#24a6bd 0 ${Math.round(ordinario/Math.max(total,1)*100)}%,#3c8f79 0 ${Math.round((ordinario+extraordinario)/Math.max(total,1)*100)}%,#7aa59a 0)"><span class="donut__center"><strong>${dinero(total)}</strong><small>Total</small></span></div><div class="donut-legend"><div class="donut-legend__row"><i style="--c:#24a6bd"></i><span>Gastos ordinarios</span><strong>${dinero(ordinario)}</strong></div><div class="donut-legend__row"><i style="--c:#3c8f79"></i><span>Gastos extraordinarios</span><strong>${dinero(extraordinario)}</strong></div><div class="donut-legend__row"><i style="--c:#7aa59a"></i><span>Fondo de reserva</span><strong>${dinero(fondo)}</strong></div></div></div>`; }
 function tablaUnidades(unidades) { return `<div class="table-wrap"><table><thead><tr><th>Unidad</th><th>Coeficiente</th><th>Superficie</th><th>Estado</th><th>Patentes</th><th></th></tr></thead><tbody>${unidades.map((u) => `<tr><td><strong>${safe(u.identificador)}</strong></td><td>${numero(u.coeficiente,4)}%</td><td>${numero(u.superficie)} m²</td><td><span class="chip ${u.estado === 'ocupada' ? 'chip--success' : 'chip--warning'}">${textoEstado(u.estado)}</span></td><td>${safe(u.patentesAutorizadas?.join(', ') || '—')}</td><td><button class="button button--ghost button--small" data-action="editar-unidad" data-id="${u.id}">Editar</button></td></tr>`).join('') || '<tr><td class="table-empty" colspan="6">No hay resultados.</td></tr>'}</tbody></table></div>`; }

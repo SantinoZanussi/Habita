@@ -312,23 +312,57 @@ export async function resumenCobranza({ complejoId, periodoId = null }) {
     : periodos.at(-1);
 
   const porTramo = Object.fromEntries(TRAMOS_MOROSIDAD.map((t) => [t.clave, { monto: 0, unidades: 0 }]));
+  let saldoPendienteTotal = 0;
+  let unidadesConSaldo = 0;
   let morosidadTotal = 0;
   let unidadesMorosas = 0;
   let recaudado = 0;
   let liquidado = 0;
 
   const unidades = aLista(await rutas.unidades(complejoId).get()).filter((u) => u.estado !== 'baja');
+  const detallesPorPeriodo = new Map(await Promise.all(periodos.map(async (periodo) => [
+    periodo.id,
+    aLista(await rutas.detalle(complejoId, periodo.id).get()),
+  ])));
+  const deudasPorUnidad = new Map();
+
+  for (const periodo of periodos) {
+    for (const detalle of detallesPorPeriodo.get(periodo.id) ?? []) {
+      const saldoCentavos = Number(detalle.saldoPendiente ?? 0);
+      if (saldoCentavos <= 0) continue;
+      const deudas = deudasPorUnidad.get(detalle.id) ?? [];
+      deudas.push({
+        periodoId: periodo.id,
+        saldoCentavos,
+        vencimiento: aFecha(periodo.vencimiento) ?? new Date(),
+      });
+      deudasPorUnidad.set(detalle.id, deudas);
+    }
+  }
 
   for (const unidad of unidades) {
-    const { saldoAnteriorCentavos, diasMaximos } = await saldoYMora({
-      complejoId, complejo, unidadId: unidad.id, hasta: new Date(),
+    const deudas = deudasPorUnidad.get(unidad.id) ?? [];
+    const saldoAnteriorCentavos = deudas.reduce((total, deuda) => total + deuda.saldoCentavos, 0);
+    const mora = calcularMoraDeCuenta(deudas, {
+      fechaCalculo: new Date(),
+      tasaMensualPorcentaje: complejo.tasaMoraMensual ?? 0,
+      modo: complejo.modoMora ?? 'simple',
+      diasGracia: complejo.diasGraciaMora ?? 0,
+      topePorcentaje: complejo.topeMoraPorcentaje ?? 0,
     });
     if (saldoAnteriorCentavos > 0) {
-      morosidadTotal += saldoAnteriorCentavos;
+      saldoPendienteTotal += saldoAnteriorCentavos;
+      unidadesConSaldo += 1;
+    }
+    const deudasVencidas = mora.detalle.filter((deuda) => deuda.dias > 0);
+    const capitalVencido = deudasVencidas.reduce((total, deuda) => total + deuda.saldoCentavos, 0);
+    if (capitalVencido > 0) {
+      const diasMaximos = deudasVencidas.reduce((maximo, deuda) => Math.max(maximo, deuda.dias), 0);
+      morosidadTotal += capitalVencido;
       unidadesMorosas += 1;
       const tramo = tramoDeMorosidad(diasMaximos);
       if (porTramo[tramo]) {
-        porTramo[tramo].monto += saldoAnteriorCentavos;
+        porTramo[tramo].monto += capitalVencido;
         porTramo[tramo].unidades += 1;
       }
     }
@@ -336,14 +370,14 @@ export async function resumenCobranza({ complejoId, periodoId = null }) {
 
   if (ultimo) {
     liquidado = ultimo.totalLiquidado ?? 0;
-    const detalles = aLista(await rutas.detalle(complejoId, ultimo.id).get());
+    const detalles = detallesPorPeriodo.get(ultimo.id) ?? [];
     recaudado = detalles.reduce((acc, d) => acc + (d.totalAPagar - (d.saldoPendiente ?? 0)), 0);
   }
 
   // Serie mensual para el grafico de barras del dashboard.
   const serie = [];
   for (const periodo of periodos.slice(-12)) {
-    const detalles = aLista(await rutas.detalle(complejoId, periodo.id).get());
+    const detalles = detallesPorPeriodo.get(periodo.id) ?? [];
     const totalPeriodo = detalles.reduce((acc, d) => acc + d.totalAPagar, 0);
     const pendiente = detalles.reduce((acc, d) => acc + (d.saldoPendiente ?? 0), 0);
     serie.push({
@@ -362,6 +396,8 @@ export async function resumenCobranza({ complejoId, periodoId = null }) {
     liquidado,
     recaudado,
     porcentajeRecaudado: liquidado > 0 ? Math.round((recaudado / liquidado) * 1000) / 10 : 0,
+    saldoPendienteTotal,
+    unidadesConSaldo,
     morosidadTotal,
     morosidadFormateada: formatearPesos(morosidadTotal),
     unidadesMorosas,

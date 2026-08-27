@@ -38,10 +38,14 @@ router.post('/periodos/:periodoId/cerrar', exigirRol(ROLES.ADMIN, ROLES.SUPERADM
   res.json(await cerrarPeriodo({ complejoId: req.complejoId, periodoId: req.params.periodoId, adminUid: req.usuario.uid }));
 }));
 
-router.get('/cuenta/:unidadId', exigirUnidadPropia(), asincrono(async (req, res) => {
-  if (![ROLES.RESIDENTE, ROLES.ADMIN, ROLES.SUPERADMIN].includes(req.usuario.rol)) throw errores.sinPermiso();
-  res.json(await estadoDeCuenta({ complejoId: req.complejoId, unidadId: req.params.unidadId }));
-}));
+router.get(
+  '/cuenta/:unidadId',
+  exigirRol(ROLES.RESIDENTE, ROLES.ADMIN, ROLES.SUPERADMIN),
+  exigirUnidadPropia(),
+  asincrono(async (req, res) => {
+    res.json(await estadoDeCuenta({ complejoId: req.complejoId, unidadId: req.params.unidadId }));
+  })
+);
 
 router.get('/resumen', exigirRol(ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
   res.json(await resumenCobranza({ complejoId: req.complejoId, periodoId: req.query.periodoId ?? null }));

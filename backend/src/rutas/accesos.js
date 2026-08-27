@@ -78,14 +78,18 @@ router.post('/autorizaciones', exigirRol(ROLES.RESIDENTE, ROLES.ADMIN, ROLES.SUP
   res.status(201).json(aObjeto(await ref.get()));
 }));
 
-router.patch('/autorizaciones/:autorizacionId/revocar', asincrono(async (req, res) => {
-  const ref = rutas.autorizacion(req.complejoId, req.params.autorizacionId);
-  const autorizacion = aObjeto(await ref.get());
-  if (!autorizacion) throw errores.noEncontrado('La autorización');
-  const admin = [ROLES.ADMIN, ROLES.SUPERADMIN].includes(req.usuario.rol);
-  if (!admin && autorizacion.unidadId !== req.usuario.unidadId) throw errores.sinPermiso('No podés revocar esta autorización.');
-  await ref.update({ estado: 'revocada', actualizadoEn: FieldValue.serverTimestamp(), revocadaPorUid: req.usuario.uid });
-  res.json({ id: ref.id, estado: 'revocada' });
-}));
+router.patch(
+  '/autorizaciones/:autorizacionId/revocar',
+  exigirRol(ROLES.RESIDENTE, ROLES.ADMIN, ROLES.SUPERADMIN),
+  asincrono(async (req, res) => {
+    const ref = rutas.autorizacion(req.complejoId, req.params.autorizacionId);
+    const autorizacion = aObjeto(await ref.get());
+    if (!autorizacion) throw errores.noEncontrado('La autorización');
+    const admin = [ROLES.ADMIN, ROLES.SUPERADMIN].includes(req.usuario.rol);
+    if (!admin && autorizacion.unidadId !== req.usuario.unidadId) throw errores.sinPermiso('No podés revocar esta autorización.');
+    await ref.update({ estado: 'revocada', actualizadoEn: FieldValue.serverTimestamp(), revocadaPorUid: req.usuario.uid });
+    res.json({ id: ref.id, estado: 'revocada' });
+  })
+);
 
 export default router;
