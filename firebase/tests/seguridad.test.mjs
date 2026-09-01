@@ -58,6 +58,18 @@ test('residente lee su unidad pero no la de un vecino ni el listado', async () =
   await assertFails(getDocs(collection(db, 'complejos/c1/unidades')));
 });
 
+test('el dispositivo actualiza su token FCM pero no su rol o complejo', async () => {
+  const db = entorno.authenticatedContext('residente-1', {
+    rol: 'residente', complejoId: 'c1', unidadId: 'u1',
+  }).firestore();
+  const perfil = doc(db, 'usuarios/residente-1');
+  await assertSucceeds(updateDoc(perfil, {
+    tokenFcm: 'token-dispositivo-1', actualizadoEn: 'ahora',
+  }));
+  await assertFails(updateDoc(perfil, { complejoId: 'c2' }));
+  await assertFails(updateDoc(perfil, { rol: 'superadmin' }));
+});
+
 test('guardia no puede crear ni editar periodos', async () => {
   const db = entorno.authenticatedContext('guardia-1', { rol: 'guardia', complejoId: 'c1' }).firestore();
   await assertFails(setDoc(doc(db, 'complejos/c1/periodos/2026-09'), { estado: 'borrador' }));

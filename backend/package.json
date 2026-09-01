@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "description": "Backend de Habita: unica fuente de verdad de la logica de negocio y unico lugar donde viven los secretos de las APIs externas.",
-  "main": "src/servidor.js",
+  "main": "src/functions.js",
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
     "dev": "node --watch src/servidor.js",
     "start": "node src/servidor.js",
@@ -14,6 +17,10 @@
     "@anthropic-ai/sdk": "^0.120.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "firebase-admin": "^14.3.0"
+    "firebase-admin": "^14.3.0",
+    "firebase-functions": "^7.3.2"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

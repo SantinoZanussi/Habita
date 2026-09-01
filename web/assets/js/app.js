@@ -30681,7 +30681,7 @@ var Me2 = "4.17.1";
 })();
 
 // web/src/main.js
-var config = window.HABITA_CONFIG;
+var config = await window.HABITA_CONFIG_PROMISE;
 var firebaseApp = initializeApp(config.firebase);
 var auth = getAuth(firebaseApp);
 var db = getFirestore(firebaseApp);

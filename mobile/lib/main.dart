@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'nucleo/firebase_config.dart';
+import 'nucleo/notificaciones_push.dart';
 import 'nucleo/tema/tema.dart';
 import 'presentacion/guardia_shell.dart';
 import 'presentacion/login.dart';
@@ -17,13 +19,17 @@ Future<void> main() async {
   await Firebase.initializeApp(options: HabitaFirebase.opciones);
   const usarEmuladores = bool.fromEnvironment(
     'USE_FIREBASE_EMULATORS',
-    defaultValue: true,
+    defaultValue: !kReleaseMode,
   );
   if (usarEmuladores) {
     final host = kIsWeb ? '127.0.0.1' : '10.0.2.2';
     await FirebaseAuth.instance.useAuthEmulator(host, 9099);
     FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
     await FirebaseStorage.instance.useStorageEmulator(host, 9199);
+  }
+  if (!usarEmuladores) {
+    FirebaseMessaging.onBackgroundMessage(manejarPushEnSegundoPlano);
+    await NotificacionesPush.instancia.inicializar();
   }
   runApp(const HabitaApp());
 }
@@ -34,6 +40,7 @@ class HabitaApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'Habita',
     debugShowCheckedModeBanner: false,
+    scaffoldMessengerKey: mensajeroHabita,
     theme: HabitaTema.claro,
     home: const SesionGate(),
   );

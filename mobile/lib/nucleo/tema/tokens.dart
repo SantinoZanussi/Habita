@@ -1,6 +1,5 @@
 // Generado por tools/generar-tokens.mjs desde brand/tokens.json. No editar a mano.
 
-import 'dart:ui' show FontFeature;
 import 'package:flutter/material.dart';
 
 /// Paleta de Habita. Misma fuente que los tokens CSS del panel web,

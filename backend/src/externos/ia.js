@@ -20,6 +20,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema';
 
 import { entorno } from '../config/entorno.js';
 import { log } from '../infra/log.js';
@@ -215,7 +216,7 @@ export async function clasificarReclamo({ descripcion, fotoUrl = null, tipoCompl
       // razonamiento profundo y la latencia importa (el residente espera).
       output_config: {
         effort: 'low',
-        format: { type: 'json_schema', schema: ESQUEMA_CLASIFICACION },
+        format: jsonSchemaOutputFormat(ESQUEMA_CLASIFICACION),
       },
       messages: [{ role: 'user', content: contenido }],
     });

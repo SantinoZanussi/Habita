@@ -30,10 +30,13 @@ mobile/.flutter-plugins-dependencies
 mobile/ios/Pods/
 mobile/ios/.symlinks/
 mobile/android/.gradle/
+mobile/android/.kotlin/
+mobile/android/build/
 mobile/android/local.properties
 mobile/android/key.properties
 mobile/**/GeneratedPluginRegistrant.*
 mobile/lib/firebase_options.dart
+mobile/firebase.production.json
 *.iml
 
 # build del panel web

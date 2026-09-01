@@ -51,18 +51,40 @@ const booleano = (clave, porDefecto = false) => {
   return ['1', 'true', 'si', 'yes'].includes(valor.toLowerCase());
 };
 
+function proyectoDelEntorno() {
+  if (process.env.FIREBASE_PROJECT_ID) return process.env.FIREBASE_PROJECT_ID;
+  if (process.env.GCLOUD_PROJECT) return process.env.GCLOUD_PROJECT;
+  try {
+    return JSON.parse(process.env.FIREBASE_CONFIG ?? '{}').projectId ?? 'habita-demo';
+  } catch {
+    return 'habita-demo';
+  }
+}
+
+const proyecto = proyectoDelEntorno();
+const enInfraFirebase = Boolean(
+  process.env.K_SERVICE || process.env.FUNCTION_TARGET || process.env.FIREBASE_CONFIG
+);
+const basePublicaDefault = enInfraFirebase
+  ? `https://${proyecto}.web.app`
+  : 'http://localhost:5000';
+
 export const entorno = {
-  modo: texto('NODE_ENV', 'development'),
+  modo: texto('NODE_ENV', enInfraFirebase ? 'production' : 'development'),
   puerto: numero('PUERTO', 8787),
-  origenesPermitidos: texto('ORIGENES_PERMITIDOS', 'http://localhost:5000,http://localhost:4173,http://localhost:5173')
+  basePublica: texto('PUBLIC_BASE_URL', basePublicaDefault).replace(/\/$/, ''),
+  origenesPermitidos: texto(
+    'ORIGENES_PERMITIDOS',
+    `http://localhost:5000,http://127.0.0.1:5000,https://${proyecto}.web.app,https://${proyecto}.firebaseapp.com`
+  )
     .split(',').map((o) => o.trim()).filter(Boolean),
 
   firebase: {
-    projectId: texto('FIREBASE_PROJECT_ID', 'habita-demo'),
+    projectId: proyecto,
     // Ruta a la clave de servicio. En emulador no hace falta.
     credencialesPath: texto('GOOGLE_APPLICATION_CREDENTIALS', ''),
     storageBucket: texto('FIREBASE_STORAGE_BUCKET', ''),
-    usarEmuladores: booleano('USAR_EMULADORES', true),
+    usarEmuladores: booleano('USAR_EMULADORES', !enInfraFirebase),
     emuladorFirestore: texto('FIRESTORE_EMULATOR_HOST', 'localhost:8080'),
     emuladorAuth: texto('FIREBASE_AUTH_EMULATOR_HOST', 'localhost:9099'),
     emuladorStorage: texto('FIREBASE_STORAGE_EMULATOR_HOST', 'localhost:9199'),
@@ -70,20 +92,26 @@ export const entorno = {
 
   // Secreto con el que se firman los QR dinamicos. En produccion tiene que ser
   // largo y aleatorio; si falta, el servidor no arranca en modo produccion.
-  secretoQr: texto('SECRETO_QR', 'habita-desarrollo-cambiar-en-produccion'),
+  get secretoQr() {
+    return texto('SECRETO_QR', 'habita-desarrollo-cambiar-en-produccion');
+  },
 
   mercadoPago: {
-    accessToken: texto('MP_ACCESS_TOKEN', ''),
-    urlWebhook: texto('MP_URL_WEBHOOK', ''),
-    urlRetorno: texto('MP_URL_RETORNO', 'http://localhost:5000/panel/pago-listo.html'),
-    secretoWebhook: texto('MP_SECRETO_WEBHOOK', ''),
+    get accessToken() { return texto('MP_ACCESS_TOKEN', ''); },
+    get urlWebhook() {
+      return texto('MP_URL_WEBHOOK', `${entorno.basePublica}/api/webhooks/mercadopago`);
+    },
+    get urlRetorno() {
+      return texto('MP_URL_RETORNO', `${entorno.basePublica}/panel/?pago=resultado`);
+    },
+    get secretoWebhook() { return texto('MP_SECRETO_WEBHOOK', ''); },
     /** Sin token configurado, el modulo entra en modo simulado para la demo. */
     get simulado() { return this.accessToken === ''; },
   },
 
   ia: {
     proveedor: texto('IA_PROVEEDOR', 'anthropic'),
-    apiKey: texto('ANTHROPIC_API_KEY', ''),
+    get apiKey() { return texto('ANTHROPIC_API_KEY', ''); },
     modelo: texto('IA_MODELO', 'claude-sonnet-5'),
     urlBase: texto('IA_URL_BASE', 'https://api.anthropic.com/v1/messages'),
     get simulado() { return this.apiKey === ''; },
@@ -131,6 +159,12 @@ export function validarEntorno() {
     }
     if (!entorno.firebase.credencialesPath && !process.env.FIREBASE_CONFIG) {
       problemas.push('Falta GOOGLE_APPLICATION_CREDENTIALS');
+    }
+    if (!entorno.mercadoPago.simulado && !entorno.mercadoPago.secretoWebhook) {
+      problemas.push('Falta MP_SECRETO_WEBHOOK para verificar pagos reales');
+    }
+    if (!entorno.mercadoPago.simulado && !entorno.mercadoPago.urlWebhook.startsWith('https://')) {
+      problemas.push('MP_URL_WEBHOOK debe usar HTTPS');
     }
   }
 

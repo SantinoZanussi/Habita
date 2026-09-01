@@ -163,10 +163,11 @@ export async function consultarPago(pagoId) {
  */
 export function verificarFirmaWebhook({ firma, requestId, dataId }) {
   if (!entorno.mercadoPago.secretoWebhook) {
-    // Sin secreto configurado no se puede verificar. Se acepta pero se avisa,
-    // porque igual el estado del pago se consulta despues contra la API.
-    log.aviso('Webhook de Mercado Pago sin secreto configurado: no se verifica la firma');
-    return { valido: true, verificado: false };
+    if (entorno.mercadoPago.simulado) {
+      return { valido: true, verificado: false, motivo: 'modo_simulado' };
+    }
+    log.error('Webhook real de Mercado Pago sin secreto: solicitud rechazada');
+    return { valido: false, verificado: false, motivo: 'secreto_no_configurado' };
   }
 
   const partes = Object.fromEntries(
@@ -174,7 +175,12 @@ export function verificarFirmaWebhook({ firma, requestId, dataId }) {
   );
   if (!partes.ts || !partes.v1) return { valido: false, verificado: true, motivo: 'firma_incompleta' };
 
-  const manifiesto = `id:${dataId};request-id:${requestId};ts:${partes.ts};`;
+  const idNormalizado = String(dataId ?? '').toLowerCase();
+  const manifiesto = [
+    idNormalizado ? `id:${idNormalizado};` : '',
+    requestId ? `request-id:${requestId};` : '',
+    `ts:${partes.ts};`,
+  ].join('');
   const esperada = createHmac('sha256', entorno.mercadoPago.secretoWebhook).update(manifiesto).digest('hex');
 
   const a = Buffer.from(esperada);
@@ -182,7 +188,9 @@ export function verificarFirmaWebhook({ firma, requestId, dataId }) {
   const coincide = a.length === b.length && timingSafeEqual(a, b);
 
   // Ventana de 5 minutos contra reenvio de notificaciones viejas.
-  const antiguedad = Math.abs(Date.now() - Number(partes.ts) * 1000);
+  const timestamp = Number(partes.ts);
+  const timestampMs = timestamp > 1_000_000_000_000 ? timestamp : timestamp * 1000;
+  const antiguedad = Math.abs(Date.now() - timestampMs);
   if (coincide && antiguedad > 5 * 60_000) {
     return { valido: false, verificado: true, motivo: 'firma_vencida' };
   }

@@ -50,7 +50,7 @@ Panel web ────┼──────────────────�
 ### P1 y extensiones
 
 - Amenities configurables y reservas con validación de cupo, horario y superposición.
-- Avisos en tiempo real y adaptador FCM del backend. Para push de producción resta registrar el token FCM desde cada instalación móvil.
+- Avisos en tiempo real y FCM de extremo a extremo: cada instalación móvil solicita permiso, registra y renueva su token en el perfil, y el backend envía los avisos.
 - Obras comunes/privadas, partidas, dependencias, camino crítico y avances idempotentes con foto.
 - Responsable de obra restringido a los IDs incluidos en su custom claim.
 - Evaluación de ingresantes disponible como servicio y API, sin una pantalla dedicada porque no forma parte del P0.
@@ -158,14 +158,7 @@ El Android Emulator ya queda apuntado a `10.0.2.2`. Para un teléfono físico de
 
 ## Configuración para producción
 
-1. Copiar `.env.example` a `.env` sin versionar.
-2. Crear un proyecto Firebase, registrar Web y Android, y reemplazar las opciones demo de `web/config.js` y `mobile/lib/nucleo/firebase_config.dart`.
-3. Configurar `GOOGLE_APPLICATION_CREDENTIALS`, bucket y `USAR_EMULADORES=false`.
-4. Generar un `SECRETO_QR` aleatorio y largo.
-5. Configurar la URL pública del backend y los orígenes CORS.
-6. Cargar credenciales de Mercado Pago y registrar `/api/webhooks/mercadopago`.
-7. Cargar la clave del proveedor de IA si se quiere clasificación remota.
-8. Desplegar reglas e índices antes de publicar los clientes.
+El proyecto real, las apps Firebase, Firestore regional, Authentication, el APK release y los comandos de despliegue ya están preparados. La configuración operativa, los secretos y los controles posteriores se documentan en `docs/PRODUCCION.md`.
 
 El modo local simulado es intencional: permite defender todo el flujo sin usar dinero real ni depender de una API paga, pero no se presenta como una transacción comercial real.
 

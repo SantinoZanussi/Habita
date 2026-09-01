@@ -104,7 +104,6 @@ escribir('web/assets/css/tokens.css', css.join('\n') + '\n');
 const dart = [];
 dart.push('// Generado por tools/generar-tokens.mjs desde brand/tokens.json. No editar a mano.');
 dart.push('');
-dart.push("import 'dart:ui' show FontFeature;");
 dart.push("import 'package:flutter/material.dart';");
 dart.push('');
 dart.push('/// Paleta de Habita. Misma fuente que los tokens CSS del panel web,');

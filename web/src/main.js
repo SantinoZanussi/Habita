@@ -7,7 +7,7 @@ import {
   orderBy, query,
 } from 'firebase/firestore';
 
-const config = window.HABITA_CONFIG;
+const config = await window.HABITA_CONFIG_PROMISE;
 const firebaseApp = initializeApp(config.firebase);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
