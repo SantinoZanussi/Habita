@@ -62,6 +62,7 @@ function proyectoDelEntorno() {
 }
 
 const proyecto = proyectoDelEntorno();
+const proveedorIa = texto('IA_PROVEEDOR', 'gemini').toLowerCase();
 const enInfraFirebase = Boolean(
   process.env.K_SERVICE || process.env.FUNCTION_TARGET || process.env.FIREBASE_CONFIG
 );
@@ -71,7 +72,7 @@ const basePublicaDefault = enInfraFirebase
 
 export const entorno = {
   modo: texto('NODE_ENV', enInfraFirebase ? 'production' : 'development'),
-  puerto: numero('PUERTO', 8787),
+  puerto: numero('PUERTO', numero('PORT', 8787)),
   basePublica: texto('PUBLIC_BASE_URL', basePublicaDefault).replace(/\/$/, ''),
   origenesPermitidos: texto(
     'ORIGENES_PERMITIDOS',
@@ -83,6 +84,9 @@ export const entorno = {
     projectId: proyecto,
     // Ruta a la clave de servicio. En emulador no hace falta.
     credencialesPath: texto('GOOGLE_APPLICATION_CREDENTIALS', ''),
+    // Render permite guardar el JSON completo como variable secreta, sin
+    // escribirlo en el repositorio ni depender de un archivo persistente.
+    credencialesJson: texto('FIREBASE_SERVICE_ACCOUNT_JSON', ''),
     storageBucket: texto('FIREBASE_STORAGE_BUCKET', ''),
     usarEmuladores: booleano('USAR_EMULADORES', !enInfraFirebase),
     emuladorFirestore: texto('FIRESTORE_EMULATOR_HOST', 'localhost:8080'),
@@ -110,10 +114,22 @@ export const entorno = {
   },
 
   ia: {
-    proveedor: texto('IA_PROVEEDOR', 'anthropic'),
-    get apiKey() { return texto('ANTHROPIC_API_KEY', ''); },
-    modelo: texto('IA_MODELO', 'claude-sonnet-5'),
-    urlBase: texto('IA_URL_BASE', 'https://api.anthropic.com/v1/messages'),
+    proveedor: proveedorIa,
+    get apiKey() {
+      return proveedorIa === 'gemini'
+        ? texto('GEMINI_API_KEY', '')
+        : texto('ANTHROPIC_API_KEY', '');
+    },
+    modelo: texto(
+      'IA_MODELO',
+      proveedorIa === 'gemini' ? 'gemini-3.5-flash-lite' : 'claude-sonnet-5'
+    ),
+    urlBase: texto(
+      'IA_URL_BASE',
+      proveedorIa === 'gemini'
+        ? 'https://generativelanguage.googleapis.com/v1beta'
+        : 'https://api.anthropic.com/v1/messages'
+    ),
     get simulado() { return this.apiKey === ''; },
   },
 
@@ -157,8 +173,8 @@ export function validarEntorno() {
     if (entorno.firebase.usarEmuladores) {
       problemas.push('USAR_EMULADORES esta en true en produccion');
     }
-    if (!entorno.firebase.credencialesPath && !process.env.FIREBASE_CONFIG) {
-      problemas.push('Falta GOOGLE_APPLICATION_CREDENTIALS');
+    if (!entorno.firebase.credencialesPath && !entorno.firebase.credencialesJson && !process.env.FIREBASE_CONFIG) {
+      problemas.push('Falta GOOGLE_APPLICATION_CREDENTIALS o FIREBASE_SERVICE_ACCOUNT_JSON');
     }
     if (!entorno.mercadoPago.simulado && !entorno.mercadoPago.secretoWebhook) {
       problemas.push('Falta MP_SECRETO_WEBHOOK para verificar pagos reales');

@@ -1,88 +1,125 @@
-# Activación de producción
+# Publicación gratuita del TP
 
-Habita ya separa el modo demo del modo real. Este procedimiento publica el panel, la API, las reglas y habilita FCM, Mercado Pago y Anthropic sin guardar secretos en Git.
+Habita está preparado para funcionar sin plan Blaze, sin tarjeta y sin pagos reales. Los secretos permanecen fuera de Git.
 
-## Estado actual — 1 de septiembre de 2026
+## Estado actual — 3 de septiembre de 2026
 
-- Proyecto Firebase: `habita-complejos-ar`.
+- Cuenta Firebase propietaria: `goiburujuanmanuel@gmail.com`.
+- Proyecto Firebase Spark: `habita-complejos-goiburu`.
 - Apps registradas: `Habita Panel` y `Habita Android` (`ar.com.habita.habita`).
 - Firestore Standard creado en `southamerica-east1`, con protección contra borrado, reglas e índices publicados.
-- Authentication por correo/contraseña habilitado y versionado en `firebase/firebase.json`.
-- APK release productivo generado en `mobile/build/app/outputs/flutter-apk/app-release.apk`.
-- Configuración pública real guardada sólo en `mobile/firebase.production.json`, excluida de Git.
+- Authentication por correo/contraseña habilitado.
+- FCM configurado en la app móvil y disponible sin cargo.
+- Backend preparado como Web Service gratuito de Render: `habita-api-goiburu`.
+- IA preparada para Gemini Free (`gemini-3.5-flash-lite`).
+- Mercado Pago preparado para credenciales de prueba, sin transacciones reales.
+- Las fotos quedan desactivadas en el APK gratuito porque los buckets nuevos de Firebase Storage exigen Blaze. Siguen disponibles con el emulador local.
 
-Para completar la activación externa faltan el plan Blaze, el bucket de Storage, los tres secretos de Mercado Pago/Anthropic y el despliegue final de Functions + Hosting. Ninguno de esos secretos debe copiarse al repositorio.
-
-## Requisitos externos
-
-1. Proyecto Firebase con plan Blaze, Firestore, Storage, Hosting y Authentication por correo/contraseña.
-2. Aplicación Web y aplicación Android registradas. El package Android es `ar.com.habita.habita`.
-3. Aplicación de Mercado Pago Checkout Pro con credenciales productivas.
-4. Clave de API de Anthropic con crédito disponible.
-
-## 1. Autenticar y elegir Firebase
-
-```powershell
-node node_modules/firebase-tools/lib/bin/firebase.js login --reauth
-node node_modules/firebase-tools/lib/bin/firebase.js projects:list
-```
-
-No se usa un alias silencioso: todos los comandos de despliegue exigen `--project=PROJECT_ID` para evitar publicar por error en otro proyecto.
-
-## 2. Cargar secretos
-
-Los comandos solicitan el valor de forma interactiva y lo guardan en Google Secret Manager, no en archivos del repositorio.
-
-```powershell
-node node_modules/firebase-tools/lib/bin/firebase.js functions:secrets:set MP_ACCESS_TOKEN --project habita-complejos-ar
-node node_modules/firebase-tools/lib/bin/firebase.js functions:secrets:set MP_SECRETO_WEBHOOK --project habita-complejos-ar
-node node_modules/firebase-tools/lib/bin/firebase.js functions:secrets:set ANTHROPIC_API_KEY --project habita-complejos-ar
-node node_modules/firebase-tools/lib/bin/firebase.js functions:secrets:set SECRETO_QR --project habita-complejos-ar
-```
-
-`SECRETO_QR` debe ser aleatorio y largo. Los otros tres valores provienen de los paneles de Mercado Pago y Anthropic.
-
-## 3. Configurar Mercado Pago
-
-En Mercado Pago Developers, configurar Checkout Pro y el evento **Pagos** con:
+## Arquitectura gratuita
 
 ```text
-https://habita-complejos-ar.web.app/api/webhooks/mercadopago
+Panel web (Firebase Hosting Spark) ─┐
+App Flutter ────────────────────────┼── Firebase Auth + Firestore + FCM
+                                    │
+                                    └── API Express (Render Free)
+                                             ├── Mercado Pago Test
+                                             └── Gemini Free
 ```
 
-El secreto generado en Webhooks es el valor de `MP_SECRETO_WEBHOOK`. El backend verifica HMAC, normaliza `data.id`, tolera timestamps en segundos o milisegundos y después consulta el pago directamente a Mercado Pago antes de imputarlo.
+Firebase Spark no permite desplegar el runtime moderno de Cloud Functions y, desde febrero de 2026, tampoco crear o utilizar un bucket nuevo de Cloud Storage. Por eso la API se ejecuta en Render y el build productivo no ofrece adjuntar fotos. No se debe habilitar Blaze para este TP.
 
-## 4. Construir Android productivo
+Render Free apaga el servidor después de 15 minutos sin tráfico. La primera petición posterior puede tardar cerca de un minuto; no es un error de Habita. El plan gratuito es apropiado para una demostración, no para una aplicación comercial.
 
-Copiar `mobile/firebase.production.example.json` como `mobile/firebase.production.json` y completar los identificadores públicos que muestra Firebase en la configuración de las apps.
+## 1. Publicar Firebase Spark
+
+```powershell
+npm run deploy:prod -- --project=habita-complejos-goiburu
+```
+
+El comando ejecuta las pruebas y publica únicamente:
+
+- Firebase Hosting;
+- Authentication por correo/contraseña;
+- reglas e índices de Firestore.
+
+No despliega Functions ni Storage y no solicita facturación.
+
+Panel: `https://habita-complejos-goiburu.web.app/panel/`
+
+## 2. Credencial Firebase para Render
+
+El backend necesita una cuenta de servicio porque realiza transacciones, asigna custom claims y envía FCM.
+
+1. Abrir Firebase Console > Configuración del proyecto > Cuentas de servicio.
+2. Elegir **Generar nueva clave privada**.
+3. Guardar el JSON fuera del repositorio.
+4. En Render, pegar el contenido completo como valor secreto de `FIREBASE_SERVICE_ACCOUNT_JSON`.
+
+No subir ese JSON a Git, no copiarlo en la app móvil y no enviarlo por chat. Si se filtra, revocar la clave inmediatamente.
+
+## 3. IA gratuita
+
+1. Entrar a `https://aistudio.google.com/app/apikey` con la cuenta propia.
+2. Crear una API key gratuita de Gemini.
+3. Guardarla en Render como `GEMINI_API_KEY`.
+
+La clave sólo vive en Render. Si falta o Gemini alcanza su cuota, Habita conserva el reclamo y usa automáticamente el clasificador local por palabras clave.
+
+## 4. Mercado Pago sin dinero real
+
+1. Crear una aplicación en Mercado Pago Developers.
+2. Abrir Pruebas > Credenciales de prueba.
+3. Guardar el Access Token de prueba en Render como `MP_ACCESS_TOKEN`.
+4. Configurar el evento **Pagos** con esta URL:
+
+```text
+https://habita-api-goiburu.onrender.com/api/webhooks/mercadopago
+```
+
+5. Guardar la firma secreta del webhook en Render como `MP_SECRETO_WEBHOOK`.
+
+Las credenciales de prueba llaman a la integración real de Mercado Pago, pero no permiten transacciones reales. No usar credenciales productivas para la entrega académica.
+
+## 5. Crear el servicio gratuito de Render
+
+El archivo `render.yaml` describe el servicio y obliga a utilizar `plan: free`.
+
+1. Subir los cambios a GitHub.
+2. Abrir `https://dashboard.render.com/blueprints`.
+3. Crear un Blueprint desde `SantinoZanussi/Habita`.
+4. Completar los cuatro valores secretos solicitados:
+   - `FIREBASE_SERVICE_ACCOUNT_JSON`;
+   - `GEMINI_API_KEY`;
+   - `MP_ACCESS_TOKEN` de prueba;
+   - `MP_SECRETO_WEBHOOK` de prueba.
+5. Confirmar que el servicio seleccionado diga **Free** antes de crearlo.
+
+Render genera `SECRETO_QR` automáticamente. No se debe escribir ni guardar manualmente.
+
+## 6. Construir Android
+
+La configuración pública correcta está en `mobile/firebase.production.json`, excluida de Git.
 
 ```powershell
 npm run build:mobile:prod
 ```
 
-El APK queda en `mobile/build/app/outputs/flutter-apk/app-release.apk`. En release los emuladores quedan desactivados. FCM solicita permiso, guarda el token en el perfil, escucha sus renovaciones y muestra los mensajes recibidos en primer plano.
+El APK queda en `mobile/build/app/outputs/flutter-apk/app-release.apk`. Usa Firebase real, la API gratuita de Render y FCM; no intenta usar Storage.
 
-## 5. Desplegar
+## 7. Controles finales
 
-```powershell
-npm run deploy:prod -- --project=habita-complejos-ar
-```
+1. Abrir el panel de Firebase Hosting.
+2. Consultar `https://habita-api-goiburu.onrender.com/api/salud`.
+3. Consultar `/api/estado` y comprobar `mercadoPago: activo`, `ia: activo` y `fcm: activo`.
+4. Crear usuarios mediante el flujo administrativo para recibir custom claims.
+5. Instalar el APK en Android, aceptar notificaciones y comprobar `usuarios/{uid}.tokenFcm`.
+6. Hacer una compra exclusivamente con usuarios y tarjetas de prueba de Mercado Pago.
 
-El comando ejecuta todas las pruebas antes de publicar y despliega:
+## Costos
 
-- Cloud Functions v2 `api` en `southamerica-east1`;
-- Firebase Hosting;
-- proveedor de Authentication por correo y contraseña;
-- reglas e índices de Firestore;
-- reglas de Storage.
+- Firebase: Spark, sin método de pago.
+- Render: Web Service Free; si se agota la cuota sin tarjeta, el servicio se suspende en lugar de cobrar.
+- Gemini: Free Tier; sujeto a su cuota gratuita.
+- Mercado Pago: entorno de pruebas, sin pagos reales.
 
-Hosting obtiene su configuración mediante `/__/firebase/init.json`, por lo que el panel usa automáticamente el proyecto correcto. `/api/**` se reescribe a la Function HTTPS del backend.
-
-## 6. Controles posteriores
-
-1. Abrir `https://habita-complejos-ar.web.app/panel/`.
-2. Consultar `https://habita-complejos-ar.web.app/api/salud` para comprobar la API y `/api/estado` para confirmar `mercadoPago: activo`, `ia: activo` y `fcm: activo`.
-3. Crear usuarios mediante el flujo administrativo para que reciban custom claims.
-4. Instalar el APK en un Android real, aceptar notificaciones y comprobar que `usuarios/{uid}.tokenFcm` se complete.
-5. Realizar primero un pago de importe pequeño y verificar el webhook en Mercado Pago Developers.
-6. Configurar alertas de presupuesto en Google Cloud antes de abrir la prueba a terceros.
+No hay ningún paso de esta guía que requiera contratar Blaze.

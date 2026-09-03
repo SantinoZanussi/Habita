@@ -86,9 +86,82 @@ Clasificalo con criterio de administrador de consorcio:
 
 /** Cliente perezoso: no se construye si no hay key configurada. */
 let clienteIa = null;
-function cliente() {
+function clienteAnthropic() {
   if (!clienteIa) clienteIa = new Anthropic({ apiKey: entorno.ia.apiKey });
   return clienteIa;
+}
+
+function validarSalida(salida) {
+  if (!salida || typeof salida !== 'object') throw new Error('La IA no devolvio un objeto');
+  if (!AREAS.includes(salida.area)) throw new Error('Area devuelta por IA fuera del esquema');
+  if (!URGENCIAS.includes(salida.urgencia)) throw new Error('Urgencia devuelta por IA fuera del esquema');
+  if (!Number.isInteger(salida.confianza) || salida.confianza < 0 || salida.confianza > 100) {
+    throw new Error('Confianza devuelta por IA fuera del esquema');
+  }
+  if (typeof salida.resumen !== 'string' || typeof salida.accionSugerida !== 'string') {
+    throw new Error('Textos devueltos por IA fuera del esquema');
+  }
+  if (typeof salida.requiereIngresoProveedor !== 'boolean') {
+    throw new Error('Indicador de proveedor devuelto por IA fuera del esquema');
+  }
+  return salida;
+}
+
+async function clasificarConGemini({ pedido, imagen }) {
+  const partes = [];
+  if (imagen) {
+    partes.push({ inlineData: { mimeType: imagen.media_type, data: imagen.data } });
+  }
+  partes.push({ text: pedido });
+
+  const abortador = new AbortController();
+  const reloj = setTimeout(() => abortador.abort(), 20_000);
+  try {
+    const base = entorno.ia.urlBase.replace(/\/$/, '');
+    const respuesta = await fetch(
+      `${base}/models/${encodeURIComponent(entorno.ia.modelo)}:generateContent`,
+      {
+        method: 'POST',
+        signal: abortador.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': entorno.ia.apiKey,
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: INSTRUCCIONES }] },
+          contents: [{ role: 'user', parts: partes }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 1000,
+            responseMimeType: 'application/json',
+            responseJsonSchema: ESQUEMA_CLASIFICACION,
+          },
+        }),
+      }
+    );
+
+    const cuerpo = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) {
+      throw new Error(`Gemini respondio ${respuesta.status}: ${cuerpo.error?.message ?? 'error desconocido'}`);
+    }
+    const texto = cuerpo.candidates?.[0]?.content?.parts
+      ?.map((parte) => parte.text ?? '').join('').trim();
+    if (!texto) throw new Error('Gemini no devolvio contenido');
+    const salida = validarSalida(JSON.parse(texto));
+    return {
+      ...salida,
+      resumen: salida.resumen.slice(0, 120),
+      origen: 'ia',
+      proveedor: 'gemini',
+      modelo: entorno.ia.modelo,
+      tokens: {
+        entrada: cuerpo.usageMetadata?.promptTokenCount ?? 0,
+        salida: cuerpo.usageMetadata?.candidatesTokenCount ?? 0,
+      },
+    };
+  } finally {
+    clearTimeout(reloj);
+  }
 }
 
 /**
@@ -184,31 +257,35 @@ export async function clasificarReclamo({ descripcion, fotoUrl = null, tipoCompl
     return clasificarPorPalabrasClave(descripcion);
   }
 
-  const contenido = [];
+  let imagen = null;
 
   if (fotoUrl) {
-    const imagen = await imagenEnBase64(fotoUrl);
+    imagen = await imagenEnBase64(fotoUrl);
+  }
+
+  const pedido = [
+    `Tipo de complejo: ${tipoComplejo}`,
+    ubicacion ? `Ubicacion: ${ubicacion}` : null,
+    '',
+    'Reclamo del residente:',
+    descripcion,
+  ].filter(Boolean).join('\n');
+
+  try {
+    if (entorno.ia.proveedor === 'gemini') {
+      return await clasificarConGemini({ pedido, imagen });
+    }
+
+    const contenido = [];
     if (imagen) {
       contenido.push({
         type: 'image',
         source: { type: 'base64', media_type: imagen.media_type, data: imagen.data },
       });
     }
-  }
+    contenido.push({ type: 'text', text: pedido });
 
-  contenido.push({
-    type: 'text',
-    text: [
-      `Tipo de complejo: ${tipoComplejo}`,
-      ubicacion ? `Ubicacion: ${ubicacion}` : null,
-      '',
-      'Reclamo del residente:',
-      descripcion,
-    ].filter(Boolean).join('\n'),
-  });
-
-  try {
-    const respuesta = await cliente().messages.parse({
+    const respuesta = await clienteAnthropic().messages.parse({
       model: entorno.ia.modelo,
       max_tokens: 2000,
       system: INSTRUCCIONES,
@@ -233,9 +310,10 @@ export async function clasificarReclamo({ descripcion, fotoUrl = null, tipoCompl
     }
 
     return {
-      ...salida,
+      ...validarSalida(salida),
       resumen: String(salida.resumen).slice(0, 120),
       origen: 'ia',
+      proveedor: 'anthropic',
       modelo: entorno.ia.modelo,
       tokens: {
         entrada: respuesta.usage?.input_tokens ?? 0,
@@ -243,11 +321,11 @@ export async function clasificarReclamo({ descripcion, fotoUrl = null, tipoCompl
       },
     };
   } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) {
+    if (entorno.ia.proveedor === 'anthropic' && error instanceof Anthropic.RateLimitError) {
       log.aviso('IA con limite de peticiones alcanzado, se usa el respaldo');
-    } else if (error instanceof Anthropic.AuthenticationError) {
+    } else if (entorno.ia.proveedor === 'anthropic' && error instanceof Anthropic.AuthenticationError) {
       log.error('La API key de IA es invalida');
-    } else if (error instanceof Anthropic.APIError) {
+    } else if (entorno.ia.proveedor === 'anthropic' && error instanceof Anthropic.APIError) {
       log.aviso('Error de la API de IA', { estado: error.status, mensaje: error.message });
     } else {
       log.aviso('Fallo la clasificacion por IA', { motivo: error.message });

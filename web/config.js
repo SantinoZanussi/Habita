@@ -23,7 +23,7 @@ window.HABITA_CONFIG_PROMISE = esLocal
       return respuesta.json();
     })
     .then((firebase) => ({
-      apiUrl: '/api',
+      apiUrl: 'https://habita-api-goiburu.onrender.com/api',
       firebase,
       emuladores: { activo: false },
     }));

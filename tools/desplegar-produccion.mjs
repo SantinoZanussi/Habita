@@ -15,9 +15,9 @@ const firebaseCli = resolve(raiz, 'node_modules/firebase-tools/lib/bin/firebase.
 ejecutar(npm, ['run', 'verificar']);
 ejecutar(process.execPath, [
   firebaseCli, 'deploy', '--project', proyecto,
-  '--config', 'firebase/firebase.json',
-  '--only', 'auth,functions,hosting,firestore,storage',
-  '--message', 'Habita producción',
+  '--config', 'firebase.json',
+  '--only', 'auth,hosting,firestore',
+  '--message', 'Habita TP - Firebase Spark',
 ]);
 
 function ejecutar(comando, argumentos) {

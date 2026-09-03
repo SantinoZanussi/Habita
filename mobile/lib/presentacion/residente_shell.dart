@@ -1160,6 +1160,10 @@ class NuevoReclamoScreen extends StatefulWidget {
 }
 
 class _NuevoReclamoScreenState extends State<NuevoReclamoScreen> {
+  static const almacenamientoActivo = bool.fromEnvironment(
+    'ENABLE_STORAGE_UPLOADS',
+    defaultValue: true,
+  );
   final descripcion = TextEditingController();
   XFile? foto;
   bool cargando = false;
@@ -1171,7 +1175,7 @@ class _NuevoReclamoScreenState extends State<NuevoReclamoScreen> {
     setState(() => cargando = true);
     try {
       String? fotoUrl;
-      if (foto != null) {
+      if (almacenamientoActivo && foto != null) {
         final bytes = await foto!.readAsBytes();
         final uid = FirebaseAuth.instance.currentUser!.uid;
         final ruta =
@@ -1213,17 +1217,25 @@ class _NuevoReclamoScreenState extends State<NuevoReclamoScreen> {
           ),
         ),
         const SizedBox(height: 14),
-        OutlinedButton.icon(
-          onPressed: () async {
-            final elegida = await ImagePicker().pickImage(
-              source: ImageSource.camera,
-              imageQuality: 78,
-            );
-            if (mounted) setState(() => foto = elegida);
-          },
-          icon: const Icon(Icons.camera_alt_outlined),
-          label: Text(foto == null ? 'Agregar foto' : 'Foto lista para enviar'),
-        ),
+        if (almacenamientoActivo)
+          OutlinedButton.icon(
+            onPressed: () async {
+              final elegida = await ImagePicker().pickImage(
+                source: ImageSource.camera,
+                imageQuality: 78,
+              );
+              if (mounted) setState(() => foto = elegida);
+            },
+            icon: const Icon(Icons.camera_alt_outlined),
+            label: Text(
+              foto == null ? 'Agregar foto' : 'Foto lista para enviar',
+            ),
+          )
+        else
+          const Text(
+            'Las fotos están desactivadas en la versión gratuita del TP.',
+            style: TextStyle(color: Color(0xFF64748B)),
+          ),
         const SizedBox(height: 20),
         FilledButton(
           onPressed: cargando ? null : _enviar,

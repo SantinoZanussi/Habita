@@ -48,6 +48,20 @@ function inicializar() {
     });
   }
 
+  if (entorno.firebase.credencialesJson) {
+    try {
+      const credencial = JSON.parse(entorno.firebase.credencialesJson);
+      log.info('Firebase con credencial secreta del entorno', { proyecto: credencial.project_id });
+      return initializeApp({
+        credential: cert(credencial),
+        projectId: credencial.project_id,
+        storageBucket: entorno.firebase.storageBucket || undefined,
+      });
+    } catch {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON no contiene un JSON valido');
+    }
+  }
+
   log.info('Firebase con credenciales por defecto del entorno');
   return initializeApp({
     credential: applicationDefault(),

@@ -5,26 +5,22 @@
     }
   },
   "functions": {
-    "source": "../backend",
+    "source": "backend",
     "codebase": "default",
     "runtime": "nodejs22",
     "ignore": ["test", "*.log", ".env", ".env.*", "clave-servicio*.json"]
   },
   "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
+    "rules": "firebase/firestore.rules",
+    "indexes": "firebase/firestore.indexes.json"
   },
   "storage": {
-    "rules": "storage.rules"
+    "rules": "firebase/storage.rules"
   },
   "hosting": {
-    "public": "../web",
+    "public": "web",
     "ignore": ["**/.*", "**/node_modules/**", "**/*.md"],
     "rewrites": [
-      {
-        "source": "/api/**",
-        "function": { "functionId": "api", "region": "southamerica-east1" }
-      },
       { "source": "/panel", "destination": "/panel/index.html" },
       { "source": "/panel/**", "destination": "/panel/index.html" }
     ],

@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: habita-api-goiburu
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/salud
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FIREBASE_PROJECT_ID
+        value: habita-complejos-goiburu
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: USAR_EMULADORES
+        value: "false"
+      - key: PUBLIC_BASE_URL
+        value: https://habita-api-goiburu.onrender.com
+      - key: ORIGENES_PERMITIDOS
+        value: https://habita-complejos-goiburu.web.app,https://habita-complejos-goiburu.firebaseapp.com
+      - key: SECRETO_QR
+        generateValue: true
+      - key: IA_PROVEEDOR
+        value: gemini
+      - key: IA_MODELO
+        value: gemini-3.5-flash-lite
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_SECRETO_WEBHOOK
+        sync: false
+      - key: MP_URL_WEBHOOK
+        value: https://habita-api-goiburu.onrender.com/api/webhooks/mercadopago
+      - key: MP_URL_RETORNO
+        value: https://habita-complejos-goiburu.web.app/panel/?pago=resultado
+      - key: FCM_ACTIVO
+        value: "true"

@@ -11,13 +11,13 @@ La identidad visual se construyó con los logos y fuentes entregados. El panel r
 ```text
 App Flutter (residente / guardia / responsable de obra)
               │ lecturas en tiempo real
-Panel web ────┼──────────────────────────► Firebase Auth + Firestore + Storage
+Panel web ────┼──────────────────────────► Firebase Auth + Firestore + FCM
               │                                   ▲
               │ comandos autenticados             │ Admin SDK / transacciones
-              └──────────────────────────► Backend Node/Express
+              └──────────────────────────► Backend Node/Express en Render Free
                                              │
                                              ├─ Mercado Pago
-                                             ├─ clasificador de IA
+                                             ├─ Gemini Free / fallback local
                                              ├─ FCM
                                              └─ BCRA / Google Maps
 ```
@@ -39,10 +39,10 @@ Panel web ────┼──────────────────�
 | --- | --- |
 | Configuración y unidades | Configuración adaptable por complejo, ABM de unidades, validación de coeficientes y baja lógica. |
 | Autenticación y roles | Firebase Auth, custom claims y cinco roles: superadmin, administrador, residente, guardia y responsable de obra. |
-| Seguridad | Reglas Firestore/Storage cerradas por defecto, aislamiento por complejo/unidad y pruebas contra accesos horizontales. |
+| Seguridad | Reglas Firestore cerradas por defecto, aislamiento por complejo/unidad y pruebas contra accesos horizontales. Storage se valida en emuladores y no se publica en Spark. |
 | Accesos | QR dinámico firmado, QR de visita, patente, validación transaccional, límite de usos y registro append-only en vivo. |
 | Visitas | Alta con vigencia, días, puntos habilitados y cantidad máxima de usos. |
-| Reclamos | Alta con foto, clasificación IA o fallback local, confianza, urgencia, corrección humana, estados e historial. |
+| Reclamos | Alta, clasificación IA o fallback local, confianza, urgencia, corrección humana, estados e historial. La foto funciona en emuladores y queda desactivada en el build Spark. |
 | Expensas | Gastos ordinarios/extraordinarios, fondo de reserva, prorrateo exacto, vista previa y cierre atómico irreversible. |
 | Pagos | Preferencia Mercado Pago, webhook idempotente, imputación a saldo, pago manual y simulación local. |
 | Gestión | Dashboard de recaudación/morosidad, gráficos, reclamos y accesos en tiempo real. |
@@ -63,7 +63,7 @@ Panel web ────┼──────────────────�
 - Estado de cuenta y pago.
 - QR dinámico personal y autorización de visitas.
 - Reserva de amenities.
-- Reclamos con foto y seguimiento.
+- Reclamos con seguimiento; foto disponible en el entorno local con Storage Emulator.
 - Consulta de obras y notificaciones.
 
 ### Guardia
@@ -106,7 +106,7 @@ Las pruebas automatizadas verifican los casos de defensa principales:
 2. Un guardia no puede leer ni escribir períodos de expensas.
 3. Ningún cliente, incluido el administrador, puede modificar o borrar eventos de acceso.
 4. Un responsable de obra solo ve las obras indicadas en `obraIds`.
-5. Storage aísla complejos y rechaza contenido que no sea una imagen permitida.
+5. En el entorno local, Storage aísla complejos y rechaza contenido que no sea una imagen permitida.
 
 Además:
 
@@ -158,7 +158,7 @@ El Android Emulator ya queda apuntado a `10.0.2.2`. Para un teléfono físico de
 
 ## Configuración para producción
 
-El proyecto real, las apps Firebase, Firestore regional, Authentication, el APK release y los comandos de despliegue ya están preparados. La configuración operativa, los secretos y los controles posteriores se documentan en `docs/PRODUCCION.md`.
+El proyecto Spark propio, las apps Firebase, Firestore regional, Authentication, FCM y los comandos de despliegue ya están preparados. Para evitar Blaze, Hosting se publica en Firebase y la API Express en Render Free; Gemini usa su nivel gratuito y Mercado Pago usa credenciales de prueba. La configuración operativa, los secretos y los controles posteriores se documentan en `docs/PRODUCCION.md`.
 
 El modo local simulado es intencional: permite defender todo el flujo sin usar dinero real ni depender de una API paga, pero no se presenta como una transacción comercial real.
 

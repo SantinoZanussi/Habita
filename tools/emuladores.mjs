@@ -12,7 +12,7 @@ if (existsSync(resolve(javaAndroid, 'bin/java.exe'))) {
 const firebaseCli = resolve(raiz, 'node_modules/firebase-tools/lib/bin/firebase.js');
 const proceso = spawn(process.execPath, [
   firebaseCli, 'emulators:start', '--project', 'habita-demo',
-  '--config', 'firebase/firebase.json', '--import', 'emulador-datos',
+  '--config', 'firebase.json', '--import', 'emulador-datos',
   '--export-on-exit', 'emulador-datos',
 ], { cwd: raiz, stdio: 'inherit', env: process.env });
 
