@@ -28,10 +28,6 @@ services:
         value: gemini-3.5-flash-lite
       - key: GEMINI_API_KEY
         sync: false
-      - key: MP_ACCESS_TOKEN
-        sync: false
-      - key: MP_SECRETO_WEBHOOK
-        sync: false
       - key: MP_URL_WEBHOOK
         value: https://habita-api-goiburu.onrender.com/api/webhooks/mercadopago
       - key: MP_URL_RETORNO

@@ -65,36 +65,39 @@ No subir ese JSON a Git, no copiarlo en la app móvil y no enviarlo por chat. Si
 
 La clave sólo vive en Render. Si falta o Gemini alcanza su cuota, Habita conserva el reclamo y usa automáticamente el clasificador local por palabras clave.
 
-## 4. Mercado Pago sin dinero real
-
-1. Crear una aplicación en Mercado Pago Developers.
-2. Abrir Pruebas > Credenciales de prueba.
-3. Guardar el Access Token de prueba en Render como `MP_ACCESS_TOKEN`.
-4. Configurar el evento **Pagos** con esta URL:
-
-```text
-https://habita-api-goiburu.onrender.com/api/webhooks/mercadopago
-```
-
-5. Guardar la firma secreta del webhook en Render como `MP_SECRETO_WEBHOOK`.
-
-Las credenciales de prueba llaman a la integración real de Mercado Pago, pero no permiten transacciones reales. No usar credenciales productivas para la entrega académica.
-
-## 5. Crear el servicio gratuito de Render
+## 4. Crear el servicio gratuito de Render
 
 El archivo `render.yaml` describe el servicio y obliga a utilizar `plan: free`.
 
 1. Subir los cambios a GitHub.
 2. Abrir `https://dashboard.render.com/blueprints`.
 3. Crear un Blueprint desde `SantinoZanussi/Habita`.
-4. Completar los cuatro valores secretos solicitados:
+4. Completar los dos valores secretos solicitados:
    - `FIREBASE_SERVICE_ACCOUNT_JSON`;
-   - `GEMINI_API_KEY`;
-   - `MP_ACCESS_TOKEN` de prueba;
-   - `MP_SECRETO_WEBHOOK` de prueba.
+   - `GEMINI_API_KEY`.
 5. Confirmar que el servicio seleccionado diga **Free** antes de crearlo.
 
 Render genera `SECRETO_QR` automáticamente. No se debe escribir ni guardar manualmente.
+
+## 5. Mercado Pago sin dinero real
+
+Con Render ya publicado y la URL disponible:
+
+1. Crear una aplicación en Mercado Pago Developers.
+2. Abrir Pruebas > Credenciales de prueba y copiar el Access Token.
+3. Configurar el evento **Pagos** con esta URL:
+
+```text
+https://habita-api-goiburu.onrender.com/api/webhooks/mercadopago
+```
+
+4. Copiar la firma secreta generada para el webhook.
+5. En Render > `habita-api-goiburu` > Environment, agregar:
+   - `MP_ACCESS_TOKEN`: Access Token de prueba;
+   - `MP_SECRETO_WEBHOOK`: firma secreta del webhook.
+6. Elegir **Save, rebuild, and deploy**.
+
+Las credenciales de prueba llaman a la integración real de Mercado Pago, pero no permiten transacciones reales. No usar credenciales productivas para la entrega académica.
 
 ## 6. Construir Android
 
