@@ -21,7 +21,7 @@ const $$ = (selector, raiz = document) => [...raiz.querySelectorAll(selector)];
 const estado = {
   usuario: null, claims: null, complejoId: null, complejo: null,
   unidades: [], eventos: [], reclamos: [], periodos: [], amenities: [], obras: [],
-  resumen: null, seccion: 'dashboard', listeners: [], filtroUnidades: '',
+  resumen: null, seccion: 'dashboard', listeners: [], filtroUnidades: '', filtroReclamos: '', estadoReclamos: 'todos',
 };
 
 const login = $('#login');
@@ -252,8 +252,29 @@ function renderReclamos() {
   $('#section-reclamos').innerHTML = `
     ${heading('Reclamos', 'Bandeja priorizada con clasificación asistida y trazabilidad.', '')}
     <div class="metrics">${metric('Abiertos', abiertos.length, 'Requieren atención', '!')}${metric('Urgencia alta', abiertos.filter((r) => ['alta','critica'].includes(r.clasificacionFinal?.urgencia)).length, 'Priorizados primero', '↑', true)}${metric('Confianza IA', `${numero(confianza)}%`, 'Siempre corregible', '◇')}${metric('Resueltos', estado.reclamos.filter((r) => r.estado === 'resuelto').length, 'Historial conservado', '✓')}</div>
-    <div class="toolbar"><div class="search"><input placeholder="Buscar reclamo…"></div><select><option>Todos los estados</option><option>Pendientes</option><option>En progreso</option><option>Resueltos</option></select></div>
-    <article class="card card--flush">${tablaReclamos(estado.reclamos, true)}</article>`;
+    <div class="toolbar"><div class="search"><input data-reclamos-search value="${safe(estado.filtroReclamos)}" placeholder="Buscar reclamo…" aria-label="Buscar reclamo"></div><select data-reclamos-estado aria-label="Filtrar reclamos por estado">${opcionesEstadosReclamos()}</select></div>
+    <article id="tabla-reclamos" class="card card--flush">${tablaReclamos(reclamosVisibles(), true)}</article>`;
+}
+
+function opcionesEstadosReclamos() {
+  return [['todos', 'Todos los estados'], ['pendiente', 'Pendientes'], ['en_progreso', 'En progreso'], ['esperando_proveedor', 'Esperando proveedor'], ['resuelto', 'Resueltos'], ['anulado', 'Anulados']]
+    .map(([valor, etiqueta]) => `<option value="${valor}" ${valor === estado.estadoReclamos ? 'selected' : ''}>${etiqueta}</option>`).join('');
+}
+
+function reclamosVisibles() {
+  const termino = estado.filtroReclamos.trim().toLocaleLowerCase('es');
+  return estado.reclamos.filter((r) => {
+    const coincideEstado = estado.estadoReclamos === 'todos' || r.estado === estado.estadoReclamos;
+    if (!coincideEstado) return false;
+    if (!termino) return true;
+    const texto = [r.numero, r.descripcion, idUnidad(r.unidadId), r.clasificacionFinal?.area].filter(Boolean).join(' ').toLocaleLowerCase('es');
+    return texto.includes(termino);
+  });
+}
+
+function renderTablaReclamos() {
+  const contenedor = $('#tabla-reclamos');
+  if (contenedor) contenedor.innerHTML = tablaReclamos(reclamosVisibles(), true);
 }
 
 function renderAmenities() {
@@ -314,6 +335,20 @@ document.addEventListener('submit', async (e) => {
   }
 });
 
+document.addEventListener('input', (e) => {
+  const campo = e.target.closest('[data-reclamos-search]');
+  if (!campo) return;
+  estado.filtroReclamos = campo.value;
+  renderTablaReclamos();
+});
+
+document.addEventListener('change', (e) => {
+  const filtro = e.target.closest('[data-reclamos-estado]');
+  if (!filtro) return;
+  estado.estadoReclamos = filtro.value;
+  renderTablaReclamos();
+});
+
 async function ejecutarAccion(accion, boton) {
   if (accion === 'nueva-unidad') return modalUnidad();
   if (accion === 'editar-unidad') return modalUnidad(estado.unidades.find((u) => u.id === boton.dataset.id));
@@ -323,6 +358,7 @@ async function ejecutarAccion(accion, boton) {
   if (accion === 'cerrar-periodo') return cerrarPeriodo(boton.dataset.id);
   if (accion === 'validar-acceso') return modalAcceso();
   if (accion === 'avanzar-reclamo') return avanzarReclamo(boton.dataset.id, boton.dataset.estado);
+  if (accion === 'corregir-reclamo') return modalClasificacion(estado.reclamos.find((r) => r.id === boton.dataset.id));
   if (accion === 'nuevo-amenity') return modalAmenity();
   if (accion === 'pago-manual') return modalPago();
   if (accion === 'nuevo-aviso') return modalAviso();
@@ -386,9 +422,14 @@ async function enviarModal(tipo, form) {
     await cargarResumen();
   } else if (tipo === 'aviso') {
     await api(`/complejos/${cid}/notificaciones`, { method: 'POST', body: datos });
+  } else if (tipo === 'clasificacion') {
+    await api(`/complejos/${cid}/reclamos/${form.dataset.id}/clasificacion`, {
+      method: 'PATCH',
+      body: { area: datos.area, urgencia: datos.urgencia },
+    });
   }
   cerrarModal();
-  mostrarToast('Cambios guardados', 'La información ya se actualizó para todos los usuarios.');
+  mostrarToast(tipo === 'clasificacion' ? 'Clasificación corregida' : 'Cambios guardados', tipo === 'clasificacion' ? 'La corrección quedó registrada para medir el desempeño de la IA.' : 'La información ya se actualizó para todos los usuarios.');
 }
 
 async function previsualizarPeriodo(id) {
@@ -408,6 +449,23 @@ async function avanzarReclamo(id, actual) {
   if (!siguiente) return;
   await api(`/complejos/${estado.complejoId}/reclamos/${id}/estado`, { method: 'PATCH', body: { estado: siguiente, nota: 'Actualizado desde el panel' } });
   mostrarToast('Reclamo actualizado', `El estado cambió a ${textoEstado(siguiente)}.`);
+}
+
+function modalClasificacion(reclamo) {
+  if (!reclamo) return;
+  const final = reclamo.clasificacionFinal ?? reclamo.clasificacionIA ?? {};
+  const areas = ['plomeria', 'electricidad', 'seguridad', 'limpieza', 'estructura', 'climatizacion', 'ascensores', 'espacios_comunes', 'otro'];
+  const urgencias = ['baja', 'media', 'alta', 'critica'];
+  abrirModal('Corregir clasificación', 'Reclamos · revisión humana', `
+    <p style="color:var(--texto-suave);margin-bottom:16px">${safe(reclamo.descripcion)}</p>
+    <form data-form="clasificacion" data-id="${safe(reclamo.id)}">
+      <div class="form-grid">
+        <label>Área responsable<select name="area" required>${opciones(areas, final.area)}</select></label>
+        <label>Urgencia<select name="urgencia" required>${opciones(urgencias, final.urgencia)}</select></label>
+      </div>
+      <p style="color:var(--texto-suave);font-size:12px;margin:14px 0 0">La clasificación de la IA queda conservada. Esta selección se guarda como corrección humana y actualiza la prioridad de la bandeja.</p>
+      <div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Guardar corrección</button></div>
+    </form>`);
 }
 
 async function guardarConfiguracion(form) {
@@ -446,7 +504,7 @@ function donutMorosidad(r) {
 }
 function donutGastos({ ordinario, extraordinario, fondo, total }) { return `<div class="donut-wrap"><div class="donut" style="background:conic-gradient(#24a6bd 0 ${Math.round(ordinario/Math.max(total,1)*100)}%,#3c8f79 0 ${Math.round((ordinario+extraordinario)/Math.max(total,1)*100)}%,#7aa59a 0)"><span class="donut__center"><strong>${dinero(total)}</strong><small>Total</small></span></div><div class="donut-legend"><div class="donut-legend__row"><i style="--c:#24a6bd"></i><span>Gastos ordinarios</span><strong>${dinero(ordinario)}</strong></div><div class="donut-legend__row"><i style="--c:#3c8f79"></i><span>Gastos extraordinarios</span><strong>${dinero(extraordinario)}</strong></div><div class="donut-legend__row"><i style="--c:#7aa59a"></i><span>Fondo de reserva</span><strong>${dinero(fondo)}</strong></div></div></div>`; }
 function tablaUnidades(unidades) { return `<div class="table-wrap"><table><thead><tr><th>Unidad</th><th>Coeficiente</th><th>Superficie</th><th>Estado</th><th>Patentes</th><th></th></tr></thead><tbody>${unidades.map((u) => `<tr><td><strong>${safe(u.identificador)}</strong></td><td>${numero(u.coeficiente,4)}%</td><td>${numero(u.superficie)} m²</td><td><span class="chip ${u.estado === 'ocupada' ? 'chip--success' : 'chip--warning'}">${textoEstado(u.estado)}</span></td><td>${safe(u.patentesAutorizadas?.join(', ') || '—')}</td><td><button class="button button--ghost button--small" data-action="editar-unidad" data-id="${u.id}">Editar</button></td></tr>`).join('') || '<tr><td class="table-empty" colspan="6">No hay resultados.</td></tr>'}</tbody></table></div>`; }
-function tablaReclamos(reclamos, acciones) { return `<div class="table-wrap"><table><thead><tr><th>Reclamo</th><th>Unidad</th><th>Clasificación IA</th><th>Confianza</th><th>Urgencia</th><th>Estado</th>${acciones ? '<th></th>' : ''}</tr></thead><tbody>${reclamos.map((r) => `<tr><td><strong>#${safe(r.numero ?? r.id.slice(0,6))}</strong><br><span>${safe(r.descripcion)}</span></td><td>${safe(idUnidad(r.unidadId))}</td><td>${safe(textoEstado(r.clasificacionFinal?.area ?? 'sin_clasificar'))}</td><td>${numero(r.clasificacionIA?.confianza)}%</td><td><span class="chip ${chipUrgencia(r.clasificacionFinal?.urgencia)}">${textoEstado(r.clasificacionFinal?.urgencia)}</span></td><td><span class="chip ${chipEstado(r.estado)}">${textoEstado(r.estado)}</span></td>${acciones ? `<td><button class="button button--secondary button--small" data-action="avanzar-reclamo" data-id="${r.id}" data-estado="${r.estado}">${r.estado === 'resuelto' ? 'Reabrir' : r.estado === 'pendiente' ? 'Tomar' : 'Resolver'}</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${acciones ? 7 : 6}" class="table-empty">No hay reclamos.</td></tr>`}</tbody></table></div>`; }
+function tablaReclamos(reclamos, acciones) { return `<div class="table-wrap"><table><thead><tr><th>Reclamo</th><th>Unidad</th><th>Área final</th><th>Confianza IA</th><th>Urgencia</th><th>Estado</th>${acciones ? '<th></th>' : ''}</tr></thead><tbody>${reclamos.map((r) => `<tr><td><strong>#${safe(r.numero ?? r.id.slice(0,6))}</strong><br><span>${safe(r.descripcion)}</span></td><td>${safe(idUnidad(r.unidadId))}</td><td>${safe(textoEstado(r.clasificacionFinal?.area ?? 'sin_clasificar'))}${r.clasificacionFinal?.corregidaPorHumano ? '<br><span class="chip chip--info">Corregida</span>' : ''}</td><td>${numero(r.clasificacionIA?.confianza)}%</td><td><span class="chip ${chipUrgencia(r.clasificacionFinal?.urgencia)}">${textoEstado(r.clasificacionFinal?.urgencia)}</span></td><td><span class="chip ${chipEstado(r.estado)}">${textoEstado(r.estado)}</span></td>${acciones ? `<td><div class="table-actions"><button class="button button--secondary button--small" data-action="avanzar-reclamo" data-id="${r.id}" data-estado="${r.estado}">${r.estado === 'resuelto' ? 'Reabrir' : r.estado === 'pendiente' ? 'Tomar' : 'Resolver'}</button><button class="button button--ghost button--small" data-action="corregir-reclamo" data-id="${r.id}">Corregir</button></div></td>` : ''}</tr>`).join('') || `<tr><td colspan="${acciones ? 7 : 6}" class="table-empty">No hay reclamos.</td></tr>`}</tbody></table></div>`; }
 function tablaAccesos(eventos) { return `<div class="table-wrap"><table><thead><tr><th>Hora</th><th>Persona / patente</th><th>Método</th><th>Punto</th><th>Resultado</th></tr></thead><tbody>${eventos.map((e) => `<tr><td>${hora(e.timestampServidor)}</td><td><strong>${safe(e.nombre ?? e.patente ?? 'Sin identificar')}</strong><br><span>${safe(idUnidad(e.unidadId))}</span></td><td>${textoEstado(e.metodo)}</td><td>${safe(e.punto)}</td><td><span class="chip ${e.resultado === 'permitido' ? 'chip--success' : 'chip--danger'}">${textoEstado(e.resultado)}</span>${e.motivoRechazo ? `<br><small>${safe(e.motivoRechazo)}</small>` : ''}</td></tr>`).join('')}</tbody></table></div>`; }
 function tablaTramos(tramos) { return `<div class="table-wrap"><table><thead><tr><th>Antigüedad</th><th>Unidades</th><th>Monto</th><th>Participación</th></tr></thead><tbody>${tramos.map((t) => `<tr><td><span class="chip ${t.clave === 'mas_90' ? 'chip--danger' : 'chip--warning'}">${safe(t.etiqueta)}</span></td><td>${t.unidades}</td><td><strong>${dinero(t.monto)}</strong></td><td>${numero(t.porcentaje)}%</td></tr>`).join('')}</tbody></table></div>`; }
 function lineasAcceso(eventos) { return eventos.map((e) => `<div class="access-line"><span class="access-line__icon ${e.resultado === 'rechazado' ? 'access-line__icon--danger' : ''}">${e.sentido === 'egreso' ? '←' : e.resultado === 'rechazado' ? '×' : '→'}</span><span><strong>${safe(e.nombre ?? e.patente ?? 'Movimiento')}</strong><small>${safe(idUnidad(e.unidadId))} · ${safe(textoEstado(e.punto ?? e.metodo))}</small></span><time>${hora(e.timestampServidor)}</time></div>`).join('') || '<p style="color:var(--texto-suave)">Sin movimientos recientes.</p>'; }

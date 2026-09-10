@@ -2,6 +2,40 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-10 — Preparar Fase 3 y continuidad de QA
+
+### Objetivo
+
+Continuar el trabajo desde `main`, dejar Mercado Pago en pausa por el error del portal y avanzar todo lo posible hacia la Fase 3 con una mejora funcional y un checklist reproducible.
+
+### Estado inicial
+
+La Fase 2 ya estaba integrada y publicada en `main` en `ef83278`. El backend tenía el endpoint para corregir la clasificación de reclamos, pero el panel sólo permitía cambiar el estado. `docs/entrega/` sigue siendo un generador de pitch incompleto y queda fuera del alcance de esta sesión.
+
+### Verificado
+
+- `npm test`: 79 pruebas aprobadas.
+- `npm run test:reglas`: 11 pruebas de Firestore y Storage aprobadas en emuladores oficiales.
+- `npm run build:web`: compilación del panel completada.
+- `mobile/flutter analyze`: sin problemas.
+- `mobile/flutter test`: 4 tests aprobados.
+
+### Cambios
+
+- El panel expone la corrección humana de área y urgencia en `web/src/main.js`; llama a `PATCH /reclamos/:id/clasificacion` y conserva la clasificación IA.
+- La bandeja de reclamos ahora filtra por texto y estado sin perder el foco ni recargar toda la sección.
+- Se agregó el estilo de acciones múltiples de la tabla en `web/assets/css/app.css` y se regeneró `web/assets/js/app.js`.
+- Se agregó `docs/FASE_3_QA.md` con casos por rol, seguridad, pagos demo, accesibilidad responsive, recuperación de conexión y ficha de bugs.
+- Se actualizaron `docs/FASE_2_ENTREGA.md` y esta bitácora para reflejar que la preparación de Fase 3 está iniciada y que Fase 2 ya está en `ef83278`.
+
+### Pendiente
+
+El QA cruzado real requiere otra persona o equipo y no se debe marcar como ejecutado sin evidencia. Mercado Pago queda pausado hasta que el portal permita activar credenciales de prueba.
+
+### Comandos y resultado
+
+`npm run build:web`, `npm test`, `npm run test:reglas`, `flutter analyze` y `flutter test` finalizaron con código 0. El generador incompleto de `docs/entrega/` no se incluyó en estos cambios.
+
 ## 2026-09-10 — Integrar la última Fase 2 en `main`
 
 ### Objetivo
@@ -24,7 +58,7 @@ Reunir los cambios de Fase 2 que estaban en esta PC, validarlos y publicarlos en
 
 Se prepararon para commit los cambios de Fase 2 en backend, reglas, app móvil, pruebas, configuración y documentación. El destino es `main`, según la preferencia permanente del proyecto.
 
-Commit publicado: `00cb257` (`feat: integrar correcciones y demo de fase 2`).
+Commit publicado: `ef83278` (`feat: integrar correcciones y demo de fase 2`).
 
 ### Pendiente
 
@@ -33,11 +67,11 @@ QA cruzado con otro equipo, prueba presencial completa de app y panel, landing, 
 ## Estado rápido
 
 - Rama principal del proyecto: `main`. La rama temporal `codex/retomar-fase-2` se usó durante la recuperación y no debe ser el destino normal de nuevas sesiones.
-- Base del código retomado: commit `1f8945a` (`docs: ordenar activacion gratuita de integraciones`). La documentación de continuidad quedó en `fdfd921` (`docs: agregar contexto y bitacora para continuidad`).
+- Base histórica del código retomado: commit `1f8945a` (`docs: ordenar activacion gratuita de integraciones`). La documentación de continuidad se agregó en `0e399bd` (`docs: agregar contexto y bitacora para continuidad`) y la preferencia de trabajar en `main` quedó fijada en `22b5f12`.
 - Fase: transición de Fase 2 hacia preparación de Fases 3 a 5.
 - Mercado Pago: la aplicación `Habita TP` existe, pero la activación de credenciales de prueba devuelve “Algo salió mal” en el portal. El código conserva modo simulado autenticado.
 - Firebase/Render: hay un despliegue preparado y una comprobación de solo lectura documentada en `docs/PRODUCCION.md`.
-- Seguridad: existen cambios locales para aislamiento de usuarios y accesos; deben permanecer visibles en el diff hasta que se revisen y se integren. El commit `fdfd921` contiene sólo la documentación de continuidad.
+- Seguridad: los cambios de aislamiento de usuarios y accesos ya están integrados y cubiertos por las suites de backend y reglas en `ef83278`.
 - Preferencia de flujo: desde esta entrada, los cambios terminados y verificados se integran directamente en `main`; no crear ramas nuevas sin pedido explícito.
 
 ## 2026-09-10 — Retomar Fase 2 y preparar continuidad

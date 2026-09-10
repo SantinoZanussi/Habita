@@ -2,7 +2,7 @@
 
 ## Resultado
 
-**Estado de verificación:** la implementación y el despliegue no implican que la entrega esté validada al 100 %. Mercado Pago externo queda pendiente por el error al activar sus credenciales; se continúa con pagos explícitamente simulados. Las pruebas con usuarios del proyecto publicado, Gemini y notificaciones en un dispositivo se registran en `docs/PRODUCCION.md`. No se inició la fase 3.
+**Estado de verificación:** la implementación y el despliegue no implican que la entrega esté validada al 100 %. Mercado Pago externo queda pendiente por el error al activar sus credenciales; se continúa con pagos explícitamente simulados. Las pruebas con usuarios del proyecto publicado, Gemini y notificaciones en un dispositivo se registran en `docs/PRODUCCION.md`. La guía de preparación para el QA cruzado está en `docs/FASE_3_QA.md`; el intercambio con otro equipo todavía no ocurrió.
 
 La solución implementa el producto P0 completo: una app Flutter multirol, un panel web administrativo, un backend Node/Express y una única base Firebase compartida en tiempo real. La arquitectura evita duplicar reglas de negocio: Firestore entrega lecturas reactivas y el backend concentra las escrituras sensibles, las transacciones y los proveedores externos.
 
@@ -191,4 +191,4 @@ docs/      contexto, decisiones y esta entrega
 
 ## Límite de esta fase
 
-Fase 2 entrega el sistema funcional y preparado para la demo. La Fase 3 de la consigna sigue siendo el QA cruzado con otro equipo; sus hallazgos deberían registrarse como bugs reproducibles y corregirse en Fase 4, sin alterar los invariantes de seguridad, tiempo real y cierre exacto.
+Fase 2 entrega el sistema funcional y preparado para la demo. La Fase 3 de la consigna es el QA cruzado con otro equipo; `docs/FASE_3_QA.md` deja preparados los casos, datos demo y formato de reporte. Sus hallazgos deben registrarse como bugs reproducibles y corregirse en Fase 4, sin alterar los invariantes de seguridad, tiempo real y cierre exacto.

@@ -138,6 +138,7 @@ th { padding: 10px 12px; color: var(--texto-suave); font-weight: 650; text-align
 td { padding: 11px 12px; border-top: 1px solid var(--borde); color: var(--texto-medio); vertical-align: middle; }
 tbody tr:hover { background: #f9fcfe; }
 .table-empty { padding: 38px !important; color: var(--texto-suave); text-align: center; }
+.table-actions { display: flex; flex-wrap: wrap; gap: 6px; min-width: 146px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border: 1px solid var(--borde); border-radius: 999px; background: var(--color-neutro-50); color: var(--texto-medio); font-size: 10px; font-weight: 700; white-space: nowrap; }
 .chip--success { border-color: var(--color-estado-exito-borde); background: var(--color-estado-exito-fondo); color: var(--color-estado-exito-texto); }
 .chip--warning { border-color: var(--color-estado-aviso-borde); background: var(--color-estado-aviso-fondo); color: var(--color-estado-aviso-texto); }
@@ -226,4 +227,3 @@ tbody tr:hover { background: #f9fcfe; }
   .form-grid .span-2 { grid-column: auto; }
   .login-card { padding: 28px 22px; }
 }
-
