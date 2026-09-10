@@ -16,7 +16,7 @@ Habita convierte la operación dispersa de un complejo residencial en un sistema
 
 ## Demo en vivo — 3 minutos
 
-1. **Acceso (60 s).** En la app del residente abrir una visita y mostrar el QR. En el dispositivo del guardia validar el ingreso. Mostrar el evento nuevo en el panel y repetir el escaneo para enseñar el rechazo con motivo.
+1. **Acceso (60 s).** En la app del residente abrir una visita y mostrar el QR. En el dispositivo del guardia validar el ingreso dos veces; mostrar el evento nuevo en el panel y repetirlo una tercera vez para enseñar el rechazo por usos agotados.
 2. **Expensa (45 s).** En el panel abrir un período de ejemplo, mostrar la previsualización y señalar la verificación de cierre exacto. En la app del residente abrir el detalle publicado.
 3. **Obra (45 s).** Entrar como responsable de obra, registrar un atraso en una partida crítica y mostrar cómo cambia la fecha estimada en el panel y en la app.
 4. **Cierre (30 s).** Volver a la configuración del panel, mostrar que el tipo de complejo y la nomenclatura son configurables y terminar con la landing y el CTA de demo.

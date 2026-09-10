@@ -2,6 +2,48 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-10 — Verificación integral local y guía de funcionamiento
+
+### Objetivo
+
+Ejecutar las verificaciones automatizadas y un recorrido local con emuladores, datos demo, API, landing y panel para documentar cómo funciona Habita y qué pruebas requieren un dispositivo o una persona.
+
+### Estado inicial
+
+`main` estaba publicado en `661a89a`. La landing y el formulario público ya estaban implementados; `docs/entrega/` continuaba fuera del repositorio por estar incompleto.
+
+### Verificado
+
+- `npm test`: 80 pruebas aprobadas.
+- `npm run test:reglas`: 11 pruebas de Firestore y Storage aprobadas en un arranque limpio de emuladores. Las advertencias de `sun.misc.Unsafe` provienen del runtime Java del emulador y no cambian el resultado.
+- `npm run build:web`: compilación del panel completada.
+- `flutter analyze`: sin problemas; `flutter test`: 4 tests aprobados.
+- `flutter devices`: esta PC sólo tiene Windows, Chrome y Edge; `flutter run -d chrome --web-port 9100` compiló y dejó la app Flutter web conectada al servicio de depuración.
+- `npm run emu`: Auth, Firestore, Hosting y Storage quedaron listos en los puertos locales esperados. El script ya no intenta levantar Functions, que no forman parte del backend local y fallaban al leer las credenciales inválidas del `.env`.
+- `npm run seed`: creó el escenario `torre-parque` con cinco cuentas demo, 152 unidades, amenities, accesos, reclamos, obra, avisos y una liquidación cerrada. Una consulta con Admin SDK confirmó 152 identificadores únicos y conservó la unidad demo `unidad-3a` como `3A`.
+- Smoke test HTTP contra `http://127.0.0.1:8787/api`: salud `200`, contacto público `201`, métricas admin `200`, bloqueo de residente en métricas `403`, cuenta propia `200`, cuenta vecina `403`, creación de reclamo `201`, corrección humana `200`, dos usos permitidos del QR demo y tercer uso rechazado con motivo de usos agotados, presentes `200`.
+- Recorrido visual del panel en `http://127.0.0.1:5000/panel`: login admin, Dashboard, Unidades, Reclamos con búsqueda y filtro, modal de corrección humana, Expensas y Accesos. El historial mostró los tres intentos del QR demo y el mensaje actualizado explica sus dos usos.
+
+### Cambios
+
+- `tools/sembrar.mjs` evita duplicar `3A` al reservar la posición de la unidad demo y mantiene los coeficientes del escenario.
+- `tools/emuladores.mjs` inicia sólo los emuladores usados por la app local: Auth, Firestore, Hosting y Storage.
+- `web/src/main.js` y `web/assets/js/app.js` explican que el QR demo permite dos usos y registra también el rechazo posterior.
+- `docs/FASE_3_QA.md` y `docs/FASE_5_PITCH.md` alinean el caso de prueba y el guion con ese comportamiento real.
+- Esta entrada documenta el recorrido completo y cómo reproducirlo desde otra computadora.
+
+### Pendiente
+
+Mercado Pago continúa pausado por el error del portal. La prueba física de Android, cámara/QR, notificaciones FCM y QA cruzado requieren un dispositivo o una persona externa. El video final y la exposición presencial también quedan fuera de una sesión automática.
+
+### Supuesto
+
+La verificación se hizo con Firebase Emulator Suite y proveedores simulados (`MP_ACCESS_TOKEN`, Gemini, Maps y FCM vacíos), por lo que demuestra el flujo local y las reglas de negocio, no una acreditación real de dinero, una notificación en un teléfono ni una integración externa productiva.
+
+### Comandos y resultado
+
+`npm run verificar` finalizó con código 0 e incluyó `tokens`, `marca`, `build:web`, las 80 pruebas de backend y las 11 pruebas de reglas. También finalizaron correctamente `flutter analyze`, `flutter test`, `npm run emu`, `npm run seed` y el smoke test HTTP. El primer intento aislado de `npm run test:reglas` fue bloqueado porque el recorrido visual todavía ocupaba los puertos 8080/9199; se cerró ese proceso y la ejecución siguiente pasó completa. Commit de cierre: `6bea3a9` (`test: verificar recorrido integral local`).
+
 ## 2026-09-10 — Avanzar Fase 4: landing y materiales de demo
 
 ### Objetivo

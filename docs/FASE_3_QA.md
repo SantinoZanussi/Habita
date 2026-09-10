@@ -39,7 +39,7 @@ Abrir `http://127.0.0.1:5000/panel`. Para la app móvil, ejecutar `cd mobile; fl
 | QA-04 | Administración | Pulsar `Corregir` en un reclamo | Se pueden elegir área y urgencia; al guardar, la corrección queda visible y la prioridad cambia. La clasificación IA original no se reemplaza. |
 | QA-05 | Administración | Avanzar un reclamo de pendiente a en progreso y luego a resuelto; intentar una transición inválida | Las transiciones válidas funcionan y la inválida informa el error sin modificar el historial. |
 | QA-06 | Residente / Administración | Crear o revisar un período, previsualizarlo y cerrarlo | La vista previa informa si cierra exacto; un período cerrado queda publicado y no se puede editar como borrador. |
-| QA-07 | Guardia | Validar `HBA-DEMO-VISITA-01` dos veces en el mismo sentido | El primer ingreso permitido consume el uso; el segundo se rechaza y ambos eventos quedan auditados. |
+| QA-07 | Guardia | Validar `HBA-DEMO-VISITA-01` tres veces en el mismo sentido | Los dos primeros ingresos permitidos consumen los usos; el tercer intento se rechaza y los tres eventos quedan auditados. |
 | QA-08 | Guardia | Intentar validar una salida sin ingreso previo | Se rechaza con un motivo comprensible y no se crea un egreso válido. |
 | QA-09 | Residente | Registrar un pago desde el flujo demo de la app | Se muestra confirmación explícita; el pago sólo se registra si la persona confirma. La pantalla identifica que es demo. |
 | QA-10 | Roles | Abrir la app móvil con residente, guardia y responsable de obra; intentar entrar al panel con una cuenta móvil | Cada rol ve sus acciones; una cuenta móvil no puede abrir el panel de administración. |

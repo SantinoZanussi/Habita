@@ -89,8 +89,11 @@ async function sembrarUnidades() {
   let operaciones = 0;
   for (let i = 1; i <= 152; i += 1) {
     const id = i === 3 ? 'unidad-3a' : `unidad-${String(i).padStart(3, '0')}`;
-    const piso = Math.ceil(i / 8);
-    const letra = String.fromCharCode(65 + ((i - 1) % 8));
+    // La unidad demo 3A ocupa la posición 17 del plano; saltarla evita duplicar
+    // el identificador cuando se generan las demás unidades automáticamente.
+    const posicion = i === 3 ? 17 : i >= 17 ? i + 1 : i;
+    const piso = Math.ceil(posicion / 8);
+    const letra = String.fromCharCode(65 + ((posicion - 1) % 8));
     const identificador = i === 3 ? '3A' : `${piso}${letra}`;
     // 144 coeficientes de 0,6579 y 8 de 0,6578 suman 100,0000 exacto.
     const coeficiente = i <= 144 ? 0.6579 : 0.6578;
