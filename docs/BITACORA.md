@@ -42,7 +42,7 @@ La verificación se hizo con Firebase Emulator Suite y proveedores simulados (`M
 
 ### Comandos y resultado
 
-`npm run verificar` finalizó con código 0 e incluyó `tokens`, `marca`, `build:web`, las 80 pruebas de backend y las 11 pruebas de reglas. También finalizaron correctamente `flutter analyze`, `flutter test`, `npm run emu`, `npm run seed` y el smoke test HTTP. El primer intento aislado de `npm run test:reglas` fue bloqueado porque el recorrido visual todavía ocupaba los puertos 8080/9199; se cerró ese proceso y la ejecución siguiente pasó completa. Commit de cierre: `6bea3a9` (`test: verificar recorrido integral local`).
+`npm run verificar` finalizó con código 0 e incluyó `tokens`, `marca`, `build:web`, las 80 pruebas de backend y las 11 pruebas de reglas. También finalizaron correctamente `flutter analyze`, `flutter test`, `npm run emu`, `npm run seed` y el smoke test HTTP. El primer intento aislado de `npm run test:reglas` fue bloqueado porque el recorrido visual todavía ocupaba los puertos 8080/9199; se cerró ese proceso y la ejecución siguiente pasó completa. El código y los ajustes funcionales quedaron publicados en `main` en `da9b7ba` (`test: verificar recorrido integral local`).
 
 ## 2026-09-10 — Avanzar Fase 4: landing y materiales de demo
 
