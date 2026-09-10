@@ -23,6 +23,7 @@ Ejecutar las verificaciones automatizadas y un recorrido local con emuladores, d
 - `npm run seed`: creó el escenario `torre-parque` con cinco cuentas demo, 152 unidades, amenities, accesos, reclamos, obra, avisos y una liquidación cerrada. Una consulta con Admin SDK confirmó 152 identificadores únicos y conservó la unidad demo `unidad-3a` como `3A`.
 - Smoke test HTTP contra `http://127.0.0.1:8787/api`: salud `200`, contacto público `201`, métricas admin `200`, bloqueo de residente en métricas `403`, cuenta propia `200`, cuenta vecina `403`, creación de reclamo `201`, corrección humana `200`, dos usos permitidos del QR demo y tercer uso rechazado con motivo de usos agotados, presentes `200`.
 - Recorrido visual del panel en `http://127.0.0.1:5000/panel`: login admin, Dashboard, Unidades, Reclamos con búsqueda y filtro, modal de corrección humana, Expensas y Accesos. El historial mostró los tres intentos del QR demo y el mensaje actualizado explica sus dos usos.
+- `npm run verificar:servicios` comprobó en producción backend, Firestore, modo producción, panel, CORS y sesión obligatoria. La raíz publicada respondió `200`, pero todavía contiene la portada anterior que redirige a `/panel`; la landing nueva del repositorio aún necesita un deploy.
 
 ### Cambios
 
@@ -34,7 +35,7 @@ Ejecutar las verificaciones automatizadas y un recorrido local con emuladores, d
 
 ### Pendiente
 
-Mercado Pago continúa pausado por el error del portal. La prueba física de Android, cámara/QR, notificaciones FCM y QA cruzado requieren un dispositivo o una persona externa. El video final y la exposición presencial también quedan fuera de una sesión automática.
+Mercado Pago continúa pausado por el error del portal. La landing nueva requiere publicar el `main` actual en Firebase Hosting. La prueba física de Android, cámara/QR, notificaciones FCM y QA cruzado requieren un dispositivo o una persona externa. El video final y la exposición presencial también quedan fuera de una sesión automática.
 
 ### Supuesto
 
@@ -42,7 +43,7 @@ La verificación se hizo con Firebase Emulator Suite y proveedores simulados (`M
 
 ### Comandos y resultado
 
-`npm run verificar` finalizó con código 0 e incluyó `tokens`, `marca`, `build:web`, las 80 pruebas de backend y las 11 pruebas de reglas. También finalizaron correctamente `flutter analyze`, `flutter test`, `npm run emu`, `npm run seed` y el smoke test HTTP. El primer intento aislado de `npm run test:reglas` fue bloqueado porque el recorrido visual todavía ocupaba los puertos 8080/9199; se cerró ese proceso y la ejecución siguiente pasó completa. El código y los ajustes funcionales quedaron publicados en `main` en `da9b7ba` (`test: verificar recorrido integral local`).
+`npm run verificar` finalizó con código 0 e incluyó `tokens`, `marca`, `build:web`, las 80 pruebas de backend y las 11 pruebas de reglas. También finalizaron correctamente `flutter analyze`, `flutter test`, `npm run emu`, `npm run seed` y el smoke test HTTP. `npm run verificar:servicios` devolvió código 1 sólo por la landing publicada desactualizada; los otros seis controles pasaron y reportó Mercado Pago simulado. El primer intento aislado de `npm run test:reglas` fue bloqueado porque el recorrido visual todavía ocupaba los puertos 8080/9199; se cerró ese proceso y la ejecución siguiente pasó completa. El código y los ajustes funcionales quedaron publicados en `main` en `da9b7ba` (`test: verificar recorrido integral local`).
 
 ## 2026-09-10 — Avanzar Fase 4: landing y materiales de demo
 
