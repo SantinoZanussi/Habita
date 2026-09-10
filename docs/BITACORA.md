@@ -15,6 +15,7 @@ El residente cargaba nombre y documento y recibía el QR sólo en el diálogo de
 ### Verificado
 
 - El backend conserva el código QR aleatorio, la vigencia, los usos y el documento; el guardia valida el código con la cámara y recibe nombre, DNI, unidad y usos restantes.
+- La ruta HTTP de creación respondió `201` con `codigoQr` de tipo texto; el registro temporal usado para comprobarlo se eliminó del emulador.
 - `npm test`: 82 pruebas aprobadas.
 - `flutter analyze`: sin problemas.
 - `flutter test`: 4 tests aprobados.
@@ -23,6 +24,7 @@ El residente cargaba nombre y documento y recibía el QR sólo en el diálogo de
 ### Cambios
 
 - `mobile/lib/presentacion/residente_shell.dart` muestra DNI, agrega “Mostrar QR para la garita” en cada autorización vigente y explica que ese QR se presenta en la entrada.
+- `mobile/lib/presentacion/residente_shell.dart` evita dobles envíos mientras crea la autorización, valida los campos antes de llamar a la API y verifica que la respuesta contenga un QR renderizable antes de cerrar el diálogo.
 - `mobile/lib/presentacion/guardia_shell.dart` muestra el DNI devuelto junto al nombre luego de un escaneo válido.
 - `backend/src/rutas/accesos.js` normaliza nombre y DNI y exige el documento para el tipo `visita`.
 

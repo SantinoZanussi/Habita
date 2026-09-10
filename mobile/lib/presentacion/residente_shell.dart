@@ -781,71 +781,65 @@ class _Visitas extends StatelessWidget {
         final docs = snap.data!.docs;
         return ListView(
           padding: const EdgeInsets.all(18),
-          children: docs
-              .map(
-                (d) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: HabitaCard(
-                    child: Column(
+          children: docs.map((d) {
+            final datos = d.data();
+            final nombreVisita = datos['nombre']?.toString() ?? 'visita';
+            final estado = datos['estado']?.toString() ?? 'vigente';
+            final codigoQr = datos['codigoQr'];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: HabitaCard(
+                child: Column(
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: HabitaColores.superficieSuave,
-                              child: Text(
-                                (d.data()['nombre'] as String? ?? 'V')[0],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    d.data()['nombre'] as String? ?? '',
-                                    style: HabitaTipografia.etiqueta,
-                                  ),
-                                  Text(
-                                    'DNI ${d.data()['documento'] ?? '—'}',
-                                    style: HabitaTipografia.micro,
-                                  ),
-                                  Text(
-                                    'Vence ${_fecha(d.data()['vigenciaHasta'])} · ${d.data()['usosConsumidos']}/${d.data()['usosPermitidos']} usos',
-                                    style: HabitaTipografia.micro,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            EstadoChip(
-                              d.data()['estado'] as String? ?? 'vigente',
-                              tipo: d.data()['estado'] == 'vigente'
-                                  ? 'exito'
-                                  : 'error',
-                            ),
-                          ],
+                        CircleAvatar(
+                          backgroundColor: HabitaColores.superficieSuave,
+                          child: Text(nombreVisita[0]),
                         ),
-                        if ((d.data()['codigoQr'] as String?)?.isNotEmpty ??
-                            false)
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: d.data()['estado'] == 'vigente'
-                                  ? () => _mostrarQr(
-                                      context,
-                                      d.data()['codigoQr'] as String,
-                                      d.data()['nombre'] as String? ?? 'visita',
-                                    )
-                                  : null,
-                              icon: const Icon(Icons.qr_code_2_rounded),
-                              label: const Text('Mostrar QR para la garita'),
-                            ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                nombreVisita,
+                                style: HabitaTipografia.etiqueta,
+                              ),
+                              Text(
+                                'DNI ${datos['documento'] ?? '—'}',
+                                style: HabitaTipografia.micro,
+                              ),
+                              Text(
+                                'Vence ${_fecha(datos['vigenciaHasta'])} · ${datos['usosConsumidos']}/${datos['usosPermitidos']} usos',
+                                style: HabitaTipografia.micro,
+                              ),
+                            ],
                           ),
+                        ),
+                        EstadoChip(
+                          estado,
+                          tipo: estado == 'vigente' ? 'exito' : 'error',
+                        ),
                       ],
                     ),
-                  ),
+                    if (codigoQr is String && codigoQr.isNotEmpty)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: estado == 'vigente'
+                              ? () =>
+                                    _mostrarQr(context, codigoQr, nombreVisita)
+                              : null,
+                          icon: const Icon(Icons.qr_code_2_rounded),
+                          label: const Text('Mostrar QR para la garita'),
+                        ),
+                      ),
+                  ],
                 ),
-              )
-              .toList(),
+              ),
+            );
+          }).toList(),
         );
       },
     ),
@@ -854,66 +848,102 @@ class _Visitas extends StatelessWidget {
     final nombre = TextEditingController();
     final documento = TextEditingController();
     final hasta = DateTime.now().add(const Duration(hours: 6));
+    var creando = false;
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Autorizar visita'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nombre,
-              decoration: const InputDecoration(labelText: 'Nombre y apellido'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: documento,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'DNI',
-                hintText: '12345678',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Autorizar visita'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nombre,
+                enabled: !creando,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre y apellido',
+                ),
               ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: documento,
+                enabled: !creando,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'DNI',
+                  hintText: '12345678',
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Al confirmar se genera un QR para que la visita lo presente en la garita.',
+                style: TextStyle(color: HabitaColores.textoSuave),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: creando ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Al confirmar se genera un QR para que la visita lo presente en la garita.',
-              style: TextStyle(color: HabitaColores.textoSuave),
+            FilledButton(
+              onPressed: creando
+                  ? null
+                  : () async {
+                      final nombreTexto = nombre.text.trim();
+                      final documentoTexto = documento.text.trim();
+                      if (nombreTexto.length < 2 || documentoTexto.length < 6) {
+                        mostrarError(
+                          dialogContext,
+                          ErrorApi(
+                            'Completá nombre y DNI válido para continuar.',
+                          ),
+                        );
+                        return;
+                      }
+                      setDialogState(() => creando = true);
+                      try {
+                        final resultado = await HabitaApi().post(
+                          '/complejos/$complejoId/accesos/autorizaciones',
+                          {
+                            'nombre': nombreTexto,
+                            'documento': documentoTexto,
+                            'unidadId': unidadId,
+                            'vigenciaDesde': DateTime.now().toIso8601String(),
+                            'vigenciaHasta': hasta.toIso8601String(),
+                            'usosPermitidos': 2,
+                          },
+                        );
+                        final codigoQr = resultado['codigoQr'];
+                        if (codigoQr is! String || codigoQr.isEmpty) {
+                          throw ErrorApi(
+                            'La autorización se creó, pero no recibimos su QR. Volvé a abrir la lista de visitas para mostrarlo.',
+                            codigo: 'QR_INCOMPLETO',
+                          );
+                        }
+                        if (!dialogContext.mounted) return;
+                        Navigator.pop(dialogContext);
+                        _mostrarQr(context, codigoQr, nombreTexto);
+                      } catch (e) {
+                        if (!dialogContext.mounted) return;
+                        setDialogState(() => creando = false);
+                        mostrarError(dialogContext, e);
+                      }
+                    },
+              child: creando
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Crear autorización'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              try {
-                final resultado = await HabitaApi()
-                    .post('/complejos/$complejoId/accesos/autorizaciones', {
-                      'nombre': nombre.text,
-                      'documento': documento.text,
-                      'unidadId': unidadId,
-                      'vigenciaDesde': DateTime.now().toIso8601String(),
-                      'vigenciaHasta': hasta.toIso8601String(),
-                      'usosPermitidos': 2,
-                    });
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext);
-                _mostrarQr(
-                  context,
-                  resultado['codigoQr'] as String,
-                  nombre.text,
-                );
-              } catch (e) {
-                if (dialogContext.mounted) mostrarError(dialogContext, e);
-              }
-            },
-            child: const Text('Crear autorización'),
-          ),
-        ],
       ),
     );
+    nombre.dispose();
+    documento.dispose();
   }
 
   void _mostrarQr(BuildContext context, String codigo, String nombre) =>
