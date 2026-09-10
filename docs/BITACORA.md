@@ -36,7 +36,7 @@ El video demo final y la presentación presencial requieren grabación y exposic
 
 ### Comandos y resultado
 
-`npm run build:web`, `npm test`, los chequeos de sintaxis y la comprobación HTTP local finalizaron con código 0. No se desplegó producción en esta sesión; el cambio queda listo para el próximo deploy. `docs/entrega/` sigue fuera del commit por estar incompleto.
+`npm run build:web`, `npm test`, los chequeos de sintaxis y la comprobación HTTP local finalizaron con código 0. No se desplegó producción en esta sesión; el cambio queda listo para el próximo deploy. Commit funcional: `e969b98` (`feat: publicar landing y preparar lanzamiento`). `docs/entrega/` sigue fuera del commit por estar incompleto.
 
 ## 2026-09-10 — Preparar Fase 3 y continuidad de QA
 
