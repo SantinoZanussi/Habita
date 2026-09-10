@@ -19,6 +19,7 @@ El residente cargaba nombre y documento y recibía el QR sólo en el diálogo de
 - `npm test`: 82 pruebas aprobadas.
 - `flutter analyze`: sin problemas.
 - `flutter test`: 4 tests aprobados.
+- `flutter build web --release`: compilación web completada.
 - El backend rechaza una autorización de visita sin DNI válido antes de escribirla; las autorizaciones de proveedor u obra mantienen su contrato flexible.
 
 ### Cambios
