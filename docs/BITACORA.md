@@ -2,6 +2,38 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-10 — Mostrar disponibilidad y evitar duplicados en amenities
+
+### Objetivo
+
+Hacer visible el cupo de SUM, pileta, parrilla y gimnasio y evitar que una misma unidad consuma reservas superpuestas indefinidamente.
+
+### Estado inicial
+
+El backend ya rechazaba una reserva cuando la suma de asistentes superaba la capacidad, pero la app sólo escuchaba la colección de amenities y mostraba siempre “Disponible”. Además, las reservas pendientes no se contaban y una unidad podía crear varias reservas superpuestas para el mismo espacio.
+
+### Verificado
+
+- `npm test`: 82 pruebas aprobadas, incluyendo validación de intervalos y estados activos de reserva.
+- `flutter analyze`: sin problemas.
+- `flutter test`: 4 tests aprobados.
+- En el backend local, una primera reserva de prueba informó `disponibles: 28` y el mismo intento repetido respondió `409 CONFLICTO` con el mensaje de duplicado.
+- La reserva de prueba se eliminó del emulador; no se modificó Firebase Cloud.
+
+### Cambios
+
+- `backend/src/servicios/amenities.js` valida fechas, asistentes y capacidad; cuenta reservas confirmadas y pendientes; bloquea superposición de la misma unidad; devuelve ocupación y disponibles.
+- `mobile/lib/presentacion/residente_shell.dart` escucha las reservas en tiempo real, calcula el cupo del horario demo, deshabilita “Reservar” cuando no hay lugares o la unidad ya está anotada y muestra `Disponibles mañana: X de Y`.
+- `backend/test/amenities.test.js` cubre intervalos y reservas activas.
+
+### Pendiente
+
+La pantalla actual reserva el horario demo de mañana con dos asistentes; todavía no incluye selector de fecha, cantidad ni botón de cancelación. Para empezar una demo limpia, `npm run seed` recrea únicamente el escenario local y borra las reservas anteriores del emulador.
+
+### Supuesto
+
+Una reserva confirmada o pendiente ocupa capacidad, y una unidad no puede tener dos reservas superpuestas del mismo amenity; una reserva en otro horario sigue siendo válida.
+
 ## 2026-09-10 — Corregir QR dinámico de acceso en la app
 
 ### Objetivo

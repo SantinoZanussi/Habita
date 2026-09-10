@@ -1006,81 +1006,198 @@ class AmenitiesScreen extends StatelessWidget {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        return ListView(
-          padding: const EdgeInsets.all(18),
-          children: snap.data!.docs
-              .map(
-                (d) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: HabitaCard(
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            gradient: HabitaColores.degradeMarca,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.deck_outlined,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                d.data()['nombre'] as String? ?? '',
-                                style: HabitaTipografia.etiqueta,
-                              ),
-                              Text(
-                                'Capacidad: ${d.data()['capacidad']} personas',
-                                style: HabitaTipografia.micro,
-                              ),
-                              const SizedBox(height: 6),
-                              const EstadoChip('Disponible', tipo: 'exito'),
-                            ],
-                          ),
-                        ),
-                        FilledButton.tonal(
-                          onPressed: () => _reservar(context, d),
-                          child: const Text('Reservar'),
-                        ),
-                      ],
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('complejos/$complejoId/reservas')
+              .where('estado', whereIn: const ['confirmada', 'pendiente'])
+              .snapshots(),
+          builder: (context, reservasSnap) {
+            if (reservasSnap.hasError) {
+              return const ErrorCarga(
+                mensaje: 'No pudimos cargar la disponibilidad.',
+              );
+            }
+            if (!reservasSnap.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final desde = _inicioReservaDemo();
+            final hasta = desde.add(const Duration(hours: 2));
+            return ListView(
+              padding: const EdgeInsets.all(18),
+              children: snap.data!.docs
+                  .map(
+                    (d) => _AmenityCard(
+                      amenity: d,
+                      reservas: reservasSnap.data!.docs,
+                      unidadId: unidadId,
+                      desde: desde,
+                      hasta: hasta,
+                      onReservar: () =>
+                          _reservar(context, d, desde: desde, hasta: hasta),
                     ),
-                  ),
-                ),
-              )
-              .toList(),
+                  )
+                  .toList(),
+            );
+          },
         );
       },
     ),
   );
   Future<void> _reservar(
     BuildContext context,
-    QueryDocumentSnapshot<Map<String, dynamic>> amenity,
-  ) async {
-    final desde = DateTime.now().add(const Duration(days: 1, hours: 2));
+    QueryDocumentSnapshot<Map<String, dynamic>> amenity, {
+    required DateTime desde,
+    required DateTime hasta,
+  }) async {
     try {
-      await HabitaApi()
+      final respuesta = await HabitaApi()
           .post('/complejos/$complejoId/amenities/${amenity.id}/reservas', {
             'unidadId': unidadId,
             'desde': desde.toIso8601String(),
-            'hasta': desde.add(const Duration(hours: 2)).toIso8601String(),
+            'hasta': hasta.toIso8601String(),
             'asistentes': 2,
           });
       if (context.mounted) {
-        mostrarExito(context, 'Reserva confirmada para mañana.');
+        mostrarExito(
+          context,
+          respuesta['estado'] == 'pendiente'
+              ? 'Solicitud enviada para mañana.'
+              : 'Reserva confirmada para mañana.',
+        );
       }
     } catch (e) {
       if (context.mounted) mostrarError(context, e);
     }
   }
 }
+
+class _AmenityCard extends StatelessWidget {
+  const _AmenityCard({
+    required this.amenity,
+    required this.reservas,
+    required this.unidadId,
+    required this.desde,
+    required this.hasta,
+    required this.onReservar,
+  });
+  final QueryDocumentSnapshot<Map<String, dynamic>> amenity;
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> reservas;
+  final String unidadId;
+  final DateTime desde;
+  final DateTime hasta;
+  final VoidCallback onReservar;
+
+  @override
+  Widget build(BuildContext context) {
+    final datos = amenity.data();
+    final capacidad = _entero(datos['capacidad']);
+    final superpuestas = reservas.where((documento) {
+      final reserva = documento.data();
+      if (reserva['amenityId'] != amenity.id) return false;
+      final reservaDesde = _fechaHora(reserva['desde']);
+      final reservaHasta = _fechaHora(reserva['hasta']);
+      return reservaDesde != null &&
+          reservaHasta != null &&
+          reservaDesde.isBefore(hasta) &&
+          reservaHasta.isAfter(desde);
+    }).toList();
+    final ocupacion = superpuestas.fold<int>(0, (suma, documento) {
+      final cantidad = _entero(documento.data()['asistentes']);
+      return suma + (cantidad > 0 ? cantidad : 1);
+    });
+    final disponibles = capacidad > ocupacion ? capacidad - ocupacion : 0;
+    final propia = superpuestas.any(
+      (documento) => documento.data()['unidadId'] == unidadId,
+    );
+    final agotado = disponibles == 0;
+    final estado = propia
+        ? 'Ya reservada'
+        : agotado
+        ? 'Sin cupos'
+        : 'Disponible';
+    final tipoEstado = propia
+        ? 'info'
+        : agotado
+        ? 'error'
+        : 'exito';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: HabitaCard(
+        child: Row(
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                gradient: HabitaColores.degradeMarca,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.deck_outlined,
+                color: Colors.white,
+                size: 30,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    datos['nombre'] as String? ?? '',
+                    style: HabitaTipografia.etiqueta,
+                  ),
+                  Text(
+                    'Capacidad: $capacidad personas',
+                    style: HabitaTipografia.micro,
+                  ),
+                  Text(
+                    'Disponibles mañana: $disponibles de $capacidad',
+                    style: HabitaTipografia.micro,
+                  ),
+                  const SizedBox(height: 6),
+                  EstadoChip(estado, tipo: tipoEstado),
+                  if (propia)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 5),
+                      child: Text(
+                        'Tu unidad ya tiene una reserva para este horario.',
+                        style: TextStyle(color: HabitaColores.textoSuave),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            FilledButton.tonal(
+              onPressed: propia || agotado ? null : onReservar,
+              child: Text(
+                propia
+                    ? 'Reservada'
+                    : agotado
+                    ? 'Sin cupos'
+                    : 'Reservar',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+DateTime _inicioReservaDemo() =>
+    DateTime.now().add(const Duration(days: 1, hours: 2));
+
+DateTime? _fechaHora(dynamic valor) {
+  if (valor is Timestamp) return valor.toDate();
+  if (valor is DateTime) return valor;
+  if (valor is String) return DateTime.tryParse(valor);
+  return null;
+}
+
+int _entero(dynamic valor) =>
+    valor is num ? valor.toInt() : int.tryParse('$valor') ?? 0;
 
 class ReclamosResidenteScreen extends StatelessWidget {
   const ReclamosResidenteScreen({
