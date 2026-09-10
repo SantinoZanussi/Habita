@@ -664,10 +664,18 @@ class _QrDinamicoState extends State<_QrDinamico> {
       final r = await HabitaApi().post(
         '/complejos/${widget.complejoId}/accesos/qr-dinamico',
       );
+      final valorCodigo = r['codigo'];
+      if (valorCodigo is! String || valorCodigo.isEmpty) {
+        throw ErrorApi(
+          'El servidor devolvió un código QR inválido. Intentá nuevamente.',
+          codigo: 'QR_INVALIDO',
+        );
+      }
+      final valorVencimiento = r['venceEnSegundos'];
       if (!mounted) return;
       setState(() {
-        codigo = r['codigo'] as String;
-        restantes = r['venceEnSegundos'] as int? ?? 60;
+        codigo = valorCodigo;
+        restantes = valorVencimiento is num ? valorVencimiento.toInt() : 60;
         error = null;
       });
       timer?.cancel();

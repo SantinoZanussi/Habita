@@ -2,6 +2,37 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-10 — Corregir QR dinámico de acceso en la app
+
+### Objetivo
+
+Resolver el error que impedía dibujar el QR de residente en Flutter: `TypeError: Instance of '_JsonMap': type '_JsonMap' is not a subtype of type 'String'`.
+
+### Estado inicial
+
+La ruta `POST /api/complejos/:complejoId/accesos/qr-dinamico` guardaba el objeto completo devuelto por `generarCodigoDinamico` dentro del campo `codigo`. Flutter esperaba que ese campo fuera la cadena que consume `QrImageView`.
+
+### Verificado
+
+- Con la sesión demo de `residente@habita.demo`, la ruta local devolvió `codigo` como cadena `HB1...`, `venceEnSegundos` numérico y `expiraEn` ISO.
+- `npm test`: 80 pruebas aprobadas.
+- `flutter analyze`: sin problemas.
+- `flutter test`: 4 tests aprobados.
+- Se reinició `flutter run -d web-server --web-port 9100` y quedó respondiendo por HTTP; el backend recargó el cambio automáticamente.
+
+### Cambios
+
+- `backend/src/rutas/accesos.js` ahora separa el código textual, usa el vencimiento calculado y expone `expiraEn`.
+- `mobile/lib/presentacion/residente_shell.dart` valida el tipo de la respuesta y muestra un mensaje entendible si el contrato vuelve a ser inválido.
+
+### Pendiente
+
+La lectura física con cámara en un dispositivo de guardia sigue requiriendo un teléfono o emulador Android compatible; el flujo local de generación ya queda listo para esa prueba.
+
+### Supuesto
+
+El contrato público del endpoint debe conservar `codigo` como texto porque es el valor que se codifica visualmente y que luego valida el backend.
+
 ## 2026-09-10 — Unificar el identificador de Firebase con el proyecto Habita
 
 ### Objetivo

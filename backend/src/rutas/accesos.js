@@ -37,12 +37,17 @@ router.get('/presentes', exigirRol(ROLES.GUARDIA, ROLES.ADMIN, ROLES.SUPERADMIN)
 }));
 
 router.post('/qr-dinamico', exigirRol(ROLES.RESIDENTE), (req, res) => {
-  const codigo = generarCodigoDinamico({
+  const qr = generarCodigoDinamico({
     secreto: entorno.secretoQr,
     sujeto: req.usuario.uid,
     complejoId: req.complejoId,
   });
-  res.json({ codigo, venceEnSegundos: 60, generadoEn: new Date().toISOString() });
+  res.json({
+    codigo: qr.codigo,
+    venceEnSegundos: qr.expiraEnSegundos,
+    generadoEn: new Date().toISOString(),
+    expiraEn: qr.expiraEn,
+  });
 });
 
 router.post('/autorizaciones', exigirRol(ROLES.RESIDENTE, ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
