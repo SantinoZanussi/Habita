@@ -18,7 +18,7 @@ Ejecutar las verificaciones automatizadas y un recorrido local con emuladores, d
 - `npm run test:reglas`: 11 pruebas de Firestore y Storage aprobadas en un arranque limpio de emuladores. Las advertencias de `sun.misc.Unsafe` provienen del runtime Java del emulador y no cambian el resultado.
 - `npm run build:web`: compilación del panel completada.
 - `flutter analyze`: sin problemas; `flutter test`: 4 tests aprobados.
-- `flutter devices`: esta PC sólo tiene Windows, Chrome y Edge; `flutter run -d chrome --web-port 9100` compiló y dejó la app Flutter web conectada al servicio de depuración.
+- `flutter devices`: esta PC sólo tiene Windows, Chrome y Edge; `flutter run -d chrome --web-port 9100` compiló y dejó la app Flutter web conectada al servicio de depuración. `flutter build web --release` también terminó correctamente.
 - `npm run emu`: Auth, Firestore, Hosting y Storage quedaron listos en los puertos locales esperados. El script ya no intenta levantar Functions, que no forman parte del backend local y fallaban al leer las credenciales inválidas del `.env`.
 - `npm run seed`: creó el escenario `torre-parque` con cinco cuentas demo, 152 unidades, amenities, accesos, reclamos, obra, avisos y una liquidación cerrada. Una consulta con Admin SDK confirmó 152 identificadores únicos y conservó la unidad demo `unidad-3a` como `3A`.
 - Smoke test HTTP contra `http://127.0.0.1:8787/api`: salud `200`, contacto público `201`, métricas admin `200`, bloqueo de residente en métricas `403`, cuenta propia `200`, cuenta vecina `403`, creación de reclamo `201`, corrección humana `200`, dos usos permitidos del QR demo y tercer uso rechazado con motivo de usos agotados, presentes `200`.
@@ -43,7 +43,7 @@ La verificación se hizo con Firebase Emulator Suite y proveedores simulados (`M
 
 ### Comandos y resultado
 
-`npm run verificar` finalizó con código 0 e incluyó `tokens`, `marca`, `build:web`, las 80 pruebas de backend y las 11 pruebas de reglas. También finalizaron correctamente `flutter analyze`, `flutter test`, `npm run emu`, `npm run seed` y el smoke test HTTP. `npm run verificar:servicios` devolvió código 1 sólo por la landing publicada desactualizada; los otros seis controles pasaron y reportó Mercado Pago simulado. El primer intento aislado de `npm run test:reglas` fue bloqueado porque el recorrido visual todavía ocupaba los puertos 8080/9199; se cerró ese proceso y la ejecución siguiente pasó completa. El código y los ajustes funcionales quedaron publicados en `main` en `da9b7ba` (`test: verificar recorrido integral local`).
+`npm run verificar` finalizó con código 0 e incluyó `tokens`, `marca`, `build:web`, las 80 pruebas de backend y las 11 pruebas de reglas. También finalizaron correctamente `flutter analyze`, `flutter test`, `flutter build web --release`, `npm run emu`, `npm run seed` y el smoke test HTTP. `npm run verificar:servicios` devolvió código 1 sólo por la landing publicada desactualizada; los otros seis controles pasaron y reportó Mercado Pago simulado. El primer intento aislado de `npm run test:reglas` fue bloqueado porque el recorrido visual todavía ocupaba los puertos 8080/9199; se cerró ese proceso y la ejecución siguiente pasó completa. El código y los ajustes funcionales quedaron publicados en `main` en `da9b7ba` (`test: verificar recorrido integral local`).
 
 ## 2026-09-10 — Avanzar Fase 4: landing y materiales de demo
 
