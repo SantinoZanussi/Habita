@@ -2,6 +2,38 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-10 — Completar el flujo de autorización de visitas
+
+### Objetivo
+
+Dejar claro cómo una persona autorizada ingresa y permitir volver a mostrar su QR desde la lista de visitas.
+
+### Estado inicial
+
+El residente cargaba nombre y documento y recibía el QR sólo en el diálogo de creación. La lista no tenía una acción para recuperar ese código y la respuesta de la garita mostraba el nombre, pero no el documento para cotejarlo.
+
+### Verificado
+
+- El backend conserva el código QR aleatorio, la vigencia, los usos y el documento; el guardia valida el código con la cámara y recibe nombre, DNI, unidad y usos restantes.
+- `npm test`: 82 pruebas aprobadas.
+- `flutter analyze`: sin problemas.
+- `flutter test`: 4 tests aprobados.
+- El backend rechaza una autorización de visita sin DNI válido antes de escribirla; las autorizaciones de proveedor u obra mantienen su contrato flexible.
+
+### Cambios
+
+- `mobile/lib/presentacion/residente_shell.dart` muestra DNI, agrega “Mostrar QR para la garita” en cada autorización vigente y explica que ese QR se presenta en la entrada.
+- `mobile/lib/presentacion/guardia_shell.dart` muestra el DNI devuelto junto al nombre luego de un escaneo válido.
+- `backend/src/rutas/accesos.js` normaliza nombre y DNI y exige el documento para el tipo `visita`.
+
+### Pendiente
+
+La cámara requiere un teléfono, webcam o emulador Android con cámara; el escáner de la garita no ingresa un DNI manualmente porque el QR es la credencial que el backend valida.
+
+### Supuesto
+
+El residente comparte el QR generado con la visita y la garita coteja visualmente el nombre y DNI que devuelve el backend antes de permitir el ingreso.
+
 ## 2026-09-10 — Mostrar disponibilidad y evitar duplicados en amenities
 
 ### Objetivo

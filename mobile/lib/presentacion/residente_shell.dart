@@ -786,36 +786,60 @@ class _Visitas extends StatelessWidget {
                 (d) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: HabitaCard(
-                    child: Row(
+                    child: Column(
                       children: [
-                        CircleAvatar(
-                          backgroundColor: HabitaColores.superficieSuave,
-                          child: Text(
-                            (d.data()['nombre'] as String? ?? 'V')[0],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                d.data()['nombre'] as String? ?? '',
-                                style: HabitaTipografia.etiqueta,
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: HabitaColores.superficieSuave,
+                              child: Text(
+                                (d.data()['nombre'] as String? ?? 'V')[0],
                               ),
-                              Text(
-                                'Vence ${_fecha(d.data()['vigenciaHasta'])} · ${d.data()['usosConsumidos']}/${d.data()['usosPermitidos']} usos',
-                                style: HabitaTipografia.micro,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    d.data()['nombre'] as String? ?? '',
+                                    style: HabitaTipografia.etiqueta,
+                                  ),
+                                  Text(
+                                    'DNI ${d.data()['documento'] ?? '—'}',
+                                    style: HabitaTipografia.micro,
+                                  ),
+                                  Text(
+                                    'Vence ${_fecha(d.data()['vigenciaHasta'])} · ${d.data()['usosConsumidos']}/${d.data()['usosPermitidos']} usos',
+                                    style: HabitaTipografia.micro,
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
+                            EstadoChip(
+                              d.data()['estado'] as String? ?? 'vigente',
+                              tipo: d.data()['estado'] == 'vigente'
+                                  ? 'exito'
+                                  : 'error',
+                            ),
+                          ],
+                        ),
+                        if ((d.data()['codigoQr'] as String?)?.isNotEmpty ??
+                            false)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: d.data()['estado'] == 'vigente'
+                                  ? () => _mostrarQr(
+                                      context,
+                                      d.data()['codigoQr'] as String,
+                                      d.data()['nombre'] as String? ?? 'visita',
+                                    )
+                                  : null,
+                              icon: const Icon(Icons.qr_code_2_rounded),
+                              label: const Text('Mostrar QR para la garita'),
+                            ),
                           ),
-                        ),
-                        EstadoChip(
-                          d.data()['estado'] as String? ?? 'vigente',
-                          tipo: d.data()['estado'] == 'vigente'
-                              ? 'exito'
-                              : 'error',
-                        ),
                       ],
                     ),
                   ),
@@ -845,7 +869,15 @@ class _Visitas extends StatelessWidget {
             TextField(
               controller: documento,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Documento'),
+              decoration: const InputDecoration(
+                labelText: 'DNI',
+                hintText: '12345678',
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Al confirmar se genera un QR para que la visita lo presente en la garita.',
+              style: TextStyle(color: HabitaColores.textoSuave),
             ),
           ],
         ),
@@ -889,7 +921,18 @@ class _Visitas extends StatelessWidget {
         context: context,
         builder: (context) => AlertDialog(
           title: Text('Visita de $nombre'),
-          content: QrImageView(data: codigo, size: 230),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              QrImageView(data: codigo, size: 230),
+              const SizedBox(height: 12),
+              const Text(
+                'Mostrá este QR en la cámara del guardia.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: HabitaColores.textoSuave),
+              ),
+            ],
+          ),
           actions: [
             FilledButton(
               onPressed: () => Navigator.pop(context),

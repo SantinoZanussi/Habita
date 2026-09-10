@@ -120,6 +120,11 @@ class _EscanerGuardiaState extends State<EscanerGuardia> {
                   r['nombre']?.toString() ?? r['patente']?.toString() ?? '',
                   style: HabitaTipografia.titulo3,
                 ),
+                if ((r['documento']?.toString() ?? '').isNotEmpty)
+                  Text(
+                    'DNI ${r['documento']}',
+                    style: HabitaTipografia.cuerpoChico,
+                  ),
                 const SizedBox(height: 5),
                 Text(
                   '${r['tipo'] ?? ''} · ${r['unidad'] ?? ''}',

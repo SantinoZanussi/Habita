@@ -52,8 +52,15 @@ router.post('/qr-dinamico', exigirRol(ROLES.RESIDENTE), (req, res) => {
 
 router.post('/autorizaciones', exigirRol(ROLES.RESIDENTE, ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
   const unidadId = req.usuario.rol === ROLES.RESIDENTE ? req.usuario.unidadId : req.body.unidadId;
-  if (!unidadId || String(req.body?.nombre ?? '').trim().length < 2) {
-    throw errores.datosInvalidos({ unidadId: 'es obligatoria', nombre: 'es obligatorio' });
+  const nombre = String(req.body?.nombre ?? '').trim();
+  const documento = String(req.body?.documento ?? '').trim();
+  const tipo = req.body?.tipo ?? 'visita';
+  const detalles = {};
+  if (!unidadId) detalles.unidadId = 'es obligatoria';
+  if (nombre.length < 2) detalles.nombre = 'es obligatorio';
+  if (tipo === 'visita' && documento.length < 6) detalles.documento = 'es obligatorio para una visita';
+  if (Object.keys(detalles).length > 0) {
+    throw errores.datosInvalidos(detalles);
   }
   const [complejoSnap, unidadSnap] = await Promise.all([
     rutas.complejo(req.complejoId).get(), rutas.unidad(req.complejoId, unidadId).get(),
@@ -67,8 +74,8 @@ router.post('/autorizaciones', exigirRol(ROLES.RESIDENTE, ROLES.ADMIN, ROLES.SUP
   const codigoQr = `HBA-${randomBytes(12).toString('base64url')}`;
   await ref.set({
     ...autorizacion,
-    nombre: String(req.body.nombre).trim(),
-    documento: req.body.documento ?? null,
+    nombre,
+    documento: documento || null,
     patente: req.body.patente ?? null,
     patenteNormalizada: req.body.patente ? String(req.body.patente).toUpperCase().replace(/[^A-Z0-9]/g, '') : null,
     unidadId,
