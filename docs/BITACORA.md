@@ -2,6 +2,34 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-10 — Integrar la última Fase 2 en `main`
+
+### Objetivo
+
+Reunir los cambios de Fase 2 que estaban en esta PC, validarlos y publicarlos en `main` para continuar desde cualquier computadora.
+
+### Estado inicial
+
+`main` estaba actualizado sólo con la documentación de continuidad. Había cambios locales sin commit de pagos demo, seguridad de roles, accesos, reglas, documentación de producción y pruebas. El directorio `docs/entrega` contenía únicamente un generador de pitch incompleto y quedó fuera de esta integración.
+
+### Verificado
+
+- Backend: 79 pruebas aprobadas.
+- Firestore y Storage: 11 pruebas de reglas aprobadas en emuladores oficiales.
+- Flutter: `flutter analyze` sin problemas y 4 tests aprobados.
+- Panel: `npm run build:web` completó correctamente.
+- La suite incluye controles para aislamiento de usuarios, puntos de acceso, egresos sin usos restantes, pagos demo y bloqueo de rutas según el estado de Mercado Pago.
+
+### Cambios integrados
+
+Se prepararon para commit los cambios de Fase 2 en backend, reglas, app móvil, pruebas, configuración y documentación. El destino es `main`, según la preferencia permanente del proyecto.
+
+Commit publicado: `00cb257` (`feat: integrar correcciones y demo de fase 2`).
+
+### Pendiente
+
+QA cruzado con otro equipo, prueba presencial completa de app y panel, landing, video demo, pitch y reintento de activación externa de Mercado Pago. La simulación de pagos no se presenta como integración externa verificada.
+
 ## Estado rápido
 
 - Rama principal del proyecto: `main`. La rama temporal `codex/retomar-fase-2` se usó durante la recuperación y no debe ser el destino normal de nuevas sesiones.

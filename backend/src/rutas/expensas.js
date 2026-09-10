@@ -7,6 +7,7 @@ import { autenticar, exigirComplejo, exigirRol, exigirUnidadPropia, ROLES } from
 import { calcularBorrador, cerrarPeriodo, estadoDeCuenta, resumenCobranza } from '../servicios/liquidacion.js';
 import { generarLinkDePago, procesarPago, registrarPagoManual } from '../servicios/pagos.js';
 import { armarReferencia } from '../externos/mercadopago.js';
+import { exigirPagoSimulado } from '../middleware/pagos.js';
 
 const router = Router({ mergeParams: true });
 router.use(autenticar, exigirComplejo);
@@ -76,7 +77,7 @@ router.post('/pagos/manual', exigirRol(ROLES.ADMIN, ROLES.SUPERADMIN), asincrono
 
 // Confirma el checkout falso cuando no hay credenciales comerciales. La ruta
 // conserva idempotencia y usa exactamente el mismo motor que el webhook real.
-router.post('/pagos/simular', exigirRol(ROLES.RESIDENTE), asincrono(async (req, res) => {
+router.post('/pagos/simular', exigirRol(ROLES.RESIDENTE), exigirPagoSimulado, asincrono(async (req, res) => {
   const cuenta = await estadoDeCuenta({ complejoId: req.complejoId, unidadId: req.usuario.unidadId });
   const periodoId = req.body.periodoId ?? cuenta.proximoVencimiento?.periodoId;
   const objetivo = cuenta.liquidaciones.find((l) => l.periodoId === periodoId);

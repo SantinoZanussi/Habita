@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { rutas, aObjeto } from '../infra/firebase.js';
-import { asincrono, errores } from '../infra/errores.js';
+import { asincrono } from '../infra/errores.js';
 import { autenticar, exigirRol, ROLES } from '../middleware/autenticar.js';
 import { crearUsuario, asignarRol } from '../servicios/usuarios.js';
 
@@ -14,28 +14,13 @@ router.get('/me', asincrono(async (req, res) => {
 }));
 
 router.post('/', exigirRol(ROLES.SUPERADMIN, ROLES.ADMIN), asincrono(async (req, res) => {
-  validarGestion(req, req.body?.rol, req.body?.complejoId);
-  const resultado = await crearUsuario(req.body);
+  const resultado = await crearUsuario(req.body, req.usuario);
   res.status(201).json(resultado);
 }));
 
 router.put('/:uid/rol', exigirRol(ROLES.SUPERADMIN, ROLES.ADMIN), asincrono(async (req, res) => {
-  validarGestion(req, req.body?.rol, req.body?.complejoId);
-  const resultado = await asignarRol({ uid: req.params.uid, ...req.body });
+  const resultado = await asignarRol({ ...req.body, uid: req.params.uid }, req.usuario);
   res.json(resultado);
 }));
 
-function validarGestion(req, rol, complejoId) {
-  if (req.usuario.rol === ROLES.ADMIN) {
-    if (complejoId !== req.usuario.complejoId) throw errores.sinPermiso('Solo podés gestionar usuarios de tu complejo.');
-    if (![ROLES.RESIDENTE, ROLES.GUARDIA, ROLES.RESPONSABLE_OBRA].includes(rol)) {
-      throw errores.sinPermiso('Un administrador de complejo no puede crear otros administradores.');
-    }
-  }
-  if (req.usuario.rol === ROLES.SUPERADMIN && complejoId && !req.usuario.complejos.includes(complejoId)) {
-    throw errores.sinPermiso('Ese complejo no pertenece a tu cartera.');
-  }
-}
-
 export default router;
-

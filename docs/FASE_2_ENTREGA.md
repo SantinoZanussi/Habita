@@ -2,6 +2,8 @@
 
 ## Resultado
 
+**Estado de verificación:** la implementación y el despliegue no implican que la entrega esté validada al 100 %. Mercado Pago externo queda pendiente por el error al activar sus credenciales; se continúa con pagos explícitamente simulados. Las pruebas con usuarios del proyecto publicado, Gemini y notificaciones en un dispositivo se registran en `docs/PRODUCCION.md`. No se inició la fase 3.
+
 La solución implementa el producto P0 completo: una app Flutter multirol, un panel web administrativo, un backend Node/Express y una única base Firebase compartida en tiempo real. La arquitectura evita duplicar reglas de negocio: Firestore entrega lecturas reactivas y el backend concentra las escrituras sensibles, las transacciones y los proveedores externos.
 
 La identidad visual se construyó con los logos y fuentes entregados. El panel replica el lenguaje del mockup: navegación lateral azul profunda, superficies claras, tarjetas compactas, jerarquía tipográfica Sora/Archivo y colores de estado reservados para información accionable. La app mantiene el mismo sistema visual en formato móvil.
@@ -160,7 +162,7 @@ El Android Emulator ya queda apuntado a `10.0.2.2`. Para un teléfono físico de
 
 El proyecto Spark propio, las apps Firebase, Firestore regional, Authentication, FCM y los comandos de despliegue ya están preparados. Para evitar Blaze, Hosting se publica en Firebase y la API Express en Render Free; Gemini usa su nivel gratuito y Mercado Pago usa credenciales de prueba. La configuración operativa, los secretos y los controles posteriores se documentan en `docs/PRODUCCION.md`.
 
-El modo local simulado es intencional: permite defender todo el flujo sin usar dinero real ni depender de una API paga, pero no se presenta como una transacción comercial real.
+El modo simulado es intencional: permite ensayar la imputación con datos demo sin usar dinero real, tanto en emuladores como en el despliegue académico sin token de Mercado Pago. La app pide confirmación y advierte que cambiará el saldo de Habita. Al configurar Mercado Pago, la API bloquea esta ruta. No se presenta como una transacción comercial real ni como una prueba satisfactoria de la integración externa.
 
 ## Comandos de calidad
 

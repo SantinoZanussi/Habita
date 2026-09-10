@@ -99,7 +99,7 @@ service cloud.firestore {
         request.auth.uid == uid ||
         esAdmin(resource.data.complejoId)
       );
-      allow list: if auten() && esAdmin(complejoDelToken());
+      allow list: if auten() && esAdmin(resource.data.complejoId);
 
       // El usuario edita solo sus datos de contacto. Rol, complejo y unidad
       // los asigna el backend.
@@ -159,19 +159,10 @@ service cloud.firestore {
                          || (esResidente(cid) && esMiUnidad(resource.data.unidadId))
                          || (esResponsableObra(cid) && resource.data.tipo == 'obra');
 
-        // Un residente puede crear una autorizacion de visita para SU unidad.
-        // Se valida en la regla lo que no se puede confiar al cliente: que la
-        // autorizacion nazca sin usos consumidos y con vigencia coherente.
-        allow create: if esResidente(cid)
-                      && request.resource.data.unidadId == unidadDelToken()
-                      && request.resource.data.autorizadoPorUid == request.auth.uid
-                      && request.resource.data.tipo == 'visita'
-                      && request.resource.data.usosConsumidos == 0
-                      && request.resource.data.usosPermitidos is int
-                      && request.resource.data.usosPermitidos > 0
-                      && request.resource.data.usosPermitidos <= 10
-                      && request.resource.data.vigenciaHasta > request.resource.data.vigenciaDesde
-                      && request.resource.data.estado == 'vigente';
+        // El backend genera el código aleatorio y valida unidad, puntos,
+        // vigencia y usos. El cliente no puede inventar ultimoSentido ni
+        // duplicar códigos para evitar esas comprobaciones.
+        allow create: if false;
 
         // El residente solo puede revocar la suya. Consumir un uso es una
         // operacion atomica que hace el backend: si el cliente pudiera tocar

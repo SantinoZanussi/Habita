@@ -60,6 +60,9 @@ export async function validarAcceso({
 
   const complejo = aObjeto(await rutas.complejo(complejoId).get());
   if (!complejo) throw errores.noEncontrado('El complejo');
+  if (!complejo.puntosAcceso?.some((p) => p.id === punto && p.activo !== false)) {
+    throw errores.datosInvalidos({ punto: 'no es un punto activo de este complejo' });
+  }
 
   const contexto = { complejoId, guardiaUid, punto, sentido, fotoUrl, complejo };
 
@@ -98,7 +101,7 @@ async function validarQrDinamico({ complejoId, guardiaUid, punto, sentido, fotoU
   }
 
   const usuario = aObjeto(await rutas.usuario(verificacion.sujeto).get());
-  if (!usuario || usuario.activo === false || usuario.complejoId !== complejoId) {
+  if (!usuario || usuario.activo === false || usuario.rol !== 'residente' || usuario.complejoId !== complejoId) {
     return registrarRechazo({
       complejoId, guardiaUid, punto, sentido, fotoUrl,
       metodo: 'qr_dinamico', motivo: MOTIVOS_RECHAZO.UNIDAD_INACTIVA,
@@ -106,6 +109,10 @@ async function validarQrDinamico({ complejoId, guardiaUid, punto, sentido, fotoU
   }
 
   const unidad = usuario.unidadId ? aObjeto(await rutas.unidad(complejoId, usuario.unidadId).get()) : null;
+  if (sentido === 'ingreso' && (!unidad || unidad.estado === 'baja')) {
+    return registrarRechazo({ complejoId, guardiaUid, punto, sentido, fotoUrl,
+      metodo: 'qr_dinamico', motivo: MOTIVOS_RECHAZO.UNIDAD_INACTIVA });
+  }
 
   const evento = await registrarEvento({
     complejoId,
@@ -160,13 +167,29 @@ async function validarAutorizacion({ complejoId, guardiaUid, punto, sentido, fot
   const resultado = await db.runTransaction(async (tx) => {
     const snap = await tx.get(refAutorizacion);
     const autorizacion = aObjeto(snap);
+    // Compatibilidad con permisos anteriores al registro de ultimoSentido.
+    // La consulta se realiza en la misma transacción; ambos puestos actualizan
+    // la autorización y Firestore resuelve escaneos concurrentes.
+    if (sentido === 'egreso' && autorizacion && !autorizacion.ultimoSentido) {
+      const anteriores = await tx.get(rutas.eventosAcceso(complejoId).where('autorizacionId', '==', refAutorizacion.id));
+      const ultimo = anteriores.docs.map((doc) => doc.data())
+        .filter((e) => e.resultado === 'permitido')
+        .sort((a, b) => (b.timestampServidor?.toMillis?.() ?? 0) - (a.timestampServidor?.toMillis?.() ?? 0))[0];
+      autorizacion.ultimoSentido = ultimo?.sentido ?? null;
+    }
 
-    const decision = evaluarAutorizacion({
+    let decision = evaluarAutorizacion({
       autorizacion,
       ahora: new Date(),
       punto,
+      sentido,
       zonaHoraria: complejo.zonaHoraria,
     });
+    if (sentido === 'ingreso' && decision.permitido) {
+      const unidad = autorizacion.unidadId
+        ? aObjeto(await tx.get(rutas.unidad(complejoId, autorizacion.unidadId))) : null;
+      if (!unidad || unidad.estado === 'baja') decision = { permitido: false, motivo: MOTIVOS_RECHAZO.UNIDAD_INACTIVA };
+    }
 
     const comun = {
       metodo: 'qr_autorizacion',
@@ -199,6 +222,7 @@ async function validarAutorizacion({ complejoId, guardiaUid, punto, sentido, fot
         actualizadoEn: FieldValue.serverTimestamp(),
       });
     }
+    tx.update(refAutorizacion, { ultimoSentido: sentido, actualizadoEn: FieldValue.serverTimestamp() });
 
     tx.set(refEvento, { ...comun, resultado: 'permitido', motivoRechazo: null });
 

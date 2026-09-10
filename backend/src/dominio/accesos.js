@@ -21,6 +21,7 @@
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { errores } from '../infra/errores.js';
 
 export const MOTIVOS_RECHAZO = Object.freeze({
   NO_ENCONTRADA: 'La autorizacion no existe o el codigo es invalido',
@@ -34,6 +35,8 @@ export const MOTIVOS_RECHAZO = Object.freeze({
   UNIDAD_INACTIVA: 'La unidad no esta activa en el complejo',
   CODIGO_EXPIRADO: 'El codigo dinamico expiro. Volve a generarlo en la app',
   CODIGO_INVALIDO: 'El codigo dinamico no es valido',
+  SIN_INGRESO: 'No hay un ingreso pendiente de salida para esta autorización',
+  DATOS_INVALIDOS: 'La autorización contiene datos inválidos; consultá a la administración',
 });
 
 const NOMBRES_DIA = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -73,7 +76,7 @@ export function horaLocal(fecha, zonaHoraria = 'America/Argentina/Buenos_Aires')
 /** Convierte "08:30" a minutos desde medianoche. */
 export function aMinutos(hhmm) {
   const [h, m] = String(hhmm).split(':').map(Number);
-  if (!Number.isFinite(h) || !Number.isFinite(m)) throw new TypeError(`Horario invalido: ${hhmm}`);
+  if (!/^\d{2}:\d{2}$/.test(String(hhmm)) || !Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) throw new TypeError(`Horario invalido: ${hhmm}`);
   return h * 60 + m;
 }
 
@@ -88,10 +91,17 @@ export function aMinutos(hhmm) {
  * @param {string} [entrada.punto]       Id del punto de acceso donde se presenta.
  * @param {string} [entrada.zonaHoraria]
  */
-export function evaluarAutorizacion({ autorizacion, ahora = new Date(), punto = null, zonaHoraria }) {
+export function evaluarAutorizacion({ autorizacion, ahora = new Date(), punto = null, zonaHoraria, sentido = 'ingreso' }) {
   const rechazo = (motivo, extra = {}) => ({ permitido: false, motivo, ...extra });
 
   if (!autorizacion) return rechazo(MOTIVOS_RECHAZO.NO_ENCONTRADA);
+  // Las restricciones son de ingreso. Una visita que ya entró debe poder
+  // registrar su salida aunque venza o se revoque su autorización entretanto.
+  if (sentido === 'egreso') {
+    if (autorizacion.ultimoSentido !== 'ingreso') return rechazo(MOTIVOS_RECHAZO.SIN_INGRESO);
+    const permitidos = Number(autorizacion.usosPermitidos ?? 0);
+    return { permitido: true, motivo: null, usosRestantes: permitidos > 0 ? Math.max(0, permitidos - Number(autorizacion.usosConsumidos ?? 0)) : null, venceEl: aFecha(autorizacion.vigenciaHasta)?.toISOString() ?? null };
+  }
   if (autorizacion.estado === 'revocada') return rechazo(MOTIVOS_RECHAZO.REVOCADA);
 
   const desde = aFecha(autorizacion.vigenciaDesde);
@@ -131,13 +141,18 @@ export function evaluarAutorizacion({ autorizacion, ahora = new Date(), punto = 
     }
   }
 
-  const puntos = autorizacion.puntosHabilitados;
-  if (punto && Array.isArray(puntos) && puntos.length > 0 && !puntos.includes(punto)) {
+  // Compatibilidad con autorizaciones creadas por la versión anterior.
+  const restricciones = [autorizacion.puntosHabilitados, autorizacion.puntosPermitidos].filter(Array.isArray);
+  const puntos = restricciones.find((lista) => lista.length > 0 && !lista.includes(punto));
+  if (punto && puntos) {
     return rechazo(MOTIVOS_RECHAZO.PUNTO_NO_HABILITADO, { punto, puntosHabilitados: puntos });
   }
 
   const permitidos = Number(autorizacion.usosPermitidos ?? 0);
   const consumidos = Number(autorizacion.usosConsumidos ?? 0);
+  if (!Number.isInteger(permitidos) || !Number.isInteger(consumidos) || permitidos < 0 || consumidos < 0) {
+    return rechazo(MOTIVOS_RECHAZO.DATOS_INVALIDOS);
+  }
   if (permitidos > 0 && consumidos >= permitidos) {
     return rechazo(MOTIVOS_RECHAZO.SIN_USOS, { usosPermitidos: permitidos, usosConsumidos: consumidos });
   }
@@ -148,6 +163,35 @@ export function evaluarAutorizacion({ autorizacion, ahora = new Date(), punto = 
     usosRestantes: permitidos > 0 ? permitidos - consumidos : null,
     venceEl: hasta ? hasta.toISOString() : null,
   };
+}
+
+/** Valida la entrada HTTP antes de que llegue a Firestore. */
+export function normalizarAutorizacion(datos, puntosAcceso, ahora = new Date()) {
+  const desde = new Date(datos.vigenciaDesde ?? ahora);
+  const hasta = new Date(datos.vigenciaHasta);
+  if (!Number.isFinite(desde.getTime()) || !Number.isFinite(hasta.getTime()) || hasta <= desde) {
+    throw errores.datosInvalidos({ vigenciaHasta: 'debe ser una fecha válida posterior al inicio' });
+  }
+  const usosPermitidos = Number(datos.usosPermitidos ?? 1);
+  if (!Number.isInteger(usosPermitidos) || usosPermitidos < 1 || usosPermitidos > 10) {
+    throw errores.datosInvalidos({ usosPermitidos: 'debe ser un entero entre 1 y 10' });
+  }
+  const diasPermitidos = datos.diasPermitidos ?? [0, 1, 2, 3, 4, 5, 6];
+  if (!Array.isArray(diasPermitidos) || diasPermitidos.length === 0 || diasPermitidos.some((dia) => !Number.isInteger(dia) || dia < 0 || dia > 6)) {
+    throw errores.datosInvalidos({ diasPermitidos: 'seleccioná días entre 0 y 6' });
+  }
+  const puntos = datos.puntosHabilitados ?? datos.puntosPermitidos ?? [];
+  if (!Array.isArray(puntos) || puntos.some((id) => !puntosAcceso.some((p) => p.id === id && p.activo !== false))) {
+    throw errores.datosInvalidos({ puntosHabilitados: 'seleccioná puntos activos de este complejo' });
+  }
+  const franjaHoraria = datos.franjaHoraria ?? null;
+  if (franjaHoraria !== null) {
+    try { aMinutos(franjaHoraria.desde); aMinutos(franjaHoraria.hasta); }
+    catch { throw errores.datosInvalidos({ franjaHoraria: 'usá horas válidas con formato HH:mm' }); }
+  }
+  const tipo = datos.tipo ?? 'visita';
+  if (!['visita', 'proveedor', 'obra'].includes(tipo)) throw errores.datosInvalidos({ tipo: 'no es válido' });
+  return { tipo, vigenciaDesde: desde, vigenciaHasta: hasta, diasPermitidos: [...new Set(diasPermitidos)], franjaHoraria, puntosHabilitados: [...new Set(puntos)], usosPermitidos };
 }
 
 function aFecha(valor) {

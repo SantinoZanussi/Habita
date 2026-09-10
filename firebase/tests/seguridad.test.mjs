@@ -4,7 +4,7 @@ import {
   assertFails, assertSucceeds, initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, where, setDoc, updateDoc,
 } from 'firebase/firestore';
 import { getBytes, ref, uploadBytes } from 'firebase/storage';
 
@@ -37,6 +37,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'usuarios/residente-1'), {
       nombre: 'Residente Uno', telefono: '1111-1111', complejoId: 'c1', unidadId: 'u1',
     });
+    await setDoc(doc(db, 'usuarios/residente-ajeno'), { nombre: 'Residente Ajeno', complejoId: 'c2', unidadId: 'u2' });
     await setDoc(doc(db, 'complejos/c1/obras/obra-propia'), { tipo: 'privada', unidadId: 'u1' });
     await setDoc(doc(db, 'complejos/c1/obras/obra-ajena'), { tipo: 'privada', unidadId: 'u2' });
     await setDoc(doc(db, 'complejos/c1/obras/obra-comun'), { tipo: 'comun' });
@@ -75,6 +76,30 @@ test('guardia no puede crear ni editar periodos', async () => {
   await assertFails(setDoc(doc(db, 'complejos/c1/periodos/2026-09'), { estado: 'borrador' }));
   await assertFails(updateDoc(doc(db, 'complejos/c1/periodos/2026-08'), { estado: 'borrador' }));
   await assertFails(getDoc(doc(db, 'usuarios/residente-1')));
+});
+
+test('administrador solo lista perfiles de su complejo con una consulta restringida', async () => {
+  const db = entorno.authenticatedContext('admin-1', { rol: 'admin_complejo', complejoId: 'c1' }).firestore();
+  await assertSucceeds(getDocs(query(collection(db, 'usuarios'), where('complejoId', '==', 'c1'))));
+  await assertFails(getDocs(collection(db, 'usuarios')));
+  await assertFails(getDocs(query(collection(db, 'usuarios'), where('complejoId', '==', 'c2'))));
+  await assertFails(getDoc(doc(db, 'usuarios/residente-ajeno')));
+});
+
+test('superadministrador solo lista perfiles incluidos en su cartera', async () => {
+  const db = entorno.authenticatedContext('superadmin-1', { rol: 'superadmin', complejos: ['c1'] }).firestore();
+  await assertSucceeds(getDocs(query(collection(db, 'usuarios'), where('complejoId', '==', 'c1'))));
+  await assertFails(getDocs(query(collection(db, 'usuarios'), where('complejoId', '==', 'c2'))));
+  await assertFails(getDocs(collection(db, 'usuarios')));
+});
+
+test('el cliente no fabrica autorizaciones ni un ingreso previo para habilitar egresos', async () => {
+  const db = entorno.authenticatedContext('residente-1', { rol: 'residente', complejoId: 'c1', unidadId: 'u1' }).firestore();
+  await assertFails(setDoc(doc(db, 'complejos/c1/autorizaciones/inventada'), {
+    unidadId: 'u1', autorizadoPorUid: 'residente-1', tipo: 'visita', estado: 'vigente',
+    usosConsumidos: 0, usosPermitidos: 1, vigenciaDesde: new Date('2026-01-01'),
+    vigenciaHasta: new Date('2027-01-01'), codigoQr: 'inventado', ultimoSentido: 'ingreso',
+  }));
 });
 
 test('un residente no puede saltar la privacidad leyendo subcolecciones de una obra ajena', async () => {

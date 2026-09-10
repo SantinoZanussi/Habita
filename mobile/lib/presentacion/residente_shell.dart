@@ -10,6 +10,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../nucleo/api.dart';
 import '../nucleo/tema/tokens.dart';
 import 'widgets.dart';
+import 'confirmar_pago_demo.dart';
 
 class ResidenteShell extends StatefulWidget {
   const ResidenteShell({
@@ -575,6 +576,7 @@ class _LiquidacionCard extends StatelessWidget {
         {'periodoId': periodoId},
       );
       if (preferencia['simulado'] == true) {
+        if (!context.mounted || !await confirmarPagoDemo(context)) return;
         await HabitaApi().post(
           '/complejos/$complejoId/expensas/pagos/simular',
           {'periodoId': periodoId, 'pagoId': preferencia['preferenciaId']},

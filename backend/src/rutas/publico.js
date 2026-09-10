@@ -6,6 +6,7 @@ import { limitar } from '../middleware/errores.js';
 import { entorno } from '../config/entorno.js';
 import { verificarFirmaWebhook } from '../externos/mercadopago.js';
 import { procesarPago } from '../servicios/pagos.js';
+import { exigirMercadoPagoActivo } from '../middleware/pagos.js';
 
 const router = Router();
 const limitePublico = limitar({ porMinuto: entorno.limites.porMinutoPublico });
@@ -22,7 +23,7 @@ router.post('/contacto', limitePublico, asincrono(async (req, res) => {
   res.status(201).json({ id: ref.id, mensaje: 'Recibimos tu consulta. Te vamos a contactar pronto.' });
 }));
 
-router.post('/webhooks/mercadopago', limitePublico, asincrono(async (req, res) => {
+router.post('/webhooks/mercadopago', limitePublico, exigirMercadoPagoActivo, asincrono(async (req, res) => {
   const dataId = String(req.body?.data?.id ?? req.query['data.id'] ?? '');
   const verificacion = verificarFirmaWebhook({
     firma: req.get('x-signature'),

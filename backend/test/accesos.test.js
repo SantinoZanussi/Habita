@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   evaluarAutorizacion, generarCodigoDinamico, verificarCodigoDinamico,
-  horaLocal, aMinutos, normalizarPatente, MOTIVOS_RECHAZO, VENTANA_SEGUNDOS,
+  horaLocal, aMinutos, normalizarPatente, normalizarAutorizacion, MOTIVOS_RECHAZO, VENTANA_SEGUNDOS,
 } from '../src/dominio/accesos.js';
 
 const SECRETO = 'secreto-de-prueba-no-usar-en-produccion';
@@ -121,6 +121,46 @@ test('una autorizacion inexistente no rompe: devuelve un motivo entendible', () 
   const r = evaluarAutorizacion({ autorizacion: null, ahora: viernes14 });
   assert.equal(r.permitido, false);
   assert.equal(r.motivo, MOTIVOS_RECHAZO.NO_ENCONTRADA);
+});
+
+test('una autorización creada desde el contrato HTTP respeta los puntos elegidos', () => {
+  const datos = normalizarAutorizacion({ ...visitaBase, puntosPermitidos: ['peatonal'] }, [{ id: 'peatonal' }, { id: 'garaje' }]);
+  const autorizacion = { ...datos, estado: 'vigente', usosConsumidos: 0 };
+  assert.equal(evaluarAutorizacion({ autorizacion, ahora: viernes14, punto: 'peatonal' }).permitido, true);
+  assert.equal(evaluarAutorizacion({ autorizacion, ahora: viernes14, punto: 'garaje' }).motivo, MOTIVOS_RECHAZO.PUNTO_NO_HABILITADO);
+  assert.equal(evaluarAutorizacion({ autorizacion: { ...visitaBase, puntosPermitidos: ['peatonal'] }, ahora: viernes14, punto: 'garaje' }).permitido, false);
+});
+
+test('datos de autorizaciones inválidos se rechazan antes de persistir', () => {
+  for (const cambios of [
+    { usosPermitidos: 'no-numero' }, { usosPermitidos: 1.5 }, { usosPermitidos: 0 },
+    { vigenciaDesde: 'invalida' }, { vigenciaHasta: 'invalida' },
+    { diasPermitidos: [7] }, { diasPermitidos: [] }, { diasPermitidos: 'viernes' },
+    { franjaHoraria: { desde: '25:00', hasta: '18:00' } },
+    { puntosHabilitados: ['otro-complejo'] },
+  ]) {
+    assert.throws(() => normalizarAutorizacion({ ...visitaBase, ...cambios }, [{ id: 'peatonal' }]), { codigo: 'DATOS_INVALIDOS' });
+  }
+});
+
+test('un permiso corrupto no obtiene usos ilimitados mediante NaN', () => {
+  const decision = evaluarAutorizacion({ autorizacion: { ...visitaBase, usosPermitidos: NaN }, ahora: viernes14 });
+  assert.equal(decision.motivo, MOTIVOS_RECHAZO.DATOS_INVALIDOS);
+});
+
+test('la salida de una visita ingresada no requiere usos restantes ni vigencia', () => {
+  const autorizacion = { ...visitaBase, usosPermitidos: 1, usosConsumidos: 1, ultimoSentido: 'ingreso', estado: 'revocada' };
+  const r = evaluarAutorizacion({ autorizacion, ahora: domingo10, sentido: 'egreso' });
+  assert.equal(r.permitido, true);
+  assert.equal(r.usosRestantes, 0);
+  assert.equal(evaluarAutorizacion({ autorizacion: { ...autorizacion, estado: 'vigente' }, ahora: viernes14 }).motivo, MOTIVOS_RECHAZO.SIN_USOS);
+});
+
+test('no permite una salida sin ingreso previo ni repetir un egreso', () => {
+  for (const ultimoSentido of [undefined, 'egreso']) {
+    const r = evaluarAutorizacion({ autorizacion: { ...visitaBase, ultimoSentido }, ahora: viernes14, sentido: 'egreso' });
+    assert.equal(r.motivo, MOTIVOS_RECHAZO.SIN_INGRESO);
+  }
 });
 
 // ------------------------------------------------------------- QR dinamico

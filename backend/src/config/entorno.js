@@ -101,7 +101,7 @@ export const entorno = {
   },
 
   mercadoPago: {
-    get accessToken() { return texto('MP_ACCESS_TOKEN', ''); },
+    get accessToken() { return texto('MP_ACCESS_TOKEN', '').trim(); },
     get urlWebhook() {
       return texto('MP_URL_WEBHOOK', `${entorno.basePublica}/api/webhooks/mercadopago`);
     },
@@ -185,7 +185,7 @@ export function validarEntorno() {
   }
 
   if (entorno.mercadoPago.simulado) advertencias.push('Mercado Pago en modo simulado (falta MP_ACCESS_TOKEN)');
-  if (entorno.ia.simulado) advertencias.push('Clasificacion por IA en modo simulado (falta ANTHROPIC_API_KEY)');
+  if (entorno.ia.simulado) advertencias.push(`Clasificacion por IA en modo simulado (falta ${proveedorIa === 'gemini' ? 'GEMINI_API_KEY' : 'ANTHROPIC_API_KEY'})`);
   if (entorno.maps.simulado) advertencias.push('Google Maps en modo simulado (falta GOOGLE_MAPS_API_KEY)');
 
   return { problemas, advertencias, valido: problemas.length === 0 };
