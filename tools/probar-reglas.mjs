@@ -12,8 +12,9 @@ if (existsSync(resolve(javaAndroid, 'bin/java.exe'))) {
 
 const prueba = 'node --test firebase/tests/*.test.mjs';
 const firebaseCli = resolve(raiz, 'node_modules/firebase-tools/lib/bin/firebase.js');
+const proyecto = process.env.FIREBASE_PROJECT_ID ?? 'habita-complejos-goiburu';
 const proceso = spawn(process.execPath, [
-  firebaseCli, 'emulators:exec', '--project', 'habita-demo',
+  firebaseCli, 'emulators:exec', '--project', proyecto,
   '--config', 'firebase.json', '--only', 'firestore,storage', prueba,
 ], { cwd: raiz, stdio: 'inherit', env: entorno });
 

@@ -55,9 +55,9 @@ function proyectoDelEntorno() {
   if (process.env.FIREBASE_PROJECT_ID) return process.env.FIREBASE_PROJECT_ID;
   if (process.env.GCLOUD_PROJECT) return process.env.GCLOUD_PROJECT;
   try {
-    return JSON.parse(process.env.FIREBASE_CONFIG ?? '{}').projectId ?? 'habita-demo';
+    return JSON.parse(process.env.FIREBASE_CONFIG ?? '{}').projectId ?? 'habita-complejos-goiburu';
   } catch {
-    return 'habita-demo';
+    return 'habita-complejos-goiburu';
   }
 }
 

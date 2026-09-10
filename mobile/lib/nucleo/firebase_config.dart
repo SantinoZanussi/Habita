@@ -8,11 +8,11 @@ abstract final class HabitaFirebase {
   );
   static const _projectId = String.fromEnvironment(
     'FIREBASE_PROJECT_ID',
-    defaultValue: 'habita-demo',
+    defaultValue: 'habita-complejos-goiburu',
   );
   static const _storageBucket = String.fromEnvironment(
     'FIREBASE_STORAGE_BUCKET',
-    defaultValue: 'habita-demo.appspot.com',
+    defaultValue: 'habita-complejos-goiburu.firebasestorage.app',
   );
   static const _senderId = String.fromEnvironment(
     'FIREBASE_MESSAGING_SENDER_ID',
@@ -25,13 +25,13 @@ abstract final class HabitaFirebase {
         apiKey: _apiKey,
         appId: String.fromEnvironment(
           'FIREBASE_WEB_APP_ID',
-          defaultValue: '1:000000000000:web:habita-demo',
+          defaultValue: '1:000000000000:web:habita-local',
         ),
         messagingSenderId: _senderId,
         projectId: _projectId,
         authDomain: String.fromEnvironment(
           'FIREBASE_AUTH_DOMAIN',
-          defaultValue: 'habita-demo.firebaseapp.com',
+          defaultValue: 'habita-complejos-goiburu.firebaseapp.com',
         ),
         storageBucket: _storageBucket,
       );
@@ -40,7 +40,7 @@ abstract final class HabitaFirebase {
       apiKey: _apiKey,
       appId: String.fromEnvironment(
         'FIREBASE_ANDROID_APP_ID',
-        defaultValue: '1:000000000000:android:habita-demo',
+        defaultValue: '1:000000000000:android:habita-local',
       ),
       messagingSenderId: _senderId,
       projectId: _projectId,

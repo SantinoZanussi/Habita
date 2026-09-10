@@ -10,8 +10,9 @@ if (existsSync(resolve(javaAndroid, 'bin/java.exe'))) {
 }
 
 const firebaseCli = resolve(raiz, 'node_modules/firebase-tools/lib/bin/firebase.js');
+const proyecto = process.env.FIREBASE_PROJECT_ID ?? 'habita-complejos-goiburu';
 const proceso = spawn(process.execPath, [
-  firebaseCli, 'emulators:start', '--only', 'auth,firestore,hosting,storage', '--project', 'habita-demo',
+  firebaseCli, 'emulators:start', '--only', 'auth,firestore,hosting,storage', '--project', proyecto,
   '--config', 'firebase.json', '--import', 'emulador-datos',
   '--export-on-exit', 'emulador-datos',
 ], { cwd: raiz, stdio: 'inherit', env: process.env });

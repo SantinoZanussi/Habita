@@ -4,7 +4,7 @@ import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 
-const proyecto = process.env.FIREBASE_PROJECT_ID ?? 'habita-demo';
+const proyecto = process.env.FIREBASE_PROJECT_ID ?? 'habita-complejos-goiburu';
 process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080';
 process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099';
 process.env.FIREBASE_STORAGE_EMULATOR_HOST ??= '127.0.0.1:9199';

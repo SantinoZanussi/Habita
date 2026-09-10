@@ -2,6 +2,41 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-10 — Unificar el identificador de Firebase con el proyecto Habita
+
+### Objetivo
+
+Corregir el enlace que muestra Firebase Emulator Suite para que apunte al proyecto real de la cuenta de Goiburu, manteniendo los datos de demo aislados en emuladores locales.
+
+### Estado inicial
+
+El proyecto real aparece en Firebase como **Habita**, con ID `habita-complejos-goiburu`, pero los valores locales usaban `habita-demo`. El usuario pidió entender por qué se usaba Firestore local y dejó los servicios abiertos para probar.
+
+### Verificado
+
+- `firebase projects:list` confirmó `Habita / habita-complejos-goiburu` en la cuenta autenticada.
+- La separación queda explícita: el emulador puede usar el mismo ID como namespace y enlace visual, pero `npm run seed` sólo borra el Firestore/Auth local.
+- `npm test`: 80 pruebas aprobadas; `flutter analyze`: sin problemas; `flutter test`: 4 tests aprobados.
+- `npm run test:reglas`: 11 pruebas aprobadas después de liberar un proceso Java de Firestore que había quedado ocupando el puerto 8080.
+
+### Cambios
+
+- Se agregó `.firebaserc` con `habita-complejos-goiburu` como proyecto Firebase por defecto.
+- Los defaults de emuladores, seed, reglas, backend, web y Flutter ahora usan ese ID real como referencia.
+- `README.md` explica la diferencia entre emulador local y Firebase Cloud y prohíbe usar `npm run seed` contra producción.
+
+### Pendiente
+
+Conectar una sesión de la app directamente a Firebase Cloud requiere usar la configuración de producción, credenciales de servicio para el backend y usuarios reales/demo creados en el proyecto. No se habilita automáticamente para evitar escrituras o borrados accidentales.
+
+### Supuesto
+
+“Habita” es el nombre visible del proyecto y `habita-complejos-goiburu` es su ID técnico, según `firebase projects:list`.
+
+### Comandos y resultado
+
+La migración de referencias pasó las pruebas de backend, reglas y Flutter. Se reinició el emulador y su banner ahora muestra `habita-complejos-goiburu` y enlaza la consola correcta de Firebase.
+
 ## 2026-09-10 — Verificación integral local y guía de funcionamiento
 
 ### Objetivo

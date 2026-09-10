@@ -22,6 +22,12 @@ npm run backend
 
 Abrir `http://127.0.0.1:5000/` para la landing o `http://127.0.0.1:5000/panel` para el panel. El hosting se inicia junto con los emuladores.
 
+### Entorno local y Firebase real
+
+`npm run emu` levanta una copia local de Auth, Firestore, Storage y Hosting. Usa el mismo `projectId` de Firebase (**`habita-complejos-goiburu`**) sólo para que las referencias y la consola del emulador apunten al proyecto **Habita** correcto; los datos siguen dentro de la PC y no se escriben en Firebase Cloud. Por eso `npm run seed` es seguro sólo después de `npm run emu`: borra y recrea el escenario local.
+
+El entorno real se usa con el deploy de Firebase Hosting y la API de Render. Requiere las credenciales de servicio y la configuración pública de `mobile/firebase.production.json`; no se debe ejecutar `npm run seed` ni apuntar el backend local a producción. Para comprobar el despliegue sin modificarlo, usar `npm run verificar:servicios`.
+
 Para la app móvil:
 
 ```powershell

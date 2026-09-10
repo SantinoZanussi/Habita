@@ -4,10 +4,10 @@ const configuracionLocal = {
   apiUrl: 'http://127.0.0.1:8787/api',
   firebase: {
     apiKey: 'demo-habita',
-    authDomain: 'habita-demo.firebaseapp.com',
-    projectId: 'habita-demo',
-    storageBucket: 'habita-demo.appspot.com',
-    appId: '1:000000000000:web:habita-demo',
+    authDomain: 'habita-complejos-goiburu.firebaseapp.com',
+    projectId: 'habita-complejos-goiburu',
+    storageBucket: 'habita-complejos-goiburu.firebasestorage.app',
+    appId: '1:000000000000:web:habita-local',
   },
   emuladores: { activo: true, host: '127.0.0.1', auth: 9099, firestore: 8080 },
 };
