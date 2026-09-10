@@ -24,10 +24,11 @@ La ruta `POST /api/complejos/:complejoId/accesos/qr-dinamico` guardaba el objeto
 
 - `backend/src/rutas/accesos.js` ahora separa el código textual, usa el vencimiento calculado y expone `expiraEn`.
 - `mobile/lib/presentacion/residente_shell.dart` valida el tipo de la respuesta y muestra un mensaje entendible si el contrato vuelve a ser inválido.
+- `README.md` documenta la prueba con dos instancias Flutter (`9100` residente y `9101` guardia), porque Firebase Auth separa la sesión por origen.
 
 ### Pendiente
 
-La lectura física con cámara en un dispositivo de guardia sigue requiriendo un teléfono o emulador Android compatible; el flujo local de generación ya queda listo para esa prueba.
+La lectura física con cámara en un dispositivo de guardia sigue requiriendo un teléfono o emulador Android compatible; el flujo local de generación ya queda listo para esa prueba. En esta sesión se dejó también una segunda instancia web en `http://localhost:9101/` para separar la sesión del guardia.
 
 ### Supuesto
 

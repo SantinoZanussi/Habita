@@ -42,6 +42,22 @@ En Android Emulator, la app usa `10.0.2.2` para alcanzar los servicios de la PC.
 flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8787/api
 ```
 
+### Probar el QR con dos sesiones en la misma PC
+
+Firebase Auth conserva la sesión por origen del navegador. Para usar residente y guardia al mismo tiempo, levantá dos instancias de Flutter:
+
+```powershell
+# Terminal 1
+cd mobile
+flutter run -d web-server --web-port 9100
+
+# Terminal 2
+cd mobile
+flutter run -d web-server --web-port 9101
+```
+
+Abrí `http://localhost:9100/` como residente y `http://localhost:9101/` como guardia. Los puertos distintos mantienen sesiones separadas, pero ambas instancias usan el mismo backend (`8787`) y los mismos emuladores. Usá las cuentas demo de la tabla siguiente. En residente, entrá a **Accesos** para mostrar el QR; en guardia, entrá a **Escanear** y apuntá la cámara del dispositivo o de la PC al código.
+
 ## Cuentas demo
 
 Todas usan la contraseña `Habita2026!`.
