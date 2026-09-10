@@ -34,7 +34,7 @@ El QA cruzado real requiere otra persona o equipo y no se debe marcar como ejecu
 
 ### Comandos y resultado
 
-`npm run build:web`, `npm test`, `npm run test:reglas`, `flutter analyze` y `flutter test` finalizaron con código 0. El generador incompleto de `docs/entrega/` no se incluyó en estos cambios.
+`npm run build:web`, `npm test`, `npm run test:reglas`, `flutter analyze` y `flutter test` finalizaron con código 0. El generador incompleto de `docs/entrega/` no se incluyó en estos cambios. Commit publicado en `main`: `c838c68` (`feat: preparar qa de reclamos y continuidad de fase 3`).
 
 ## 2026-09-10 — Integrar la última Fase 2 en `main`
 
