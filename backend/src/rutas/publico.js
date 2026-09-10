@@ -15,11 +15,12 @@ router.post('/contacto', limitePublico, asincrono(async (req, res) => {
   const nombre = String(req.body?.nombre ?? '').trim();
   const email = String(req.body?.email ?? '').trim().toLowerCase();
   const mensaje = String(req.body?.mensaje ?? '').trim();
-  if (nombre.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || mensaje.length < 10) {
-    throw errores.datosInvalidos({ formulario: 'Completá nombre, correo válido y un mensaje de al menos 10 caracteres.' });
+  const tipo = String(req.body?.tipo ?? '').trim();
+  if (nombre.length < 2 || nombre.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200 || mensaje.length < 10 || mensaje.length > 2000 || tipo.length > 60) {
+    throw errores.datosInvalidos({ formulario: 'Completá nombre, correo válido y un mensaje de entre 10 y 2000 caracteres.' });
   }
   const ref = rutas.contactos().doc();
-  await ref.set({ nombre, email, mensaje, estado: 'nuevo', creadoEn: FieldValue.serverTimestamp() });
+  await ref.set({ nombre, email, mensaje, tipo: tipo || null, estado: 'nuevo', creadoEn: FieldValue.serverTimestamp() });
   res.status(201).json({ id: ref.id, mensaje: 'Recibimos tu consulta. Te vamos a contactar pronto.' });
 }));
 

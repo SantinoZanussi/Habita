@@ -2,6 +2,42 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-10 — Avanzar Fase 4: landing y materiales de demo
+
+### Objetivo
+
+Continuar desde `main` y convertir la portada que hoy redirige al panel en una landing pública de Habita, con propuesta de valor, módulos, planes, captura real, CTA al panel y guion de demo enlazado.
+
+### Estado inicial
+
+La implementación técnica de Fase 2 está publicada y la preparación de QA de Fase 3 está documentada. `web/index.html` sólo redirigía a `/panel`; `docs/entrega/` contiene un generador de pitch incompleto y no se usará como fuente de publicación.
+
+### Verificado
+
+- La landing local responde `200` en `/`, `/landing.css` y `/landing.js`; se revisó visualmente en navegador y en viewport móvil.
+- `npm test`: 80 pruebas aprobadas, incluida la ruta pública de contacto.
+- `npm run build:web`: compilación del panel completada.
+- `node --check web/landing.js` y `node --check tools/verificar-servicios.mjs`: sintaxis válida.
+- `git diff --check`: sin errores de whitespace.
+
+### Cambios
+
+- `web/index.html` dejó de redirigir y ahora contiene la landing pública responsive con propuesta de valor, módulos, planes, demo guiada y formulario.
+- `web/landing.css` define el sistema visual de la portada reutilizando tokens, fuentes y la captura real de app/panel.
+- `web/landing.js` conecta el formulario con `POST /api/contacto` y muestra estados de éxito o error.
+- `backend/src/rutas/publico.js` valida límites de nombre, correo, mensaje y tipo, y conserva el tipo de complejo en el contacto.
+- `backend/test/publico.test.js` cubre el contrato público con un caso inválido y uno válido.
+- `tools/verificar-servicios.mjs` comprueba también que la landing publicada esté disponible.
+- Se agregaron `docs/FASE_4_LANZAMIENTO.md` y `docs/FASE_5_PITCH.md`, y se actualizaron README y producción con las rutas nuevas.
+
+### Pendiente
+
+El video demo final y la presentación presencial requieren grabación y exposición humana. Mercado Pago continúa pausado por el error del portal.
+
+### Comandos y resultado
+
+`npm run build:web`, `npm test`, los chequeos de sintaxis y la comprobación HTTP local finalizaron con código 0. No se desplegó producción en esta sesión; el cambio queda listo para el próximo deploy. `docs/entrega/` sigue fuera del commit por estar incompleto.
+
 ## 2026-09-10 — Preparar Fase 3 y continuidad de QA
 
 ### Objetivo

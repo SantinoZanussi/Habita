@@ -3,9 +3,54 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0; url=/panel">
-  <title>Habita</title>
+  <meta name="theme-color" content="#0C2440">
+  <meta name="description" content="Habita conecta accesos, expensas, reclamos y obras en un solo sistema para complejos residenciales.">
+  <title>Habita — Todo tu complejo, conectado</title>
+  <link rel="icon" href="/assets/brand/habita-isotipo.png">
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/landing.css">
 </head>
-<body><p>Abriendo <a href="/panel">Habita Panel</a>…</p></body>
-</html>
+<body>
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-brand" href="#inicio" aria-label="Habita, inicio"><img src="/assets/brand/habita-isotipo.svg" alt=""><span>Habita</span></a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Abrir menú">☰</button>
+      <nav id="site-menu" class="site-nav" aria-label="Navegación principal">
+        <a href="#producto">Producto</a><a href="#modulos">Módulos</a><a href="#planes">Planes</a><a href="#contacto">Contacto</a><a class="button button--outline" href="/panel">Abrir panel <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </header>
 
+  <main>
+    <section id="inicio" class="hero">
+      <div class="container hero__grid">
+        <div class="hero__copy">
+          <span class="eyebrow eyebrow--light">Administración residencial, finalmente conectada</span>
+          <h1>Todo tu complejo,<br><span>en un solo sistema.</span></h1>
+          <p class="hero__lead">Habita reúne accesos, expensas, reclamos y obras para que la administración decida mejor y los residentes vivan tranquilos.</p>
+          <div class="hero__actions"><a class="button button--primary" href="#contacto">Solicitar una demo <span aria-hidden="true">→</span></a><a class="button button--soft" href="/panel">Explorar el panel</a></div>
+          <div class="hero__proof" aria-label="Características principales"><span><strong>Tiempo real</strong> App y panel sincronizados</span><span><strong>Auditado</strong> Cada acción deja rastro</span><span><strong>Multi-complejo</strong> Un motor, distintas reglas</span></div>
+        </div>
+        <figure class="hero__visual"><div class="hero__glow"></div><div class="device-frame"><img src="/assets/brand/diseno-app.png" alt="Vistas de la app móvil y el panel de administración de Habita"></div><figcaption>Una vista para cada rol, una misma fuente de verdad.</figcaption></figure>
+      </div>
+    </section>
+
+    <section class="section section--problem" aria-labelledby="problema-titulo"><div class="container narrow-copy"><span class="eyebrow">El problema cotidiano</span><h2 id="problema-titulo">Cuando cada dato vive en un lugar distinto, gestionar se vuelve adivinar.</h2><p>El reclamo llega por WhatsApp, la expensa vive en una planilla y el cuaderno de la garita guarda quién entró. Habita conecta esas conversaciones en una operación que se puede ver, medir y defender.</p></div><div class="container problem-grid"><article class="problem-card"><span class="problem-card__icon">⌁</span><h3>Menos mensajes sueltos</h3><p>Los reclamos llegan con prioridad, responsable y seguimiento hasta su resolución.</p></article><article class="problem-card"><span class="problem-card__icon">$</span><h3>Números que cierran</h3><p>Las liquidaciones se calculan en centavos y la suma final coincide con el gasto.</p></article><article class="problem-card"><span class="problem-card__icon">◇</span><h3>Accesos que se pueden probar</h3><p>QR, patente y visitas quedan registrados con horario, punto y resultado.</p></article></div></section>
+
+    <section id="producto" class="section section--product" aria-labelledby="producto-titulo"><div class="container product-grid"><div class="product-copy"><span class="eyebrow">Una operación, dos vistas</span><h2 id="producto-titulo">La administración ve el sistema. El residente ve lo que necesita.</h2><p>La app móvil simplifica las tareas diarias. El panel concentra el control, los indicadores y las decisiones. Ambos trabajan sobre la misma información de Firebase en tiempo real.</p><ul class="check-list"><li><span>✓</span> Roles separados para residentes, guardias, administradores y obra.</li><li><span>✓</span> Reglas de seguridad por complejo y unidad.</li><li><span>✓</span> Modo de respaldo para que un proveedor externo caído no detenga la operación.</li></ul><a class="text-link" href="/panel">Ver el panel de administración <span aria-hidden="true">→</span></a></div><div class="product-stat"><div class="stat-card stat-card--main"><span class="eyebrow">Diseñado para crecer</span><strong>1</strong><p>motor de negocio</p><div class="stat-card__line"><span></span></div><div class="stat-card__split"><span><b>5</b> roles</span><span><b>4</b> tipos de complejo</span></div></div><div class="stat-card stat-card--small"><span class="stat-card__icon">✓</span><strong>100%</strong><p>trazabilidad de accesos</p></div><div class="stat-card stat-card--small stat-card--teal"><span class="stat-card__icon">↗</span><strong>24/7</strong><p>información disponible</p></div></div></div></section>
+
+    <section id="modulos" class="section section--modules" aria-labelledby="modulos-titulo"><div class="container"><div class="section-heading"><div><span class="eyebrow">Módulos activables</span><h2 id="modulos-titulo">Empezá con lo urgente. Sumá lo que sigue.</h2></div><p>La configuración adapta la nomenclatura y las reglas al tipo de complejo.</p></div><div class="module-grid"><article class="module-card module-card--featured"><span class="module-card__number">01</span><span class="module-card__icon">◇</span><h3>Accesos</h3><p>Visitas, QR dinámicos, patentes y eventos append-only para una garita informada.</p><a href="#contacto">Conocer el módulo <span>→</span></a></article><article class="module-card"><span class="module-card__number">02</span><span class="module-card__icon">$</span><h3>Expensas</h3><p>Prorrateo exacto, morosidad, pagos y detalle claro para cada unidad.</p><a href="#contacto">Conocer el módulo <span>→</span></a></article><article class="module-card"><span class="module-card__number">03</span><span class="module-card__icon">!</span><h3>Reclamos</h3><p>Clasificación asistida, prioridad y estados para que nada quede olvidado.</p><a href="#contacto">Conocer el módulo <span>→</span></a></article><article class="module-card"><span class="module-card__number">04</span><span class="module-card__icon">△</span><h3>Obras</h3><p>Camino crítico, avances con evidencia y fecha estimada para todo el complejo.</p><a href="#contacto">Conocer el módulo <span>→</span></a></article></div></div></section>
+
+    <section id="demo" class="section section--demo" aria-labelledby="demo-titulo"><div class="container demo-grid"><div><span class="eyebrow eyebrow--light">Demo guiada</span><h2 id="demo-titulo">Tres momentos para entender Habita en menos de tres minutos.</h2><p>La demo recorre el ingreso de una visita, el cierre exacto de una liquidación y un atraso de obra que se refleja en ambas vistas.</p><a class="button button--soft" href="/panel">Abrir la demo local <span aria-hidden="true">↗</span></a></div><ol class="demo-steps"><li><span>01</span><div><strong>Un QR que se valida</strong><p>El primer ingreso pasa; el segundo explica por qué se rechaza.</p></div></li><li><span>02</span><div><strong>Una cuenta que cierra</strong><p>El panel muestra la suma exacta y el residente recibe el detalle.</p></div></li><li><span>03</span><div><strong>Una obra que se entiende</strong><p>El camino crítico hace visible el impacto de un atraso.</p></div></li></ol></div></section>
+
+    <section id="planes" class="section section--plans" aria-labelledby="planes-titulo"><div class="container"><div class="section-heading section-heading--center"><span class="eyebrow">Planes claros</span><h2 id="planes-titulo">Un precio que sigue el tamaño de tu operación.</h2><p>La propuesta comercial se calcula por unidad por mes, para que el costo crezca con el complejo.</p></div><div class="plans-grid"><article class="plan-card"><span class="plan-card__tag">Para empezar</span><h3>Base</h3><p>Para consorcios y edificios.</p><strong class="plan-card__price">A medida</strong><span class="plan-card__unit">por unidad / mes</span><ul><li>Accesos y visitas</li><li>Amenities y reclamos</li><li>Expensas y pagos demo</li></ul><a class="button button--outline-dark" href="#contacto">Hablar con Habita</a></article><article class="plan-card plan-card--highlight"><span class="plan-card__tag">Más completo</span><h3>Barrio</h3><p>Para barrios cerrados y countries.</p><strong class="plan-card__price">A medida</strong><span class="plan-card__unit">por unidad / mes</span><ul><li>Todo lo de Base</li><li>Patentes y múltiples accesos</li><li>Módulo de obras</li></ul><a class="button button--primary" href="#contacto">Solicitar propuesta</a></article><article class="plan-card"><span class="plan-card__tag">Para administrar más</span><h3>Cartera</h3><p>Para administradoras.</p><strong class="plan-card__price">A medida</strong><span class="plan-card__unit">por unidad / mes</span><ul><li>Todo lo de Barrio</li><li>Multi-complejo y evaluación</li><li>Soporte prioritario</li></ul><a class="button button--outline-dark" href="#contacto">Hablar con Habita</a></article></div></div></section>
+
+    <section id="contacto" class="section section--contact" aria-labelledby="contacto-titulo"><div class="container contact-grid"><div class="contact-copy"><span class="eyebrow eyebrow--light">¿Lo vemos en tu complejo?</span><h2 id="contacto-titulo">Contanos qué querés ordenar primero.</h2><p>Dejanos tus datos y una breve descripción. Un integrante del equipo te responde para mostrarte el flujo que mejor encaja.</p><div class="contact-note"><span>→</span><span>También podés <a href="/panel">abrir el panel de demo</a> y recorrerlo ahora.</span></div></div><form id="contact-form" class="contact-form"><label>Nombre<input name="nombre" autocomplete="name" required minlength="2" placeholder="Tu nombre"></label><label>Correo electrónico<input name="email" type="email" autocomplete="email" required placeholder="nombre@empresa.com"></label><label>¿Qué administrás?<select name="tipo"><option>Edificio</option><option>Consorcio</option><option>Barrio cerrado</option><option>Country</option><option>Administradora</option></select></label><label class="span-2">Mensaje<textarea name="mensaje" required minlength="10" placeholder="Tenemos 80 unidades y queremos ordenar accesos y expensas…"></textarea></label><button class="button button--primary button--wide" type="submit"><span>Solicitar contacto</span><span aria-hidden="true">→</span></button><p id="contact-status" class="contact-status" role="status" hidden></p></form></div></section>
+  </main>
+
+  <footer class="site-footer"><div class="container site-footer__inner"><a class="site-brand" href="#inicio"><img src="/assets/brand/habita-isotipo.svg" alt=""><span>Habita</span></a><span>Un solo sistema para todo tu complejo.</span><div><a href="#producto">Producto</a><a href="#contacto">Contacto</a><a href="/panel">Panel</a></div></div></footer>
+
+  <script src="/config.js"></script>
+  <script src="/landing.js" defer></script>
+</body>
+</html>

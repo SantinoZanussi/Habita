@@ -2,7 +2,7 @@
 
 Habita centraliza la operación de edificios, consorcios, barrios y countries en un único producto: app móvil multirol, panel de administración, backend de negocio y Firebase en tiempo real.
 
-La Fase 2 implementa todo el alcance P0 definido en `docs/PROYECTO_CONTEXTO.md` y suma una base funcional de amenities, notificaciones y obras.
+La Fase 2 implementa todo el alcance P0 definido en `docs/PROYECTO_CONTEXTO.md` y suma una base funcional de amenities, notificaciones y obras. La portada pública de Fase 4 está en `/` y el panel autenticado en `/panel`.
 
 ## Arranque local
 
@@ -20,7 +20,7 @@ npm run seed
 npm run backend
 ```
 
-Abrir `http://127.0.0.1:5000/panel`. El hosting del panel se inicia junto con los emuladores.
+Abrir `http://127.0.0.1:5000/` para la landing o `http://127.0.0.1:5000/panel` para el panel. El hosting se inicia junto con los emuladores.
 
 Para la app móvil:
 
@@ -58,7 +58,7 @@ flutter test
 flutter build web --release
 ```
 
-La guía completa de arquitectura, alcance, seguridad, proveedores externos y defensa está en [docs/FASE_2_ENTREGA.md](docs/FASE_2_ENTREGA.md).
+La guía completa de arquitectura, alcance, seguridad, proveedores externos y defensa está en [docs/FASE_2_ENTREGA.md](docs/FASE_2_ENTREGA.md). El checklist de QA cruzado está en [docs/FASE_3_QA.md](docs/FASE_3_QA.md).
 
 ## Continuidad entre computadoras y sesiones de IA
 
@@ -84,4 +84,7 @@ Archivos de referencia:
 - [docs/TAREA_CONTEXTO.md](docs/TAREA_CONTEXTO.md): consigna académica y fases.
 - [docs/PROYECTO_CONTEXTO.md](docs/PROYECTO_CONTEXTO.md): producto, arquitectura y guion de demo.
 - [docs/FASE_2_ENTREGA.md](docs/FASE_2_ENTREGA.md): alcance técnico de Fase 2.
+- [docs/FASE_3_QA.md](docs/FASE_3_QA.md): casos reproducibles y formato de reporte de Fase 3.
+- [docs/FASE_4_LANZAMIENTO.md](docs/FASE_4_LANZAMIENTO.md): landing, contacto, publicación y pendientes de video.
+- [docs/FASE_5_PITCH.md](docs/FASE_5_PITCH.md): pitch y guion de demo en vivo.
 - [docs/PRODUCCION.md](docs/PRODUCCION.md): despliegue gratuito y límites de proveedores.

@@ -44,6 +44,8 @@ El comando ejecuta las pruebas y publica únicamente:
 
 No despliega Functions ni Storage y no solicita facturación.
 
+Landing: `https://habita-complejos-goiburu.web.app/`
+
 Panel: `https://habita-complejos-goiburu.web.app/panel/`
 
 ## 2. Credencial Firebase para Render
@@ -125,7 +127,7 @@ El APK queda en `mobile/build/app/outputs/flutter-apk/app-release.apk`. Usa Fire
 
 1. Abrir el panel de Firebase Hosting.
 2. Consultar `https://habita-api-goiburu.onrender.com/api/salud`.
-3. Ejecutar `npm run verificar:servicios`: comprueba salud, Firestore real, panel, CORS y rechazo de consultas sin sesión. Mientras Mercado Pago esté pendiente, `mercadoPago: simulado` es esperado; no se marca como integración terminada.
+3. Ejecutar `npm run verificar:servicios`: comprueba salud, Firestore real, landing, panel, CORS y rechazo de consultas sin sesión. Mientras Mercado Pago esté pendiente, `mercadoPago: simulado` es esperado; no se marca como integración terminada.
 4. Crear usuarios mediante el flujo administrativo para recibir custom claims.
 5. Instalar el APK en Android, aceptar notificaciones y comprobar `usuarios/{uid}.tokenFcm`.
 6. Ensayar el pago simulado con datos demo y comprobar el saldo en ambas vistas. Cuando Mercado Pago esté habilitado, hacer una compra exclusivamente con usuarios y tarjetas de prueba.

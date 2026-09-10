@@ -1,6 +1,7 @@
 // Comprobación de solo lectura: no crea usuarios ni pagos y no usa secretos.
 const api = (process.env.HABITA_API_URL ?? 'https://habita-api-goiburu.onrender.com/api').replace(/\/$/, '');
 const panel = process.env.HABITA_PANEL_URL ?? 'https://habita-complejos-goiburu.web.app/panel/';
+const landing = process.env.HABITA_LANDING_URL ?? new URL('/', panel).href;
 const origen = new URL(panel).origin;
 
 async function consultar(url, opciones = {}) {
@@ -9,11 +10,12 @@ async function consultar(url, opciones = {}) {
 }
 
 try {
-  const [salud, estado, acceso, sitio] = await Promise.all([
+  const [salud, estado, acceso, sitio, portada] = await Promise.all([
     consultar(`${api}/salud`),
     consultar(`${api}/estado`, { headers: { Origin: origen } }),
     consultar(`${api}/usuarios/me`),
     consultar(panel),
+    consultar(landing),
   ]);
   const datosSalud = JSON.parse(salud.contenido);
   const datosEstado = JSON.parse(estado.contenido);
@@ -21,6 +23,7 @@ try {
     backend: salud.respuesta.ok && datosSalud.estado === 'ok',
     firestore: estado.respuesta.ok && datosEstado.firestore?.estado === 'ok' && datosEstado.firestore?.emulador === false,
     produccion: datosEstado.modo === 'production',
+    landing: portada.respuesta.ok && portada.contenido.includes('Todo tu complejo'),
     panel: sitio.respuesta.ok && sitio.contenido.includes('<html'),
     cors: estado.respuesta.headers.get('access-control-allow-origin') === origen,
     sesionObligatoria: acceso.respuesta.status === 401,
