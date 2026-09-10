@@ -2,6 +2,8 @@
 
 Estas instrucciones acompañan al repositorio Habita. Leerlas antes de modificar código. El contexto funcional completo está en `docs/TAREA_CONTEXTO.md` y `docs/PROYECTO_CONTEXTO.md`; el estado y la historia de trabajo están en `docs/BITACORA.md`.
 
+**Preferencia permanente del proyecto:** trabajar siempre sobre `main`, verificar los cambios y publicarlos allí. No crear ramas nuevas ni dejar el resultado final sólo en una rama salvo que el usuario lo pida expresamente. Si existe trabajo incompleto, registrá su estado en la bitácora y terminá de validarlo antes de integrarlo a `main`.
+
 ## Comportamiento automático al retomar
 
 Cuando el usuario diga `continuá`, `seguí`, `retomá`, `avanzá` o pida continuar el proyecto, no esperes que te indique dónde están las instrucciones ni que te pida actualizar la bitácora. Leé este archivo y `docs/BITACORA.md` de inmediato, inspeccioná el estado real del repositorio, elegí el siguiente pendiente autorizado, ejecutá el trabajo y verificá el resultado. Registrá el inicio y el cierre en la bitácora. Preguntá sólo si falta un dato que realmente impide avanzar o si una acción requiere una decisión del usuario; mientras tanto, continuá con todo lo que sí esté habilitado.
@@ -22,7 +24,7 @@ No borres cambios locales ni uses `git reset --hard` o `git checkout --` para li
 
 ## Reglas de trabajo
 
-- Trabajá en una rama `codex/...` y conservá el remoto `origin`.
+- Trabajá sobre `main` y conservá el remoto `origin`. Antes de empezar, sincronizá el árbol con `git pull --rebase` si no hay cambios locales que proteger.
 - Antes de una decisión importante, buscá la evidencia en el código y en la documentación. No declares una fase terminada sólo porque compila.
 - La lógica sensible vive en el backend. El cliente no debe calcular ni escribir por su cuenta saldos, permisos, eventos de acceso, cierres de liquidación, roles ni avances de obra.
 - Mantené aislamiento multi-tenant: validá `complejoId`, `unidadId`, `obraIds` y el rol en cada ruta. Los eventos de acceso y avances de obra son append-only.

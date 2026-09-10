@@ -4,12 +4,13 @@ Registro de continuidad para trabajar desde distintas computadoras y con distint
 
 ## Estado rápido
 
-- Rama de trabajo registrada al crear esta bitácora: `codex/retomar-fase-2`.
+- Rama principal del proyecto: `main`. La rama temporal `codex/retomar-fase-2` se usó durante la recuperación y no debe ser el destino normal de nuevas sesiones.
 - Base del código retomado: commit `1f8945a` (`docs: ordenar activacion gratuita de integraciones`). La documentación de continuidad quedó en `fdfd921` (`docs: agregar contexto y bitacora para continuidad`).
 - Fase: transición de Fase 2 hacia preparación de Fases 3 a 5.
 - Mercado Pago: la aplicación `Habita TP` existe, pero la activación de credenciales de prueba devuelve “Algo salió mal” en el portal. El código conserva modo simulado autenticado.
 - Firebase/Render: hay un despliegue preparado y una comprobación de solo lectura documentada en `docs/PRODUCCION.md`.
 - Seguridad: existen cambios locales para aislamiento de usuarios y accesos; deben permanecer visibles en el diff hasta que se revisen y se integren. El commit `fdfd921` contiene sólo la documentación de continuidad.
+- Preferencia de flujo: desde esta entrada, los cambios terminados y verificados se integran directamente en `main`; no crear ramas nuevas sin pedido explícito.
 
 ## 2026-09-10 — Retomar Fase 2 y preparar continuidad
 

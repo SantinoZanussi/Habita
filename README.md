@@ -73,7 +73,9 @@ Get-Content AGENTS.md
 Get-Content docs/BITACORA.md
 ```
 
-Al terminar una sesión, agregá una entrada a la bitácora, ejecutá las verificaciones que correspondan y hacé commit de la documentación y del código revisado. Subí esa rama a GitHub para que la próxima PC pueda continuar desde el mismo punto. No subas `.env`, claves de servicio, APKs con secretos ni credenciales de proveedores.
+Al terminar una sesión, agregá una entrada a la bitácora, ejecutá las verificaciones que correspondan y hacé commit de la documentación y del código revisado directamente en `main`. Publicá `main` en GitHub para que la próxima PC pueda continuar desde el mismo punto. No subas `.env`, claves de servicio, APKs con secretos ni credenciales de proveedores.
+
+El flujo normal del proyecto no crea ramas. Sólo usá una rama separada si el usuario lo solicita expresamente o si hay un trabajo incompleto que todavía no puede integrarse con seguridad; en ese caso, volvé a `main` al cerrar la validación.
 
 Archivos de referencia:
 
