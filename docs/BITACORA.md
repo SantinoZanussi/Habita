@@ -2,6 +2,33 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-15 - Revision del proyecto finalizado
+
+### Objetivo y estado inicial
+
+Revisar la version terminada y proponer mejoras, sin implementar cambios funcionales. El checkout local estaba en `codex/fase-2-seguridad`, limpio y desactualizado. Se consulto el remoto y se actualizo `main` por fast-forward hasta `8b3a1db`, conservando la rama anterior.
+
+### Verificado
+
+- Lectura de bitacora, documentos de entrega y flujos sensibles. Hallazgos y prioridades en [REVISION_FINAL.md](REVISION_FINAL.md).
+- `npm test`: 82 pruebas aprobadas. El primer intento restringido fallo por `spawn EPERM`; el segundo, autorizado, termino correctamente.
+- Con los servicios y dobles de Firestore en memoria se reprodujeron deuda duplicada al cerrar dos periodos y saldo obsoleto con dos pagos concurrentes. No se escribieron datos reales.
+- `npm run verificar:servicios`: controles correctos salvo landing, con salida 1. La raiz publica todavia devuelve una redireccion a `/panel`.
+- Mercado Pago sigue simulado. IA y FCM informan configuracion activa, sin prueba funcional externa en esta sesion.
+- Publicacion pendiente: `git push origin main` no termino; se interrumpio y el reintento no interactivo confirmo falta de autenticacion (`unable to get password from user`). La revision queda en un commit local de `main`, sin confirmacion de subida a GitHub.
+
+### Cambios y decisiones
+
+Solo documentacion: esta entrada y `docs/REVISION_FINAL.md`. No se modificaron codigo, reglas, credenciales ni despliegues. La solicitud se interpreto como revision y propuesta de mejoras.
+
+### Pendiente
+
+Corregir consistencia contable, aislamiento de avisos dirigidos y refresco de cobranza; completar reservas; actualizar la landing publicada. Validar concurrencia con emulador y flujos en telefono real. Flutter, reglas y QA visual no se volvieron a ejecutar en esta sesion. Mantener pendientes de evidencia el QA externo, video y pitch salvo confirmacion del usuario.
+
+### Supuesto
+
+Los documentos de entrega describen el alcance implementado, pero no sustituyen pruebas de uso real ni confirman que las actividades academicas externas hayan ocurrido.
+
 ## 2026-09-10 — Completar el flujo de autorización de visitas
 
 ### Objetivo
