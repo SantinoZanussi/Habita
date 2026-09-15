@@ -2,6 +2,70 @@
 
 Registro de continuidad para trabajar desde distintas computadoras y con distintas sesiones de IA. Las entradas nuevas van arriba. Cada agente debe leer `AGENTS.md` y completar su entrada al terminar.
 
+## 2026-09-15 - Logo y acceso de la APK online
+
+- Objetivo: corregir el logo blanco y diagnosticar el rechazo de inicio de sesion sin repetir pruebas generales.
+- Verificado: el login aplica `color: Colors.white` a un PNG opaco; Firebase Authentication muestra que `habita-complejos-goiburu` no tiene usuarios. Los perfiles precargados corresponden al emulador.
+- Verificado: [login.dart](../mobile/lib/presentacion/login.dart) muestra isotipo sin tinte blanco, con tamano fijo, campos vacios en modo online y errores de acceso diferenciados. Los perfiles demo siguen solo en emuladores. Las dos pruebas focalizadas de [login_test.dart](../mobile/test/login_test.dart) pasaron.
+- Verificado: APK release recompilada correctamente en 232,9 segundos, 71,1 MiB, en `mobile/build/app/outputs/flutter-apk/app-release.apk`.
+- Verificado: el usuario autorizo explicitamente Firebase CLI y las dos cuentas demo con sus accesos locales. Se conecto CLI con retorno local en puerto 9005; la deteccion automatica de puerto no completaba. No se guardaron claves en el repositorio.
+- Verificado: [preparar-demo-online.mjs](../tools/preparar-demo-online.mjs) creo solo residente y guardia, sus perfiles, Torre del Parque y unidad 3A. Se comprobo inicio de sesion real y claims de ambos. El script es create-only para documentos, no resetea passwords, no ejecuta el seed, no crea cuentas administrativas ni deudas/pagos. El primer chequeo fallo por scopes indefinidos de CLI; se corrigio usando los scopes ya autorizados y la vista previa posterior paso.
+- Pendiente: instalar esta APK actualizada y probar el ingreso en dispositivo. No se verificaron camara, QR ni notificaciones fisicas. El escenario online es minimo: una unidad sin movimientos, no una copia de los 152 departamentos del emulador. Nunca usar estas credenciales publicas demo con datos reales.
+- Supuesto: se necesitan cuentas de residente y guardia para la demostracion en telefonos.
+
+## 2026-09-15 - Icono Android de Habita
+
+Objetivo: reemplazar el icono generico de la APK por el isotipo existente, conservando los cambios locales anteriores.
+
+- Verificado: el manifest usa `@mipmap/ic_launcher`; se prepararon recursos para las cinco densidades mediante [generar-icono-android.ps1](../tools/generar-icono-android.ps1), sin nuevas dependencias. Nombre visible: Habita.
+- Verificado: la APK posterior incluye los recursos Android de la marca y el nombre visible Habita. Se inspecciono visualmente el PNG generado; falta comprobacion en launcher fisico.
+- Supuesto: se mantiene el isotipo original, sin redisenar la marca.
+
+## 2026-09-15 - Generacion de APK Android
+
+### Objetivo y estado inicial
+
+Generar una APK instalable conectada a Firebase y Render usando la configuracion local ya preparada. Se conservan los cambios sin commit de la correccion anterior.
+
+### Verificado
+
+- Flutter 3.47.4 responde correctamente al ejecutarlo con acceso autorizado a su cache fuera del workspace. Los intentos anteriores restringidos no demostraban un problema del SDK.
+- `flutter analyze --no-pub`: sin incidencias. Se corrigio el orden de propiedades de un boton en [residente_shell.dart](../mobile/lib/presentacion/residente_shell.dart).
+- `flutter test --no-pub`: las cuatro pruebas pasaron.
+- Flutter actualizo [analysis_options.yaml](../mobile/analysis_options.yaml) y [pubspec.lock](../mobile/pubspec.lock) para su SDK actual. La configuracion Firebase local permanece ignorada por Git, con emuladores deshabilitados y API de Render.
+- Compilacion iniciada desde `mobile`: `flutter build apk --release --dart-define-from-file=firebase.production.json`. Gradle instalo NDK, Build Tools, plataformas Android y CMake faltantes usando licencias existentes.
+- El primer proceso termino sin APK ni diagnostico final. Se redujo el heap de Gradle de 8 GB a 2 GB y sus workers a dos en [gradle.properties](../mobile/android/gradle.properties). El reintento con `--no-pub` termino correctamente en 234,5 segundos: [app-release.apk](../mobile/build/app/outputs/flutter-apk/app-release.apk), 74.622.775 bytes (71,2 MiB). Se comprobo que el archivo existe; no se repitieron suites.
+- Se registro en [AGENTS.md](../AGENTS.md) la preferencia del usuario: pruebas indispensables por cambio y acordar revisiones profundas al cierre de jornada o entrega.
+
+### Pendiente
+
+Instalar y probar en un telefono fisico (no hay uno conectado). La firma configurada es de desarrollo, apta para instalar el TP, no una firma de publicacion en Play Store. Gradle, AGP y Kotlin emitieron advertencias de soporte futuro, sin bloquear la compilacion. Los cambios previos de backend/panel siguen pendientes de su verificacion final; las pruebas moviles no los validan. Los cambios locales no se publicaron en esta sesion; el APK es un artefacto local ignorado por Git.
+
+### Supuesto
+
+La APK se usara para la demostracion en dispositivos Android con cuentas de roles distintos.
+
+## 2026-09-15 - Correcciones de la revision final
+
+### Objetivo y estado inicial
+
+Implementar las correcciones solicitadas de contabilidad, avisos, panel y reservas, con pruebas de regresion. Inicio en `main`, limpio, con el informe de revision en un commit local pendiente de publicar por autenticacion.
+
+### Verificado
+
+- Se corrigio el modelo de cuenta para que cada cargo mensual exista una sola vez, se serializaron cierres y pagos por transaccion y se agrego bloqueo para saldos historicos que requieren conciliacion.
+- Se agregaron avisos dirigidos con validacion, reglas de lectura por unidad y aprobacion/rechazo de reservas.
+- El panel vuelve a consultar cobranza cuando cambia la revision de cuenta; la app permite elegir fecha, horario y asistentes, cancelar reservas y parametrizar el host del emulador en un telefono.
+- `npm run verificar` habia completado correctamente backend, reglas y build web antes de los ultimos cambios de cliente; las nuevas comprobaciones de backend pasaron 86 pruebas. Las nuevas pruebas de Firestore pasaron 17 casos dentro de la verificacion completa.
+
+### Pendiente
+
+Repetir build web y Flutter analyze/test fuera del bloqueo actual de procesos `spawn EPERM`; revisar visualmente reservas en navegador y telefono. Publicacion sujeta a autenticacion de GitHub. No se migraran saldos historicos de produccion sin conciliacion. Mercado Pago sigue pendiente de credenciales de prueba habilitadas por el proveedor.
+
+### Supuesto
+
+La autorizacion incluye corregir el producto y preparar su despliegue, pero no inventar credenciales, efectuar cobros reales ni dar por realizadas pruebas externas.
+
 ## 2026-09-15 - Revision del proyecto finalizado
 
 ### Objetivo y estado inicial

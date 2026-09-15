@@ -37,6 +37,8 @@ No borres cambios locales ni uses `git reset --hard` o `git checkout --` para li
 
 ## Verificación mínima
 
+Preferencia del usuario (2026-09-15): ejecutar solamente verificaciones indispensables y proporcionales al cambio. No repetir suites completas por cada ajuste. Los comandos siguientes son referencias para cambios de mayor alcance; usar pruebas focalizadas durante el trabajo y avisar cuando se recomiende una revision profunda al cierre de la jornada o antes de una entrega. Ejecutar esa revision cuando el usuario la solicite o acuerde.
+
 Después de cambios de backend o reglas:
 
 ```powershell

@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
-        android:label="habita"
+        android:label="Habita"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <meta-data

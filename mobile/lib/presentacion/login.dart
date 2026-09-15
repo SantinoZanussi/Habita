@@ -1,21 +1,38 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../nucleo/tema/tokens.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+    this.usarEmuladores = const bool.fromEnvironment(
+      'USE_FIREBASE_EMULATORS',
+      defaultValue: !kReleaseMode,
+    ),
+  });
+  final bool usarEmuladores;
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _email = TextEditingController(text: 'residente@habita.demo');
-  final _password = TextEditingController(text: 'Habita2026!');
+  late final _email = TextEditingController(
+    text: widget.usarEmuladores ? 'residente@habita.demo' : '',
+  );
+  late final _password = TextEditingController(
+    text: widget.usarEmuladores ? 'Habita2026!' : '',
+  );
   bool _cargando = false;
   String? _error;
 
   Future<void> _ingresar() async {
+    if (_cargando) return;
+    if (_email.text.trim().isEmpty || _password.text.isEmpty) {
+      setState(() => _error = 'Completá tu correo y contraseña.');
+      return;
+    }
     setState(() {
       _cargando = true;
       _error = null;
@@ -26,14 +43,33 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _password.text,
       );
     } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
       setState(
-        () => _error = error.code == 'invalid-credential'
-            ? 'El correo o la contraseña no son correctos.'
-            : 'No pudimos iniciar sesión. Revisá los emuladores e intentá de nuevo.',
+        () => _error = switch (error.code) {
+          'invalid-credential' || 'user-not-found' || 'wrong-password' =>
+            'El correo o la contraseña no son correctos. Usá la cuenta que te asignó la administración.',
+          'invalid-email' => 'Revisá el formato del correo electrónico.',
+          'network-request-failed' =>
+            'No hay conexión. Revisá internet e intentá de nuevo.',
+          'too-many-requests' =>
+            'Hubo demasiados intentos. Esperá unos minutos.',
+          'user-disabled' =>
+            'La cuenta está deshabilitada. Contactá a la administración.',
+          'operation-not-allowed' =>
+            'El acceso por correo no está habilitado. Contactá a la administración.',
+          _ => 'No pudimos iniciar sesión. Intentá de nuevo más tarde.',
+        },
       );
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
   }
 
   @override
@@ -55,13 +91,24 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Image.asset(
-                      'assets/brand/habita-logotipo.png',
-                      width: 190,
-                      color: Colors.white,
-                    ),
+                  Row(
+                    children: [
+                      Image.asset(
+                        'assets/brand/habita-isotipo.png',
+                        width: 72,
+                        height: 72,
+                        semanticLabel: 'Isotipo de Habita',
+                      ),
+                      const SizedBox(width: 16),
+                      const Text(
+                        'HABITA',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 42),
                   Text(
@@ -90,38 +137,43 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: HabitaTipografia.titulo2,
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            'Elegí un perfil demo o usá tus credenciales.',
-                            style: TextStyle(color: HabitaColores.textoSuave),
+                          Text(
+                            widget.usarEmuladores
+                                ? 'Elegí un perfil demo o usá tus credenciales.'
+                                : 'Usá la cuenta asignada por tu administración.',
+                            style: const TextStyle(
+                              color: HabitaColores.textoSuave,
+                            ),
                           ),
                           const SizedBox(height: 20),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _Perfil(
-                                texto: 'Residente',
-                                activo: _email.text.startsWith('residente'),
-                                onTap: () => setState(
-                                  () => _email.text = 'residente@habita.demo',
+                          if (widget.usarEmuladores)
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _Perfil(
+                                  texto: 'Residente',
+                                  activo: _email.text.startsWith('residente'),
+                                  onTap: () => setState(
+                                    () => _email.text = 'residente@habita.demo',
+                                  ),
                                 ),
-                              ),
-                              _Perfil(
-                                texto: 'Guardia',
-                                activo: _email.text.startsWith('guardia'),
-                                onTap: () => setState(
-                                  () => _email.text = 'guardia@habita.demo',
+                                _Perfil(
+                                  texto: 'Guardia',
+                                  activo: _email.text.startsWith('guardia'),
+                                  onTap: () => setState(
+                                    () => _email.text = 'guardia@habita.demo',
+                                  ),
                                 ),
-                              ),
-                              _Perfil(
-                                texto: 'Obra',
-                                activo: _email.text.startsWith('obra'),
-                                onTap: () => setState(
-                                  () => _email.text = 'obra@habita.demo',
+                                _Perfil(
+                                  texto: 'Obra',
+                                  activo: _email.text.startsWith('obra'),
+                                  onTap: () => setState(
+                                    () => _email.text = 'obra@habita.demo',
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
                           const SizedBox(height: 18),
                           TextField(
                             controller: _email,
@@ -168,11 +220,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : const Text('Ingresar'),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
-                            'Demo: Habita2026!',
-                            textAlign: TextAlign.center,
-                            style: HabitaTipografia.micro,
-                          ),
+                          if (widget.usarEmuladores)
+                            const Text(
+                              'Demo: Habita2026!',
+                              textAlign: TextAlign.center,
+                              style: HabitaTipografia.micro,
+                            ),
                         ],
                       ),
                     ),
