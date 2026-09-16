@@ -24,6 +24,8 @@ No borres cambios locales ni uses `git reset --hard` o `git checkout --` para li
 
 ## Reglas de trabajo
 
+- Preferencia del usuario (2026-09-16): priorizar que las funciones operen con Render y Firebase reales. Las pruebas locales son un control previo, no evidencia de publicación. Verificar servicios online y distinguir código preparado, despliegue publicado y prueba con sesión/dispositivo. No crear datos reales ni pagos para reemplazar una prueba local sin autorización específica.
+
 - Trabajá sobre `main` y conservá el remoto `origin`. Antes de empezar, sincronizá el árbol con `git pull --rebase` si no hay cambios locales que proteger.
 - Antes de una decisión importante, buscá la evidencia en el código y en la documentación. No declares una fase terminada sólo porque compila.
 - La lógica sensible vive en el backend. El cliente no debe calcular ni escribir por su cuenta saldos, permisos, eventos de acceso, cierres de liquidación, roles ni avances de obra.

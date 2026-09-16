@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../nucleo/api.dart';
@@ -142,7 +143,16 @@ class InicioResidente extends StatelessWidget {
                         ),
                       ),
                       IconButton.filledTonal(
-                        onPressed: () {},
+                        tooltip: 'Ver notificaciones',
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => _NotificacionesPantalla(
+                              complejoId: complejoId,
+                              unidadId: unidadId,
+                            ),
+                          ),
+                        ),
                         icon: const Icon(Icons.notifications_none_rounded),
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.white.withValues(alpha: .12),
@@ -219,7 +229,7 @@ class InicioResidente extends StatelessWidget {
                     ),
                   ],
                 ),
-                _Novedades(complejoId: complejoId),
+                _Novedades(complejoId: complejoId, unidadId: unidadId),
                 if (complejo['modulosActivos']?['obras'] == true) ...[
                   const SizedBox(height: 24),
                   const Text(
@@ -366,17 +376,28 @@ class _Accion extends StatelessWidget {
   );
 }
 
+Query<Map<String, dynamic>> avisosResidente(
+  String complejoId,
+  String unidadId, {
+  FirebaseFirestore? firestore,
+}) => (firestore ?? FirebaseFirestore.instance)
+    .collection('complejos/$complejoId/notificaciones')
+    .where(
+      Filter.or(
+        Filter('destinatarios', isEqualTo: 'todos'),
+        Filter('destinatarios', arrayContains: unidadId),
+      ),
+    )
+    .orderBy('enviadaEn', descending: true);
+
 class _Novedades extends StatelessWidget {
-  const _Novedades({required this.complejoId});
+  const _Novedades({required this.complejoId, required this.unidadId});
   final String complejoId;
+  final String unidadId;
   @override
   Widget build(BuildContext context) =>
       StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('complejos/$complejoId/notificaciones')
-            .orderBy('enviadaEn', descending: true)
-            .limit(3)
-            .snapshots(),
+        stream: avisosResidente(complejoId, unidadId).limit(3).snapshots(),
         builder: (context, snap) {
           if (snap.hasError) {
             return const ErrorCarga(
@@ -384,6 +405,11 @@ class _Novedades extends StatelessWidget {
             );
           }
           if (!snap.hasData) return const LinearProgressIndicator();
+          if (snap.data!.docs.isEmpty) {
+            return const HabitaCard(
+              child: Text('Todavía no hay novedades para tu unidad.'),
+            );
+          }
           return Column(
             children: snap.data!.docs
                 .map(
@@ -1065,19 +1091,96 @@ class _Menu extends StatelessWidget {
   );
 }
 
-class AmenitiesScreen extends StatelessWidget {
+class AmenitiesScreen extends StatefulWidget {
   const AmenitiesScreen({
     super.key,
     required this.complejoId,
     required this.unidadId,
+    this.firestore,
+    this.api,
   });
   final String complejoId;
   final String unidadId;
+  final FirebaseFirestore? firestore;
+  final HabitaApi? api;
+  @override
+  State<AmenitiesScreen> createState() => _AmenitiesScreenState();
+}
+
+class _AmenitiesScreenState extends State<AmenitiesScreen> {
+  late DateTime _desde = DateUtils.dateOnly(
+    DateTime.now(),
+  ).add(const Duration(days: 1, hours: 10));
+  int _horas = 2;
+  int _asistentes = 1;
+  bool _operando = false;
+  String get complejoId => widget.complejoId;
+  String get unidadId => widget.unidadId;
+  FirebaseFirestore get _firestore =>
+      widget.firestore ?? FirebaseFirestore.instance;
+  HabitaApi get _api => widget.api ?? HabitaApi();
+
+  Future<void> _elegirHorario() async {
+    final hoy = DateUtils.dateOnly(DateTime.now());
+    final fecha = await showDatePicker(
+      context: context,
+      initialDate: _desde.isBefore(hoy) ? hoy : _desde,
+      firstDate: hoy,
+      lastDate: hoy.add(const Duration(days: 365)),
+    );
+    if (fecha == null || !mounted) return;
+    final hora = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_desde),
+    );
+    if (hora == null || !mounted) return;
+    setState(
+      () => _desde = DateTime(
+        fecha.year,
+        fecha.month,
+        fecha.day,
+        hora.hour,
+        hora.minute,
+      ),
+    );
+  }
+
+  Future<void> _cancelar(String reservaId) async {
+    if (_operando) return;
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Cancelar esta reserva?'),
+        content: const Text('Se liberarán los lugares para otros vecinos.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Volver'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cancelar reserva'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted || _operando) return;
+    setState(() => _operando = true);
+    try {
+      await _api.delete('/complejos/$complejoId/amenities/reservas/$reservaId');
+      if (mounted) mostrarExito(context, 'Reserva cancelada.');
+    } catch (error) {
+      if (mounted) mostrarError(context, error);
+    } finally {
+      if (mounted) setState(() => _operando = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Reservas')),
     body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
+      stream: _firestore
           .collection('complejos/$complejoId/amenities')
           .snapshots(),
       builder: (context, snap) {
@@ -1088,7 +1191,7 @@ class AmenitiesScreen extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
+          stream: _firestore
               .collection('complejos/$complejoId/reservas')
               .where('estado', whereIn: const ['confirmada', 'pendiente'])
               .snapshots(),
@@ -1101,23 +1204,143 @@ class AmenitiesScreen extends StatelessWidget {
             if (!reservasSnap.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
-            final desde = _inicioReservaDemo();
-            final hasta = desde.add(const Duration(hours: 2));
+            final desde = _desde;
+            final hasta = desde.add(Duration(hours: _horas));
+            final propias =
+                reservasSnap.data!.docs
+                    .where(
+                      (r) =>
+                          r.data()['unidadId'] == unidadId &&
+                          (_fechaHora(
+                                r.data()['hasta'],
+                              )?.isAfter(DateTime.now()) ??
+                              false),
+                    )
+                    .toList()
+                  ..sort(
+                    (a, b) => (_fechaHora(a.data()['desde']) ?? DateTime(0))
+                        .compareTo(
+                          _fechaHora(b.data()['desde']) ?? DateTime(0),
+                        ),
+                  );
             return ListView(
               padding: const EdgeInsets.all(18),
-              children: snap.data!.docs
-                  .map(
-                    (d) => _AmenityCard(
-                      amenity: d,
-                      reservas: reservasSnap.data!.docs,
-                      unidadId: unidadId,
-                      desde: desde,
-                      hasta: hasta,
-                      onReservar: () =>
-                          _reservar(context, d, desde: desde, hasta: hasta),
-                    ),
-                  )
-                  .toList(),
+              children: [
+                HabitaCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Elegí tu reserva',
+                        style: HabitaTipografia.titulo3,
+                      ),
+                      Text(
+                        'Desde ${DateFormat('dd/MM/yyyy HH:mm').format(desde)}',
+                      ),
+                      Text(
+                        'Hasta ${DateFormat('dd/MM/yyyy HH:mm').format(hasta)}',
+                      ),
+                      TextButton.icon(
+                        onPressed: _operando ? null : _elegirHorario,
+                        icon: const Icon(Icons.event_outlined),
+                        label: const Text('Cambiar fecha y hora'),
+                      ),
+                      DropdownButton<int>(
+                        value: _horas,
+                        isExpanded: true,
+                        items: List.generate(
+                          8,
+                          (i) => DropdownMenuItem(
+                            value: i + 1,
+                            child: Text(
+                              'Duración: ${i + 1} ${i == 0 ? 'hora' : 'horas'}',
+                            ),
+                          ),
+                        ),
+                        onChanged: _operando
+                            ? null
+                            : (v) => setState(() => _horas = v!),
+                      ),
+                      Row(
+                        children: [
+                          Expanded(child: Text('Asistentes: $_asistentes')),
+                          IconButton(
+                            tooltip: 'Quitar asistente',
+                            onPressed: _operando || _asistentes == 1
+                                ? null
+                                : () => setState(() => _asistentes--),
+                            icon: const Icon(Icons.remove_circle_outline),
+                          ),
+                          IconButton(
+                            tooltip: 'Agregar asistente',
+                            onPressed: _operando
+                                ? null
+                                : () => setState(() => _asistentes++),
+                            icon: const Icon(Icons.add_circle_outline),
+                          ),
+                        ],
+                      ),
+                      const Text(
+                        'El cupo se confirma al enviar la reserva.',
+                        style: HabitaTipografia.micro,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (snap.data!.docs.isEmpty)
+                  const Text(
+                    'Todavía no hay espacios disponibles para reservar.',
+                  ),
+                ...snap.data!.docs.map(
+                  (d) => _AmenityCard(
+                    amenity: d,
+                    reservas: reservasSnap.data!.docs,
+                    unidadId: unidadId,
+                    desde: desde,
+                    hasta: hasta,
+                    asistentes: _asistentes,
+                    operando: _operando,
+                    onReservar: () =>
+                        _reservar(context, d, desde: desde, hasta: hasta),
+                  ),
+                ),
+                if (propias.isNotEmpty) ...[
+                  const Text(
+                    'Mis próximas reservas',
+                    style: HabitaTipografia.titulo3,
+                  ),
+                  ...propias.map((r) {
+                    final datos = r.data();
+                    final nombres = snap.data!.docs.where(
+                      (a) => a.id == datos['amenityId'],
+                    );
+                    final inicio = _fechaHora(datos['desde']);
+                    return HabitaCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            nombres.isEmpty
+                                ? 'Espacio reservado'
+                                : nombres.first.data()['nombre']?.toString() ??
+                                      'Espacio reservado',
+                            style: HabitaTipografia.etiqueta,
+                          ),
+                          Text(
+                            '${inicio == null ? 'Fecha no disponible' : DateFormat('dd/MM/yyyy HH:mm').format(inicio)} · ${datos['asistentes'] ?? 1} asistentes',
+                          ),
+                          EstadoChip(_estado(datos['estado'])),
+                          TextButton(
+                            onPressed: _operando ? null : () => _cancelar(r.id),
+                            child: const Text('Cancelar reserva'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ],
             );
           },
         );
@@ -1130,24 +1353,32 @@ class AmenitiesScreen extends StatelessWidget {
     required DateTime desde,
     required DateTime hasta,
   }) async {
+    if (_operando) return;
+    if (!desde.isAfter(DateTime.now())) {
+      mostrarError(context, 'Elegí una fecha y hora futuras.');
+      return;
+    }
+    setState(() => _operando = true);
     try {
-      final respuesta = await HabitaApi()
+      final respuesta = await _api
           .post('/complejos/$complejoId/amenities/${amenity.id}/reservas', {
             'unidadId': unidadId,
-            'desde': desde.toIso8601String(),
-            'hasta': hasta.toIso8601String(),
-            'asistentes': 2,
+            'desde': desde.toUtc().toIso8601String(),
+            'hasta': hasta.toUtc().toIso8601String(),
+            'asistentes': _asistentes,
           });
       if (context.mounted) {
         mostrarExito(
           context,
           respuesta['estado'] == 'pendiente'
-              ? 'Solicitud enviada para mañana.'
-              : 'Reserva confirmada para mañana.',
+              ? 'Solicitud enviada. Esperá la aprobación de la administración.'
+              : 'Reserva confirmada.',
         );
       }
     } catch (e) {
       if (context.mounted) mostrarError(context, e);
+    } finally {
+      if (mounted) setState(() => _operando = false);
     }
   }
 }
@@ -1160,6 +1391,8 @@ class _AmenityCard extends StatelessWidget {
     required this.desde,
     required this.hasta,
     required this.onReservar,
+    required this.asistentes,
+    required this.operando,
   });
   final QueryDocumentSnapshot<Map<String, dynamic>> amenity;
   final List<QueryDocumentSnapshot<Map<String, dynamic>>> reservas;
@@ -1167,6 +1400,8 @@ class _AmenityCard extends StatelessWidget {
   final DateTime desde;
   final DateTime hasta;
   final VoidCallback onReservar;
+  final int asistentes;
+  final bool operando;
 
   @override
   Widget build(BuildContext context) {
@@ -1190,7 +1425,7 @@ class _AmenityCard extends StatelessWidget {
     final propia = superpuestas.any(
       (documento) => documento.data()['unidadId'] == unidadId,
     );
-    final agotado = disponibles == 0;
+    final agotado = disponibles < asistentes;
     final estado = propia
         ? 'Ya reservada'
         : agotado
@@ -1234,7 +1469,7 @@ class _AmenityCard extends StatelessWidget {
                     style: HabitaTipografia.micro,
                   ),
                   Text(
-                    'Disponibles mañana: $disponibles de $capacidad',
+                    'Disponibles en este horario: $disponibles de $capacidad',
                     style: HabitaTipografia.micro,
                   ),
                   const SizedBox(height: 6),
@@ -1251,7 +1486,7 @@ class _AmenityCard extends StatelessWidget {
               ),
             ),
             FilledButton.tonal(
-              onPressed: propia || agotado ? null : onReservar,
+              onPressed: propia || agotado || operando ? null : onReservar,
               child: Text(
                 propia
                     ? 'Reservada'
@@ -1266,9 +1501,6 @@ class _AmenityCard extends StatelessWidget {
     );
   }
 }
-
-DateTime _inicioReservaDemo() =>
-    DateTime.now().add(const Duration(days: 1, hours: 2));
 
 DateTime? _fechaHora(dynamic valor) {
   if (valor is Timestamp) return valor.toDate();
@@ -1376,6 +1608,7 @@ class _NuevoReclamoScreenState extends State<NuevoReclamoScreen> {
   XFile? foto;
   bool cargando = false;
   Future<void> _enviar() async {
+    if (cargando) return;
     if (descripcion.text.trim().length < 10) {
       mostrarError(context, 'Describí el problema con al menos 10 caracteres.');
       return;
@@ -1405,6 +1638,12 @@ class _NuevoReclamoScreenState extends State<NuevoReclamoScreen> {
     } finally {
       if (mounted) setState(() => cargando = false);
     }
+  }
+
+  @override
+  void dispose() {
+    descripcion.dispose();
+    super.dispose();
   }
 
   @override
@@ -1520,91 +1759,91 @@ String _fecha(dynamic valor) {
 String _estado(dynamic valor) =>
     (valor?.toString() ?? '—').replaceAll('_', ' ');
 
-
 class _NotificacionesPantalla extends StatelessWidget {
-  const _NotificacionesPantalla({required this.complejoId, required this.unidadId});
+  const _NotificacionesPantalla({
+    required this.complejoId,
+    required this.unidadId,
+  });
   final String complejoId;
   final String unidadId;
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Historial de notificaciones')),
-        body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('complejos//notificaciones')
-              .where(Filter.or(
-                Filter('destinatarios', isEqualTo: 'todos'),
-                Filter('destinatarios', arrayContains: unidadId),
-              ))
-              .orderBy('enviadaEn', descending: true)
-              .snapshots(),
-          builder: (context, snap) {
-            if (snap.hasError) {
-              return const ErrorCarga(
-                mensaje: 'No pudimos cargar las notificaciones.',
-              );
-            }
-            if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-            
-            final docs = snap.data!.docs;
-            if (docs.isEmpty) {
-              return const Center(child: Text('No hay notificaciones recientes.'));
-            }
+    appBar: AppBar(title: const Text('Historial de notificaciones')),
+    body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: avisosResidente(complejoId, unidadId).snapshots(),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return const ErrorCarga(
+            mensaje: 'No pudimos cargar las notificaciones.',
+          );
+        }
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-            return ListView.separated(
-              padding: const EdgeInsets.all(18),
-              itemCount: docs.length,
-              separatorBuilder: (_, dynamic _2) => const SizedBox(height: 10),
-              itemBuilder: (context, i) {
-                final d = docs[i].data();
-                return HabitaCard(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F2FB),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.notifications_active_rounded,
-                          color: HabitaColores.marcaActivo,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              d['titulo']?.toString() ?? 'Notificación',
-                              style: HabitaTipografia.etiqueta,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              d['cuerpo']?.toString() ?? '',
-                              style: HabitaTipografia.micro,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              d['enviadaEn'] != null
-                                  ? (d['enviadaEn'] as Timestamp).toDate().toString().split('.')[0]
-                                  : '',
-                              style: HabitaTipografia.micro.copyWith(
-                                color: Colors.black54,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+        final docs = snap.data!.docs;
+        if (docs.isEmpty) {
+          return const Center(child: Text('No hay notificaciones recientes.'));
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(18),
+          itemCount: docs.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 10),
+          itemBuilder: (context, i) {
+            final d = docs[i].data();
+            return HabitaCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F2FB),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.notifications_active_rounded,
+                      color: HabitaColores.marcaActivo,
+                    ),
                   ),
-                );
-              },
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          d['titulo']?.toString() ?? 'Notificación',
+                          style: HabitaTipografia.etiqueta,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          d['cuerpo']?.toString() ?? '',
+                          style: HabitaTipografia.micro,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          d['enviadaEn'] != null
+                              ? (d['enviadaEn'] as Timestamp)
+                                    .toDate()
+                                    .toString()
+                                    .split('.')[0]
+                              : '',
+                          style: HabitaTipografia.micro.copyWith(
+                            color: Colors.black54,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             );
           },
-        ),
-      );
+        );
+      },
+    ),
+  );
 }

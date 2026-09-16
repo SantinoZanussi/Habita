@@ -6,7 +6,8 @@ import '../nucleo/tema/tokens.dart';
 final _pesos = NumberFormat.currency(
   locale: 'es_AR',
   symbol: r'$ ',
-  decimalDigits: 0,
+  decimalDigits: 2,
+  customPattern: '¤#,##0.00',
 );
 String pesos(num centavos) => _pesos.format(centavos / 100);
 

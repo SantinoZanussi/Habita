@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 
@@ -14,12 +15,23 @@ class ErrorApi implements Exception {
 }
 
 class HabitaApi {
-  HabitaApi({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
+  HabitaApi({
+    FirebaseAuth? auth,
+    this.client,
+    this.tiempoEspera = const Duration(seconds: 75),
+  }) : _auth = auth ?? FirebaseAuth.instance;
   final FirebaseAuth _auth;
+  final http.Client? client;
+  final Duration tiempoEspera;
 
   String get baseUrl {
     const definida = String.fromEnvironment('API_BASE_URL');
     if (definida.isNotEmpty) return definida;
+    const emuladores = bool.fromEnvironment(
+      'USE_FIREBASE_EMULATORS',
+      defaultValue: !kReleaseMode,
+    );
+    if (!emuladores) return 'https://habita-api-goiburu.onrender.com/api';
     if (kIsWeb) return 'http://127.0.0.1:8787/api';
     const host = String.fromEnvironment('API_HOST');
     if (host.isNotEmpty) return 'http://$host:8787/api';
@@ -51,41 +63,67 @@ class HabitaApi {
         codigo: 'NO_AUTENTICADO',
       );
     }
-    final token = await usuario.getIdToken();
+    String? token;
+    try {
+      token = await usuario.getIdToken().timeout(const Duration(seconds: 15));
+    } catch (_) {
+      throw ErrorApi(
+        'No pudimos validar tu sesión. Revisá tu conexión y volvé a ingresar si el problema continúa.',
+        codigo: 'SESION_NO_VALIDADA',
+      );
+    }
+    if (token == null || token.isEmpty) {
+      throw ErrorApi(
+        'Tu sesión terminó. Volvé a ingresar.',
+        codigo: 'NO_AUTENTICADO',
+      );
+    }
     http.Response respuesta;
+    final cliente = client ?? http.Client();
     try {
       final uri = Uri.parse('$baseUrl$ruta');
       final headers = <String, String>{
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       };
-      respuesta = switch (metodo) {
-        'GET' =>
-          await http
-              .get(uri, headers: headers)
-              .timeout(const Duration(seconds: 12)),
-        'PATCH' =>
-          await http
-              .patch(uri, headers: headers, body: jsonEncode(cuerpo ?? {}))
-              .timeout(const Duration(seconds: 12)),
-        'DELETE' =>
-          await http.delete(uri, headers: headers)
-              .timeout(const Duration(seconds: 12)),
-        _ =>
-          await http
-              .post(uri, headers: headers, body: jsonEncode(cuerpo ?? {}))
-              .timeout(const Duration(seconds: 12)),
-      };
+      final peticion = http.Request(metodo, uri)..headers.addAll(headers);
+      if (metodo == 'POST' || metodo == 'PATCH') {
+        peticion.body = jsonEncode(cuerpo ?? {});
+      }
+      respuesta = await cliente
+          .send(peticion)
+          .then(http.Response.fromStream)
+          .timeout(tiempoEspera);
+    } on TimeoutException {
+      throw ErrorApi(
+        metodo == 'GET'
+            ? 'El servidor está tardando en responder. Esperá unos instantes y volvé a consultar.'
+            : 'No recibimos la confirmación del servidor. Revisá si la operación aparece antes de repetirla.',
+        codigo: 'TIEMPO_AGOTADO',
+      );
     } catch (_) {
       throw ErrorApi(
-        'No pudimos conectar. Revisá tu conexión e intentá nuevamente.',
+        metodo == 'GET'
+            ? 'No pudimos conectar. Revisá tu conexión e intentá nuevamente.'
+            : 'Se interrumpió la conexión. Revisá si la operación aparece antes de repetirla.',
         codigo: 'SIN_CONEXION',
+      );
+    } finally {
+      if (client == null) cliente.close();
+    }
+    if ([502, 503, 504].contains(respuesta.statusCode)) {
+      throw ErrorApi(
+        metodo == 'GET'
+            ? 'El servidor no está disponible por el momento. Volvé a consultar en unos instantes.'
+            : 'El servidor no pudo confirmar la operación. Revisá su estado antes de repetirla.',
+        codigo: 'SERVIDOR_NO_DISPONIBLE',
       );
     }
     Map<String, dynamic> json;
     try {
-      json = (jsonDecode(respuesta.body.isEmpty ? '{}' : respuesta.body)
-          as Map<String, dynamic>);
+      json =
+          (jsonDecode(respuesta.body.isEmpty ? '{}' : respuesta.body)
+              as Map<String, dynamic>);
     } catch (_) {
       throw ErrorApi(
         'El servidor devolvió una respuesta inválida. Intentá nuevamente.',
@@ -93,10 +131,14 @@ class HabitaApi {
       );
     }
     if (respuesta.statusCode < 200 || respuesta.statusCode >= 300) {
-      final error = json['error'] as Map<String, dynamic>?;
+      final error = json['error'] is Map<String, dynamic>
+          ? json['error'] as Map<String, dynamic>
+          : null;
       throw ErrorApi(
-        error?['mensaje'] as String? ?? 'La operación no se pudo completar.',
-        codigo: error?['codigo'] as String?,
+        error?['mensaje'] is String
+            ? error!['mensaje'] as String
+            : 'La operación no se pudo completar.',
+        codigo: error?['codigo'] is String ? error!['codigo'] as String : null,
       );
     }
     return json;

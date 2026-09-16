@@ -7,12 +7,14 @@ import '../nucleo/tema/tokens.dart';
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
+    this.auth,
     this.usarEmuladores = const bool.fromEnvironment(
       'USE_FIREBASE_EMULATORS',
       defaultValue: !kReleaseMode,
     ),
   });
   final bool usarEmuladores;
+  final FirebaseAuth? auth;
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -25,7 +27,62 @@ class _LoginScreenState extends State<LoginScreen> {
     text: widget.usarEmuladores ? 'Habita2026!' : '',
   );
   bool _cargando = false;
+  bool _mostrarPassword = false;
   String? _error;
+  String? _aviso;
+
+  FirebaseAuth get _auth => widget.auth ?? FirebaseAuth.instance;
+
+  Future<void> _recuperarPassword() async {
+    if (_cargando) return;
+    final email = _email.text.trim();
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+      setState(() {
+        _error = 'Ingresá un correo válido para recuperar tu contraseña.';
+        _aviso = null;
+      });
+      return;
+    }
+    setState(() {
+      _cargando = true;
+      _error = null;
+      _aviso = null;
+    });
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      if (mounted) _mostrarAvisoRecuperacion();
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      if (error.code == 'user-not-found') {
+        _mostrarAvisoRecuperacion();
+      } else {
+        setState(
+          () => _error = switch (error.code) {
+            'invalid-email' => 'Revisá el formato del correo electrónico.',
+            'network-request-failed' =>
+              'No hay conexión. Revisá internet e intentá de nuevo.',
+            'too-many-requests' =>
+              'Hubo demasiados intentos. Esperá unos minutos.',
+            _ => 'No pudimos enviar el correo. Intentá de nuevo más tarde.',
+          },
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error =
+              'No pudimos enviar el correo. Intentá de nuevo más tarde.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  void _mostrarAvisoRecuperacion() => setState(() {
+    _aviso =
+        'Si el correo tiene una cuenta, recibirás un enlace para cambiar tu contraseña. Revisá también spam.';
+  });
 
   Future<void> _ingresar() async {
     if (_cargando) return;
@@ -36,9 +93,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _cargando = true;
       _error = null;
+      _aviso = null;
     });
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await _auth.signInWithEmailAndPassword(
         email: _email.text.trim(),
         password: _password.text,
       );
@@ -177,6 +235,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 18),
                           TextField(
                             controller: _email,
+                            enabled: !_cargando,
+                            textInputAction: TextInputAction.next,
+                            autocorrect: false,
                             keyboardType: TextInputType.emailAddress,
                             autofillHints: const [AutofillHints.username],
                             decoration: const InputDecoration(
@@ -187,14 +248,42 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 12),
                           TextField(
                             controller: _password,
-                            obscureText: true,
+                            enabled: !_cargando,
+                            obscureText: !_mostrarPassword,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            textInputAction: TextInputAction.done,
                             autofillHints: const [AutofillHints.password],
                             onSubmitted: (_) => _ingresar(),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Contraseña',
-                              prefixIcon: Icon(Icons.lock_outline_rounded),
+                              prefixIcon: const Icon(
+                                Icons.lock_outline_rounded,
+                              ),
+                              suffixIcon: IconButton(
+                                tooltip: _mostrarPassword
+                                    ? 'Ocultar contraseña'
+                                    : 'Mostrar contraseña',
+                                onPressed: () => setState(
+                                  () => _mostrarPassword = !_mostrarPassword,
+                                ),
+                                icon: Icon(
+                                  _mostrarPassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                ),
+                              ),
                             ),
                           ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _cargando ? null : _recuperarPassword,
+                              child: const Text('Olvidé mi contraseña'),
+                            ),
+                          ),
+                          if (_aviso != null)
+                            Semantics(liveRegion: true, child: Text(_aviso!)),
                           if (_error != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 12),
