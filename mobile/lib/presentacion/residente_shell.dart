@@ -1019,7 +1019,15 @@ class MasResidenteScreen extends StatelessWidget {
         _Menu(
           icono: Icons.notifications_outlined,
           titulo: 'Notificaciones',
-          onTap: () {},
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => _NotificacionesPantalla(
+                complejoId: complejoId,
+                unidadId: unidadId,
+              ),
+            ),
+          ),
         ),
         _Menu(
           icono: Icons.help_outline_rounded,
@@ -1511,3 +1519,92 @@ String _fecha(dynamic valor) {
 
 String _estado(dynamic valor) =>
     (valor?.toString() ?? '—').replaceAll('_', ' ');
+
+
+class _NotificacionesPantalla extends StatelessWidget {
+  const _NotificacionesPantalla({required this.complejoId, required this.unidadId});
+  final String complejoId;
+  final String unidadId;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Historial de notificaciones')),
+        body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('complejos//notificaciones')
+              .where(Filter.or(
+                Filter('destinatarios', isEqualTo: 'todos'),
+                Filter('destinatarios', arrayContains: unidadId),
+              ))
+              .orderBy('enviadaEn', descending: true)
+              .snapshots(),
+          builder: (context, snap) {
+            if (snap.hasError) {
+              return const ErrorCarga(
+                mensaje: 'No pudimos cargar las notificaciones.',
+              );
+            }
+            if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+            
+            final docs = snap.data!.docs;
+            if (docs.isEmpty) {
+              return const Center(child: Text('No hay notificaciones recientes.'));
+            }
+
+            return ListView.separated(
+              padding: const EdgeInsets.all(18),
+              itemCount: docs.length,
+              separatorBuilder: (_, dynamic _2) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                final d = docs[i].data();
+                return HabitaCard(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F2FB),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.notifications_active_rounded,
+                          color: HabitaColores.marcaActivo,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              d['titulo']?.toString() ?? 'Notificación',
+                              style: HabitaTipografia.etiqueta,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              d['cuerpo']?.toString() ?? '',
+                              style: HabitaTipografia.micro,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              d['enviadaEn'] != null
+                                  ? (d['enviadaEn'] as Timestamp).toDate().toString().split('.')[0]
+                                  : '',
+                              style: HabitaTipografia.micro.copyWith(
+                                color: Colors.black54,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      );
+}

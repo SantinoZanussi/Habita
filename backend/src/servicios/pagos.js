@@ -21,6 +21,7 @@ import { formatearPesos } from '../dominio/dinero.js';
 import { crearPreferencia, consultarPago, armarReferencia, leerReferencia } from '../externos/mercadopago.js';
 import { estadoDeCuenta } from './liquidacion.js';
 import { enviarATokens, avisos } from '../externos/notificaciones.js';
+import { randomUUID } from 'node:crypto';
 
 const aFecha = (v) => (v?.toDate ? v.toDate() : v ? new Date(v) : new Date());
 
@@ -93,7 +94,7 @@ export async function procesarPago({ pagoId, simulado = null }) {
 
   const { complejoId, unidadId, periodoId } = referencia;
   const montoCentavos = pago.montoCentavos;
-  if (!montoCentavos || montoCentavos <= 0) {
+  if (!Number.isSafeInteger(montoCentavos) || montoCentavos <= 0) {
     return { procesado: false, motivo: 'monto_invalido' };
   }
 
@@ -101,29 +102,21 @@ export async function procesarPago({ pagoId, simulado = null }) {
   // apuntan al mismo documento y la transaccion descarta el segundo.
   const refPago = rutas.pagos(complejoId).doc(String(pagoId));
 
-  const cuenta = await estadoDeCuenta({ complejoId, unidadId });
+  const resultado = await db.runTransaction(async (tx) => {
+  const yaExiste = await tx.get(refPago);
+  if (yaExiste.exists) return { duplicado: true, pagoId: String(pagoId) };
+  const hasta = new Date();
+  const cuenta = await estadoDeCuenta({ complejoId, unidadId, hasta, leer: (ref) => tx.get(ref) });
   const deudas = cuenta.deudas.map((d) => ({
     periodoId: d.periodoId,
     vencimiento: d.vencimiento,
     capitalCentavos: d.saldoCentavos,
-    interesesCentavos: 0,
+    interesesCentavos: d.interesesCentavos,
   }));
-
-  // Los intereses se imputan primero: se agregan como concepto propio del
-  // periodo mas viejo, que es donde estan devengados.
-  if (cuenta.interesesAcumulados > 0 && deudas.length > 0) {
-    deudas[0].interesesCentavos = cuenta.interesesAcumulados;
-  }
 
   const imputacion = deudas.length > 0
     ? imputarPago({ montoCentavos, deudas })
     : { aIntereses: 0, aCapital: 0, aSaldoFuturo: montoCentavos, aplicaciones: [], periodos: [], deudaRestante: 0, cancelaTodo: true };
-
-  const resultado = await db.runTransaction(async (tx) => {
-    const yaExiste = await tx.get(refPago);
-    if (yaExiste.exists) {
-      return { duplicado: true, pagoId: String(pagoId) };
-    }
 
     tx.set(refPago, {
       unidadId, periodoId,
@@ -141,13 +134,19 @@ export async function procesarPago({ pagoId, simulado = null }) {
       fechaPago: aFecha(pago.fecha),
       creadoEn: FieldValue.serverTimestamp(),
       simulado: Boolean(pago.simulado),
+      registradoPorUid: pago.registradoPorUid ?? null,
+      observacion: pago.observacion ?? null,
     });
 
     // Se actualiza el saldo de cada periodo tocado por la imputacion.
     for (const p of imputacion.periodos) {
       const refDetalle = rutas.detalle(complejoId, p.periodoId).doc(unidadId);
       tx.update(refDetalle, {
-        saldoPendiente: p.capitalRestante + p.interesesRestantes,
+        saldoPendiente: p.capitalRestante,
+        interesesPendientes: p.interesesRestantes,
+        interesesGenerados: cuenta.deudas.find((d) => d.periodoId === p.periodoId).interesesGenerados,
+        moraCalculadaHasta: hasta,
+        versionCuenta: 2,
         pagado: p.cancelado,
         ultimoPagoEn: FieldValue.serverTimestamp(),
       });
@@ -161,13 +160,15 @@ export async function procesarPago({ pagoId, simulado = null }) {
       });
     }
 
-    return { duplicado: false, pagoId: String(pagoId) };
+    tx.update(rutas.complejo(complejoId), { revisionCuenta: FieldValue.increment(1) });
+    return { duplicado: false, pagoId: String(pagoId), imputacion };
   });
 
   if (resultado.duplicado) {
     log.info('Aviso de pago duplicado, se descarta', { pagoId });
     return { procesado: false, motivo: 'duplicado', idempotente: true };
   }
+  const { imputacion } = resultado;
 
   log.info('Pago imputado', {
     complejoId, unidadId, pagoId, monto: montoCentavos,
@@ -200,7 +201,7 @@ async function avisarAlResidente({ complejoId, unidadId, montoCentavos, periodoI
 
 /** Registra un pago hecho fuera del sistema (transferencia, efectivo en la administracion). */
 export async function registrarPagoManual({ complejoId, unidadId, periodoId, montoCentavos, medio, adminUid, observacion }) {
-  const idManual = `manual-${Date.now()}-${unidadId}`;
+  const idManual = `manual-${randomUUID()}`;
   return procesarPago({
     pagoId: idManual,
     simulado: {

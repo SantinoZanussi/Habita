@@ -22,7 +22,10 @@ Future<void> main() async {
     defaultValue: !kReleaseMode,
   );
   if (usarEmuladores) {
-    final host = kIsWeb ? '127.0.0.1' : '10.0.2.2';
+    const definido = String.fromEnvironment('FIREBASE_EMULATOR_HOST');
+    final host = definido.isNotEmpty
+        ? definido
+        : kIsWeb ? '127.0.0.1' : '10.0.2.2';
     await FirebaseAuth.instance.useAuthEmulator(host, 9099);
     FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
     await FirebaseStorage.instance.useStorageEmulator(host, 9199);
@@ -59,6 +62,20 @@ class SesionGate extends StatelessWidget {
       return FutureBuilder<IdTokenResult>(
         future: sesion.data!.getIdTokenResult(true),
         builder: (context, token) {
+          if (token.hasError) {
+            return Scaffold(
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'No pudimos validar tu sesión. Cerrá y volvé a ingresar.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
+              ),
+            );
+          }
           if (!token.hasData) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),

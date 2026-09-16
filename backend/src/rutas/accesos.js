@@ -5,6 +5,7 @@ import { rutas, FieldValue, aObjeto } from '../infra/firebase.js';
 import { asincrono, errores } from '../infra/errores.js';
 import { autenticar, exigirComplejo, exigirRol, ROLES } from '../middleware/autenticar.js';
 import { entorno } from '../config/entorno.js';
+import { extraerPatenteConGemini } from '../externos/ia.js';
 import { generarCodigoDinamico, normalizarAutorizacion } from '../dominio/accesos.js';
 import { validarAcceso, ultimosEventos, quienEstaAdentro, SENTIDOS } from '../servicios/accesos.js';
 
@@ -34,6 +35,13 @@ router.get('/eventos', exigirRol(ROLES.GUARDIA, ROLES.ADMIN, ROLES.SUPERADMIN), 
 
 router.get('/presentes', exigirRol(ROLES.GUARDIA, ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
   res.json(await quienEstaAdentro(req.complejoId));
+}));
+
+
+router.post('/reconocer-patente', exigirRol(ROLES.GUARDIA, ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
+  if (!req.body?.imagenBase64) throw errores.datosInvalidos({ imagenBase64: 'es obligatoria' });
+  const patente = await extraerPatenteConGemini(req.body.imagenBase64);
+  res.json({ patente });
 }));
 
 router.post('/qr-dinamico', exigirRol(ROLES.RESIDENTE), (req, res) => {

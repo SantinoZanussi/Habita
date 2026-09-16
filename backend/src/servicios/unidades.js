@@ -48,6 +48,7 @@ function normalizar(datos) {
     salida.identificadorNormalizado = salida.identificador.toUpperCase();
   }
   if (datos.coeficiente !== undefined) salida.coeficiente = Number(datos.coeficiente);
+  if (datos.habitantes !== undefined) salida.habitantes = Math.max(1, Math.floor(Number(datos.habitantes)));
   if (datos.superficie !== undefined) salida.superficie = Number(datos.superficie);
   if (datos.patentesAutorizadas !== undefined) {
     salida.patentesAutorizadas = [...new Set(datos.patentesAutorizadas.map(normalizarPatente).filter(Boolean))];

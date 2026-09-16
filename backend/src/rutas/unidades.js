@@ -22,6 +22,10 @@ router.post('/', asincrono(async (req, res) => {
 }));
 
 router.patch('/:unidadId', asincrono(async (req, res) => {
+
+  if (req.body?.habitantes !== undefined && (!Number.isInteger(Number(req.body.habitantes)) || Number(req.body.habitantes) < 1)) {
+    throw errores.datosInvalidos({ habitantes: 'debe ser un entero mayor o igual a 1' });
+  }
   if (req.body?.coeficiente !== undefined && (Number(req.body.coeficiente) <= 0 || Number(req.body.coeficiente) > 100)) {
     throw errores.datosInvalidos({ coeficiente: 'debe estar entre 0 y 100' });
   }
@@ -37,6 +41,10 @@ function validar(datos) {
   if (String(datos?.identificador ?? '').trim().length < 1) erroresCampos.identificador = 'es obligatorio';
   if (!Number.isFinite(Number(datos?.coeficiente)) || Number(datos.coeficiente) <= 0 || Number(datos.coeficiente) > 100) {
     erroresCampos.coeficiente = 'debe estar entre 0 y 100';
+  }
+
+  if (datos?.habitantes !== undefined && (!Number.isInteger(Number(datos.habitantes)) || Number(datos.habitantes) < 1)) {
+    erroresCampos.habitantes = 'debe ser un entero mayor o igual a 1';
   }
   if (Object.keys(erroresCampos).length) throw errores.datosInvalidos(erroresCampos);
 }

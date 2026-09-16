@@ -1,4 +1,4 @@
-/** Amenities configurables y reservas con control transaccional de cupo. */
+﻿/** Amenities configurables y reservas con control transaccional de cupo. */
 
 import { db, rutas, FieldValue, aObjeto, aLista, sello, selloCreacion } from '../infra/firebase.js';
 import { errores } from '../infra/errores.js';
@@ -69,10 +69,18 @@ export async function reservarAmenity({ complejoId, amenityId, unidadId, desde, 
       .where('amenityId', '==', amenityId)
       .where('estado', 'in', ESTADOS_RESERVA_ACTIVOS);
     const existentes = reservasSuperpuestas(aLista(await tx.get(consulta)), inicio, fin);
-    const propia = existentes.find((reserva) => reserva.unidadId === unidadId);
-    if (propia) {
-      throw errores.conflicto('Tu unidad ya tiene una reserva superpuesta para ese espacio y horario.', {
-        reservaId: propia.id,
+    const propias = existentes.filter((reserva) => reserva.unidadId === unidadId);
+    const asistentesPropios = propias.reduce((suma, r) => suma + Number(r.asistentes ?? 1), 0);
+    
+    const unidadSnap = await tx.get(rutas.unidad(complejoId, unidadId));
+    const unidad = aObjeto(unidadSnap);
+    const habitantes = unidad?.habitantes ?? 4; // Por defecto 4 si no está configurado
+
+    if (asistentesPropios + cantidad > habitantes) {
+      throw errores.conflicto(`El grupo familiar superaría su límite de asistentes simultáneos (${habitantes}).`, {
+        habitantes,
+        solicitados: cantidad,
+        yaReservados: asistentesPropios,
       });
     }
     const ocupacion = existentes.reduce((suma, r) => suma + Number(r.asistentes ?? 1), 0);
@@ -112,3 +120,18 @@ export async function cancelarReserva({ complejoId, reservaId, actorUid, unidadI
   await ref.update({ estado: 'cancelada', canceladaEn: FieldValue.serverTimestamp(), canceladaPorUid: actorUid });
   return { id: reservaId, estado: 'cancelada' };
 }
+
+export async function resolverReserva({ complejoId, reservaId, estado, actorUid }) {
+  if (!['confirmada', 'rechazada'].includes(estado)) {
+    throw errores.datosInvalidos({ estado: 'usá confirmada o rechazada' });
+  }
+  const ref = rutas.reservas(complejoId).doc(reservaId);
+  const reserva = aObjeto(await ref.get());
+  if (!reserva) throw errores.noEncontrado('La reserva');
+  if (reserva.estado !== 'pendiente') {
+    throw errores.conflicto('La reserva ya no está pendiente.', { estado: reserva.estado });
+  }
+  await ref.update({ estado, resueltaEn: FieldValue.serverTimestamp(), resueltaPorUid: actorUid });
+  return { id: reservaId, estado };
+}
+

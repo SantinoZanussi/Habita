@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { asincrono, errores } from '../infra/errores.js';
 import { autenticar, exigirComplejo, exigirRol, ROLES } from '../middleware/autenticar.js';
-import { guardarAmenity, reservarAmenity, cancelarReserva } from '../servicios/amenities.js';
+import { guardarAmenity, reservarAmenity, cancelarReserva, resolverReserva } from '../servicios/amenities.js';
 
 const router = Router({ mergeParams: true });
 router.use(autenticar, exigirComplejo);
@@ -30,6 +30,19 @@ router.delete(
   asincrono(async (req, res) => {
     const unidadId = req.usuario.rol === ROLES.RESIDENTE ? req.usuario.unidadId : null;
     res.json(await cancelarReserva({ complejoId: req.complejoId, reservaId: req.params.reservaId, actorUid: req.usuario.uid, unidadId }));
+  })
+);
+
+router.patch(
+  '/reservas/:reservaId',
+  exigirRol(ROLES.ADMIN, ROLES.SUPERADMIN),
+  asincrono(async (req, res) => {
+    res.json(await resolverReserva({
+      complejoId: req.complejoId,
+      reservaId: req.params.reservaId,
+      estado: req.body.estado,
+      actorUid: req.usuario.uid,
+    }));
   })
 );
 

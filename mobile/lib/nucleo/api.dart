@@ -21,6 +21,8 @@ class HabitaApi {
     const definida = String.fromEnvironment('API_BASE_URL');
     if (definida.isNotEmpty) return definida;
     if (kIsWeb) return 'http://127.0.0.1:8787/api';
+    const host = String.fromEnvironment('API_HOST');
+    if (host.isNotEmpty) return 'http://$host:8787/api';
     return Platform.isAndroid
         ? 'http://10.0.2.2:8787/api'
         : 'http://127.0.0.1:8787/api';
@@ -35,6 +37,7 @@ class HabitaApi {
     String ruta, [
     Map<String, dynamic>? cuerpo,
   ]) => _enviar('PATCH', ruta, cuerpo);
+  Future<Map<String, dynamic>> delete(String ruta) => _enviar('DELETE', ruta);
 
   Future<Map<String, dynamic>> _enviar(
     String metodo,
@@ -65,6 +68,9 @@ class HabitaApi {
           await http
               .patch(uri, headers: headers, body: jsonEncode(cuerpo ?? {}))
               .timeout(const Duration(seconds: 12)),
+        'DELETE' =>
+          await http.delete(uri, headers: headers)
+              .timeout(const Duration(seconds: 12)),
         _ =>
           await http
               .post(uri, headers: headers, body: jsonEncode(cuerpo ?? {}))
@@ -76,9 +82,16 @@ class HabitaApi {
         codigo: 'SIN_CONEXION',
       );
     }
-    final json =
-        jsonDecode(respuesta.body.isEmpty ? '{}' : respuesta.body)
-            as Map<String, dynamic>;
+    Map<String, dynamic> json;
+    try {
+      json = (jsonDecode(respuesta.body.isEmpty ? '{}' : respuesta.body)
+          as Map<String, dynamic>);
+    } catch (_) {
+      throw ErrorApi(
+        'El servidor devolvió una respuesta inválida. Intentá nuevamente.',
+        codigo: 'RESPUESTA_INVALIDA',
+      );
+    }
     if (respuesta.statusCode < 200 || respuesta.statusCode >= 300) {
       final error = json['error'] as Map<String, dynamic>?;
       throw ErrorApi(

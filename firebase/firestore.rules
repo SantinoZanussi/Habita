@@ -254,10 +254,12 @@ service cloud.firestore {
       // Las notificaciones son avisos de la administracion (corte de agua,
       // convocatoria a asamblea). Se leen dentro del complejo: no llevan datos
       // sensibles y el residente necesita listarlas para su bandeja.
-      // El envio dirigido a una unidad puntual se filtra en la consulta del
-      // cliente y se vuelve a validar en el push que manda el backend.
+      // Los destinatarios se validan tanto en las reglas como en el push.
       match /notificaciones/{notificacionId} {
-        allow get, list: if pertenece(cid);
+        allow get, list: if esAdmin(cid) || (pertenece(cid) && (
+          resource.data.destinatarios == 'todos' ||
+          (esResidente(cid) && request.auth.token.unidadId in resource.data.destinatarios)
+        ));
         allow write: if false;
       }
 

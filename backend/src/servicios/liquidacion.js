@@ -16,6 +16,7 @@ import { log } from '../infra/log.js';
 import { liquidarPeriodo, armarCuentaCorriente, validarCoeficientes } from '../dominio/liquidacion.js';
 import { calcularMoraDeCuenta, tramoDeMorosidad, TRAMOS_MOROSIDAD } from '../dominio/mora.js';
 import { formatearPesos } from '../dominio/dinero.js';
+import { deudaDePeriodo } from '../dominio/cuenta.js';
 
 /** Tope de escrituras por lote en Firestore. */
 const TOPE_LOTE = 450;
@@ -27,11 +28,11 @@ const aFecha = (v) => (v?.toDate ? v.toDate() : v ? new Date(v) : null);
  * Es lo que consume la vista previa del panel: el admin ve como queda antes de
  * cerrar, y puede corregir un gasto sin haber tocado la cuenta de nadie.
  */
-export async function calcularBorrador({ complejoId, periodoId }) {
+export async function calcularBorrador({ complejoId, periodoId, leer = (ref) => ref.get() }) {
   const [complejoSnap, periodoSnap, unidadesSnap] = await Promise.all([
-    rutas.complejo(complejoId).get(),
-    rutas.periodo(complejoId, periodoId).get(),
-    rutas.unidades(complejoId).get(),
+    leer(rutas.complejo(complejoId)),
+    leer(rutas.periodo(complejoId, periodoId)),
+    leer(rutas.unidades(complejoId)),
   ]);
 
   const complejo = aObjeto(complejoSnap);
@@ -79,13 +80,16 @@ export async function calcularBorrador({ complejoId, periodoId }) {
   const cuentas = await Promise.all(
     liquidacion.detalle.map(async (fila) => {
       const { saldoAnteriorCentavos, interesesCentavos } = await saldoYMora({
-        complejoId, complejo, unidadId: fila.unidadId, hasta: vencimiento, excluirPeriodo: periodoId,
+        complejoId, complejo, unidadId: fila.unidadId, hasta: vencimiento, excluirPeriodo: periodoId, leer,
       });
-      return armarCuentaCorriente({
+      const credito = Math.max(0, Number(unidades.find((u) => u.id === fila.unidadId).saldoAFavor ?? 0));
+      const creditoAplicado = Math.min(credito, Math.max(0, fila.subtotalPeriodo));
+      const cuenta = armarCuentaCorriente({
         detalleUnidad: fila,
         saldoAnteriorCentavos,
         interesesMoraCentavos: interesesCentavos,
       });
+      return { ...cuenta, creditoAplicado, totalAPagar: cuenta.totalAPagar - creditoAplicado };
     })
   );
 
@@ -126,7 +130,10 @@ function normalizarGasto(gasto) {
  * ajuste en el periodo siguiente, que es como funciona la contabilidad real.
  */
 export async function cerrarPeriodo({ complejoId, periodoId, adminUid }) {
-  const periodoActual = aObjeto(await rutas.periodo(complejoId, periodoId).get());
+  return db.runTransaction(async (tx) => {
+  // Pagos y cierres comparten este documento para serializar la cuenta.
+  await tx.get(rutas.complejo(complejoId));
+  const periodoActual = aObjeto(await tx.get(rutas.periodo(complejoId, periodoId)));
   if (!periodoActual) throw errores.noEncontrado('El periodo');
   if (periodoActual.estado === 'cerrado') {
     throw errores.conflicto(
@@ -135,7 +142,10 @@ export async function cerrarPeriodo({ complejoId, periodoId, adminUid }) {
     );
   }
 
-  const borrador = await calcularBorrador({ complejoId, periodoId });
+  const borrador = await calcularBorrador({ complejoId, periodoId, leer: (ref) => tx.get(ref) });
+  if (borrador.detalle.length * 2 + 2 > TOPE_LOTE) {
+    throw errores.conflicto('El complejo supera el limite de unidades para un cierre atomico. No se escribio ninguna liquidacion.');
+  }
 
   // ---- LA VERIFICACION QUE SE MUESTRA EN LA DEMO --------------------------
   if (!borrador.verificacion.cierra) {
@@ -146,8 +156,7 @@ export async function cerrarPeriodo({ complejoId, periodoId, adminUid }) {
   }
 
   // Escritura en lotes: 152 unidades son 152 documentos de detalle.
-  let lote = db.batch();
-  let operaciones = 0;
+  const lote = tx;
 
   for (const fila of borrador.detalle) {
     const ref = rutas.detalle(complejoId, periodoId).doc(fila.unidadId);
@@ -165,18 +174,20 @@ export async function cerrarPeriodo({ complejoId, periodoId, adminUid }) {
       saldoAnterior: fila.saldoAnterior,
       interesesMora: fila.interesesMora,
       totalAPagar: fila.totalAPagar,
-      saldoPendiente: Math.max(0, fila.totalAPagar),
-      pagado: false,
+      versionCuenta: 2,
+      creditoAplicado: fila.creditoAplicado,
+      saldoPendiente: Math.max(0, fila.subtotalPeriodo - fila.creditoAplicado),
+      interesesPendientes: 0,
+      interesesGenerados: 0,
+      pagado: fila.subtotalPeriodo - fila.creditoAplicado <= 0,
       detalleOrdinario: fila.detalleOrdinario,
       detalleExtraordinario: fila.detalleExtraordinario,
       creadoEn: FieldValue.serverTimestamp(),
     });
 
-    operaciones += 1;
-    if (operaciones >= TOPE_LOTE) {
-      await lote.commit();
-      lote = db.batch();
-      operaciones = 0;
+    const cambioCredito = -fila.creditoAplicado;
+    if (cambioCredito !== 0) {
+      tx.update(rutas.unidad(complejoId, fila.unidadId), { saldoAFavor: FieldValue.increment(cambioCredito) });
     }
   }
 
@@ -192,7 +203,7 @@ export async function cerrarPeriodo({ complejoId, periodoId, adminUid }) {
     cerradoPorUid: adminUid,
     actualizadoEn: FieldValue.serverTimestamp(),
   });
-  await lote.commit();
+  tx.update(rutas.complejo(complejoId), { revisionCuenta: FieldValue.increment(1) });
 
   log.info('Periodo cerrado', {
     complejoId, periodoId, unidades: borrador.detalle.length,
@@ -200,27 +211,23 @@ export async function cerrarPeriodo({ complejoId, periodoId, adminUid }) {
   });
 
   return borrador;
+  });
 }
 
 /**
  * Saldo pendiente e intereses de una unidad, mirando todos los periodos
  * cerrados anteriores.
  */
-async function saldoYMora({ complejoId, complejo, unidadId, hasta, excluirPeriodo = null }) {
-  const periodos = await rutas.periodos(complejoId).where('estado', '==', 'cerrado').get();
+async function saldoYMora({ complejoId, complejo, unidadId, hasta, excluirPeriodo = null, leer = (ref) => ref.get() }) {
+  const periodos = await leer(rutas.periodos(complejoId).where('estado', '==', 'cerrado'));
 
   const deudas = [];
   for (const periodoDoc of periodos.docs) {
     if (periodoDoc.id === excluirPeriodo) continue;
-    const detalle = aObjeto(await rutas.detalle(complejoId, periodoDoc.id).doc(unidadId).get());
+    const detalle = aObjeto(await leer(rutas.detalle(complejoId, periodoDoc.id).doc(unidadId)));
     if (!detalle) continue;
-    const saldo = Number(detalle.saldoPendiente ?? 0);
-    if (saldo === 0) continue;
-    deudas.push({
-      periodoId: periodoDoc.id,
-      saldoCentavos: saldo,
-      vencimiento: aFecha(periodoDoc.data().vencimiento) ?? new Date(),
-    });
+    const deuda = deudaDePeriodo({ detalle, periodo: aObjeto(periodoDoc), complejo, hasta });
+    if (deuda.saldoCentavos + deuda.interesesCentavos > 0) deudas.push(deuda);
   }
 
   const saldoAnteriorCentavos = deudas.reduce((acc, d) => acc + d.saldoCentavos, 0);
@@ -235,9 +242,9 @@ async function saldoYMora({ complejoId, complejo, unidadId, hasta, excluirPeriod
 
   return {
     saldoAnteriorCentavos,
-    interesesCentavos: mora.interesTotalCentavos,
+    interesesCentavos: deudas.reduce((suma, d) => suma + d.interesesCentavos, 0),
     deudas,
-    diasMaximos: mora.diasMaximos,
+    diasMaximos: deudas.reduce((max, d) => Math.max(max, d.dias), 0),
   };
 }
 
@@ -245,51 +252,57 @@ async function saldoYMora({ complejoId, complejo, unidadId, hasta, excluirPeriod
  * Estado de cuenta de una unidad: lo que ve el residente en la app y lo que
  * usa el checkout de Mercado Pago para saber cuanto cobrar.
  */
-export async function estadoDeCuenta({ complejoId, unidadId }) {
-  const complejo = aObjeto(await rutas.complejo(complejoId).get());
+export async function estadoDeCuenta({ complejoId, unidadId, leer = (ref) => ref.get(), hasta = new Date() }) {
+  const complejo = aObjeto(await leer(rutas.complejo(complejoId)));
   if (!complejo) throw errores.noEncontrado('El complejo');
 
-  const periodosSnapshot = await rutas.periodos(complejoId)
-    .where('estado', '==', 'cerrado').get();
+  const unidad = aObjeto(await leer(rutas.unidad(complejoId, unidadId)));
+  if (!unidad) throw errores.noEncontrado('La unidad');
+  const periodosSnapshot = await leer(rutas.periodos(complejoId)
+    .where('estado', '==', 'cerrado'));
   const periodos = periodosSnapshot.docs
     .sort((a, b) => b.id.localeCompare(a.id))
     .slice(0, 12);
 
   const liquidaciones = [];
   for (const periodoDoc of periodos) {
-    const detalle = aObjeto(await rutas.detalle(complejoId, periodoDoc.id).doc(unidadId).get());
+    const detalle = aObjeto(await leer(rutas.detalle(complejoId, periodoDoc.id).doc(unidadId)));
     if (!detalle) continue;
     const periodo = periodoDoc.data();
+    const deuda = deudaDePeriodo({ detalle, periodo: { ...periodo, id: periodoDoc.id }, complejo, hasta });
     liquidaciones.push({
       periodoId: periodoDoc.id,
       etiqueta: periodo.etiqueta ?? periodoDoc.id,
       vencimiento: aFecha(periodo.vencimiento)?.toISOString() ?? null,
       totalAPagar: detalle.totalAPagar,
-      saldoPendiente: detalle.saldoPendiente ?? 0,
-      pagado: Boolean(detalle.pagado),
+      saldoPendiente: deuda.saldoCentavos + deuda.interesesCentavos,
+      pagado: deuda.saldoCentavos + deuda.interesesCentavos === 0,
       montoOrdinario: detalle.montoOrdinario,
       montoExtraordinario: detalle.montoExtraordinario,
       fondoReserva: detalle.fondoReserva,
       interesesMora: detalle.interesesMora,
       saldoAnterior: detalle.saldoAnterior,
+      detalleOrdinario: detalle.detalleOrdinario ?? [],
+      detalleExtraordinario: detalle.detalleExtraordinario ?? [],
     });
   }
 
   const { saldoAnteriorCentavos, interesesCentavos, deudas, diasMaximos } = await saldoYMora({
-    complejoId, complejo, unidadId, hasta: new Date(),
+    complejoId, complejo, unidadId, hasta, leer,
   });
 
   const proximo = liquidaciones.find((l) => !l.pagado) ?? null;
 
   return {
     unidadId,
+    saldoAFavor: Math.max(0, Number(unidad.saldoAFavor ?? 0)),
     nomenclatura: complejo.nomenclaturaAporte ?? 'expensa',
     saldoPendiente: saldoAnteriorCentavos,
     interesesAcumulados: interesesCentavos,
     totalAdeudado: saldoAnteriorCentavos + interesesCentavos,
     diasDeMora: diasMaximos,
     tramoMorosidad: tramoDeMorosidad(diasMaximos),
-    alDia: saldoAnteriorCentavos === 0,
+    alDia: saldoAnteriorCentavos + interesesCentavos === 0,
     proximoVencimiento: proximo,
     liquidaciones,
     deudas,
@@ -328,7 +341,8 @@ export async function resumenCobranza({ complejoId, periodoId = null }) {
 
   for (const periodo of periodos) {
     for (const detalle of detallesPorPeriodo.get(periodo.id) ?? []) {
-      const saldoCentavos = Number(detalle.saldoPendiente ?? 0);
+      const deuda = deudaDePeriodo({ detalle, periodo, complejo });
+      const saldoCentavos = deuda.saldoCentavos;
       if (saldoCentavos <= 0) continue;
       const deudas = deudasPorUnidad.get(detalle.id) ?? [];
       deudas.push({
@@ -371,14 +385,14 @@ export async function resumenCobranza({ complejoId, periodoId = null }) {
   if (ultimo) {
     liquidado = ultimo.totalLiquidado ?? 0;
     const detalles = detallesPorPeriodo.get(ultimo.id) ?? [];
-    recaudado = detalles.reduce((acc, d) => acc + (d.totalAPagar - (d.saldoPendiente ?? 0)), 0);
+    recaudado = detalles.reduce((acc, d) => acc + ((d.subtotalPeriodo ?? d.totalAPagar) - (d.saldoPendiente ?? 0)), 0);
   }
 
   // Serie mensual para el grafico de barras del dashboard.
   const serie = [];
   for (const periodo of periodos.slice(-12)) {
     const detalles = detallesPorPeriodo.get(periodo.id) ?? [];
-    const totalPeriodo = detalles.reduce((acc, d) => acc + d.totalAPagar, 0);
+    const totalPeriodo = detalles.reduce((acc, d) => acc + (d.subtotalPeriodo ?? d.totalAPagar), 0);
     const pendiente = detalles.reduce((acc, d) => acc + (d.saldoPendiente ?? 0), 0);
     serie.push({
       periodoId: periodo.id,

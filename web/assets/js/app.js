@@ -30701,6 +30701,7 @@ var estado = {
   reclamos: [],
   periodos: [],
   amenities: [],
+  reservas: [],
   obras: [],
   resumen: null,
   seccion: "dashboard",
@@ -30709,6 +30710,8 @@ var estado = {
   filtroReclamos: "",
   estadoReclamos: "todos"
 };
+var temporizadorResumen;
+var solicitudResumen = 0;
 var login = $2("#login");
 var appShell = $2("#aplicacion");
 var loginForm = $2("#form-login");
@@ -30769,9 +30772,14 @@ onAuthStateChanged(auth, async (usuario) => {
 function suscribirTiempoReal() {
   const cid = estado.complejoId;
   escuchar(doc(db, "complejos", cid), (snap) => {
+    const revisionAnterior = estado.complejo?.revisionCuenta;
     estado.complejo = snap.exists() ? { id: snap.id, ...snap.data() } : null;
     $2("#complejo-nombre").textContent = estado.complejo?.nombre ?? cid;
     renderTodo();
+    if (revisionAnterior !== estado.complejo?.revisionCuenta) {
+      clearTimeout(temporizadorResumen);
+      temporizadorResumen = setTimeout(() => cargarResumen(), 200);
+    }
   });
   escuchar(query(collection(db, `complejos/${cid}/unidades`)), (snap) => {
     estado.unidades = snap.docs.map(datosDoc).filter((u2) => u2.estado !== "baja").sort((a, b2) => String(a.identificador).localeCompare(String(b2.identificador), "es", { numeric: true }));
@@ -30793,6 +30801,10 @@ function suscribirTiempoReal() {
     estado.amenities = snap.docs.map(datosDoc);
     renderTodo();
   });
+  escuchar(query(collection(db, `complejos/${cid}/reservas`), orderBy("desde", "desc"), limit(100)), (snap) => {
+    estado.reservas = snap.docs.map(datosDoc);
+    renderTodo();
+  });
   escuchar(query(collection(db, `complejos/${cid}/obras`)), (snap) => {
     estado.obras = snap.docs.map(datosDoc);
     renderTodo();
@@ -30804,14 +30816,22 @@ function escuchar(referencia, callback) {
   }));
 }
 function limpiarListeners() {
+  clearTimeout(temporizadorResumen);
+  solicitudResumen += 1;
+  estado.resumen = null;
+  estado.complejo = null;
   estado.listeners.forEach((cancelar) => cancelar());
   estado.listeners = [];
 }
 async function cargarResumen() {
+  const solicitud = ++solicitudResumen;
   try {
-    estado.resumen = await api(`/complejos/${estado.complejoId}/expensas/resumen`);
+    const resumen = await api(`/complejos/${estado.complejoId}/expensas/resumen`);
+    if (solicitud !== solicitudResumen) return;
+    estado.resumen = resumen;
     renderTodo();
   } catch (error) {
+    if (solicitud !== solicitudResumen) return;
     mostrarToast("Cobranza no disponible", error.message, "error");
   }
 }
@@ -30955,7 +30975,12 @@ function renderTablaReclamos() {
 function renderAmenities() {
   $2("#section-amenities").innerHTML = `
     ${heading("Amenities", "Espacios configurables con cupo y disponibilidad compartida.", '<button class="button button--primary" data-action="nuevo-amenity">+ Nuevo amenity</button>')}
-    <div class="amenity-grid">${estado.amenities.map((a) => `<article class="amenity-card"><div class="amenity-card__top"><span class="amenity-card__icon">${iconoAmenity(a.id)}</span><span class="chip ${a.activo === false ? "chip--danger" : "chip--success"}">${a.activo === false ? "Inactivo" : "Disponible"}</span></div><h3>${safe(a.nombre)}</h3><p>${safe(a.descripcion ?? "Espacio com\xFAn del complejo")}</p><div class="amenity-card__meta"><span>Capacidad: <strong>${a.capacidad}</strong></span><span>Hasta ${a.anticipacionMaximaDias ?? 30} d\xEDas</span></div></article>`).join("") || vacio("Sin amenities", "Agreg\xE1 los espacios que ofrece el complejo.")}</div>`;
+    <div class="amenity-grid">${estado.amenities.map((a) => `<article class="amenity-card"><div class="amenity-card__top"><span class="amenity-card__icon">${iconoAmenity(a.id)}</span><span class="chip ${a.activo === false ? "chip--danger" : "chip--success"}">${a.activo === false ? "Inactivo" : "Disponible"}</span></div><h3>${safe(a.nombre)}</h3><p>${safe(a.descripcion ?? "Espacio com\xFAn del complejo")}</p><div class="amenity-card__meta"><span>Capacidad: <strong>${a.capacidad}</strong></span><span>Hasta ${a.anticipacionMaximaDias ?? 30} d\xEDas</span></div></article>`).join("") || vacio("Sin amenities", "Agreg\xE1 los espacios que ofrece el complejo.")}</div>
+    ${tablaReservas()}`;
+}
+function tablaReservas() {
+  const pendientes = estado.reservas.filter((r2) => r2.estado === "pendiente");
+  return `<article class="card" style="margin-top:16px"><div class="card__header"><div><h3>Solicitudes de reserva</h3><p>Confirm\xE1 o rechaz\xE1 los horarios que requieren aprobaci\xF3n.</p></div></div><div class="table-wrap"><table><thead><tr><th>Espacio</th><th>Unidad</th><th>Horario</th><th>Personas</th><th></th></tr></thead><tbody>${pendientes.map((r2) => `<tr><td>${safe(r2.amenityNombre ?? r2.amenityId)}</td><td>${safe(idUnidad(r2.unidadId))}</td><td>${fechaCorta(r2.desde)} a ${fechaHora(r2.hasta)}</td><td>${numero(r2.asistentes)}</td><td><div class="table-actions"><button class="button button--secondary button--small" data-action="resolver-reserva" data-id="${r2.id}" data-estado="confirmada">Confirmar</button><button class="button button--ghost button--small" data-action="resolver-reserva" data-id="${r2.id}" data-estado="rechazada">Rechazar</button></div></td></tr>`).join("") || '<tr><td colspan="5" class="table-empty">No hay solicitudes pendientes.</td></tr>'}</tbody></table></div></article>`;
 }
 function renderObras() {
   $2("#section-obras").innerHTML = `
@@ -31022,12 +31047,20 @@ async function ejecutarAccion(accion, boton) {
   if (accion === "nuevo-periodo") return modalPeriodo();
   if (accion === "previsualizar-periodo") return previsualizarPeriodo(boton.dataset.id);
   if (accion === "cerrar-periodo") return cerrarPeriodo(boton.dataset.id);
+  if (accion === "resolver-reserva") return resolverReserva(boton.dataset.id, boton.dataset.estado);
   if (accion === "validar-acceso") return modalAcceso();
   if (accion === "avanzar-reclamo") return avanzarReclamo(boton.dataset.id, boton.dataset.estado);
   if (accion === "corregir-reclamo") return modalClasificacion(estado.reclamos.find((r2) => r2.id === boton.dataset.id));
   if (accion === "nuevo-amenity") return modalAmenity();
   if (accion === "pago-manual") return modalPago();
   if (accion === "nuevo-aviso") return modalAviso();
+}
+async function resolverReserva(id, nuevoEstado) {
+  await api(`/complejos/${estado.complejoId}/amenities/reservas/${id}`, {
+    method: "PATCH",
+    body: { estado: nuevoEstado }
+  });
+  mostrarToast(nuevoEstado === "confirmada" ? "Reserva confirmada" : "Reserva rechazada", "La solicitud se actualiz\xF3.");
 }
 function navegar(seccion) {
   estado.seccion = seccion;
@@ -31062,7 +31095,7 @@ async function enviarModal(tipo, form) {
   const datos = Object.fromEntries(new FormData(form));
   const cid = estado.complejoId;
   if (tipo === "unidad") {
-    const cuerpo = { ...datos, coeficiente: Number(datos.coeficiente), superficie: Number(datos.superficie || 0), patentesAutorizadas: datos.patentesAutorizadas.split(",").map((p2) => p2.trim()).filter(Boolean) };
+    const cuerpo = { ...datos, coeficiente: Number(datos.coeficiente), superficie: Number(datos.superficie || 0), habitantes: Number(datos.habitantes || 4), patentesAutorizadas: datos.patentesAutorizadas.split(",").map((p2) => p2.trim()).filter(Boolean) };
     await api(`/complejos/${cid}/unidades${form.dataset.id ? `/${form.dataset.id}` : ""}`, { method: form.dataset.id ? "PATCH" : "POST", body: cuerpo });
   } else if (tipo === "periodo") {
     await api(`/complejos/${cid}/expensas/periodos`, { method: "POST", body: { periodoId: datos.periodoId, etiqueta: datos.etiqueta, vencimiento: datos.vencimiento, gastosOrdinarios: [{ concepto: datos.ordinarioConcepto, monto: Number(datos.ordinarioMonto), criterio: datos.ordinarioCriterio, aCargoDe: "ocupante" }], gastosExtraordinarios: Number(datos.extraMonto) > 0 ? [{ concepto: datos.extraConcepto, monto: Number(datos.extraMonto), criterio: "coeficiente", aCargoDe: datos.extraCargo }] : [], fondoReserva: { modo: "monto", valor: Math.round(Number(datos.fondo) * 100) } } });
@@ -31220,6 +31253,13 @@ function numero(v2, decimales = 1) {
 function dinero(centavos) {
   if (centavos === void 0 || centavos === null) return "\u2014";
   return (Number(centavos) / 100).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+}
+function fechaHora(v2) {
+  const d = v2?.toDate ? v2.toDate() : new Date(v2);
+  return Number.isNaN(d.getTime()) ? "\u2014" : d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+function fechaCorta(v2) {
+  return fechaHora(v2);
 }
 function porcentaje(parte, total) {
   return `${numero(Number(parte ?? 0) / Math.max(Number(total ?? 0), 1) * 100)}% del total`;

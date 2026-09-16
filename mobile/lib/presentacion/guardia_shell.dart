@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../nucleo/api.dart';
@@ -156,6 +159,34 @@ class _EscanerGuardiaState extends State<EscanerGuardia> {
     );
   }
 
+  Future<void> _escanearPatente(TextEditingController controlador) async {
+    final picker = ImagePicker();
+    final foto = await picker.pickImage(source: ImageSource.camera, maxWidth: 1024);
+    if (foto == null) return;
+    
+    if (mounted) setState(() => procesando = true);
+    try {
+      final bytes = await foto.readAsBytes();
+      final base64String = base64Encode(bytes);
+      final r = await HabitaApi().post('/complejos/${widget.complejoId}/accesos/reconocer-patente', {
+        'imagenBase64': base64String,
+      });
+      if (r['patente'] != null && r['patente'].toString().isNotEmpty) {
+        controlador.text = r['patente'].toString();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se detectó ninguna patente.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) mostrarError(context, e);
+    } finally {
+      if (mounted) setState(() => procesando = false);
+    }
+  }
+
   Future<void> _patente() async {
     final texto = TextEditingController();
     await showModalBottomSheet<void>(
@@ -174,14 +205,25 @@ class _EscanerGuardiaState extends State<EscanerGuardia> {
           children: [
             const Text('Buscar patente', style: HabitaTipografia.titulo2),
             const SizedBox(height: 14),
-            TextField(
-              controller: texto,
-              textCapitalization: TextCapitalization.characters,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'ABC123 o AB123CD',
-                prefixIcon: Icon(Icons.directions_car_outlined),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: texto,
+                    textCapitalization: TextCapitalization.characters,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'ABC123 o AB123CD',
+                      prefixIcon: Icon(Icons.directions_car_outlined),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: () => _escanearPatente(texto),
+                  icon: const Icon(Icons.camera_alt_outlined),
+                ),
+              ],
             ),
             const SizedBox(height: 14),
             FilledButton(

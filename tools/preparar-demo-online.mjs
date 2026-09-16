@@ -9,6 +9,7 @@ const cli = require('firebase-tools/lib/auth');
 const proyecto = 'habita-complejos-goiburu';
 const complejoId = 'torre-parque';
 const aplicar = process.argv.includes('--aplicar');
+const soloAdmin = process.argv.includes('--solo-admin');
 const cuenta = cli.getProjectDefaultAccount(process.cwd());
 if (!cuenta) throw new Error('Conectar primero Firebase CLI.');
 if (process.env.FIREBASE_AUTH_EMULATOR_HOST || process.env.FIRESTORE_EMULATOR_HOST) {
@@ -26,7 +27,9 @@ const auth = getAuth(initializeApp({
   } },
 }));
 const base = `https://firestore.googleapis.com/v1/projects/${proyecto}/databases/(default)/documents`;
-const usuarios = [
+const usuarios = soloAdmin ? [
+  { email: 'admin@habita.demo', nombre: 'Juan Perez', claims: { rol: 'admin_complejo', complejoId } },
+] : [
   { email: 'residente@habita.demo', nombre: 'Juan Perez', claims: { rol: 'residente', complejoId, unidadId: 'unidad-3a' } },
   { email: 'guardia@habita.demo', nombre: 'Marcos Guardia', claims: { rol: 'guardia', complejoId } },
 ];
@@ -49,6 +52,7 @@ function valor(v) {
 }
 
 const complejo = await documento(`complejos/${complejoId}`);
+if (soloAdmin && !complejo) throw new Error('Crear primero el complejo demo.');
 if (complejo && complejo.fields?.demo?.booleanValue !== true) {
   throw new Error('El complejo ya existe y no esta marcado como demo. Revisar manualmente.');
 }
@@ -62,7 +66,7 @@ for (const u of usuarios) {
     throw new Error(`Permisos existentes distintos para ${u.claims.rol}; no se modifican.`);
   }
 }
-console.log(`Destino ${proyecto}: solo dos perfiles demo y datos basicos, sin movimientos financieros.`);
+console.log(`Destino ${proyecto}: ${soloAdmin ? 'administrador del complejo demo' : 'dos perfiles demo y datos basicos'}, sin movimientos financieros.`);
 if (!aplicar) {
   console.log('Vista previa. Usar --aplicar con HABITA_DEMO_PASSWORD para confirmar.');
   process.exit(0);
@@ -75,6 +79,7 @@ for (const u of usuarios) {
 }
 const ahora = new Date().toISOString();
 const datos = [
+  ...(soloAdmin ? [] : [
   [`complejos/${complejoId}`, {
     nombre: 'Torre del Parque', demo: true, activo: true,
     tipo: 'edificio', tipoUnidad: 'departamento', nomenclaturaAporte: 'expensa',
@@ -87,6 +92,7 @@ const datos = [
     titularUid: usuarios[0].registro.uid, inquilinoUid: null,
     coeficiente: 100, superficie: 65, estado: 'ocupada', patentesAutorizadas: [], saldoAFavor: 0,
   }],
+  ]),
   ...usuarios.map(u => [`usuarios/${u.registro.uid}`, {
     nombre: u.nombre, email: u.email, ...u.claims, activo: true, demo: true,
     unidadId: u.claims.unidadId ?? null, complejos: [], obraIds: [],

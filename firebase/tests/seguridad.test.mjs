@@ -4,7 +4,7 @@ import {
   assertFails, assertSucceeds, initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, where, setDoc, updateDoc,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, where, setDoc, updateDoc, or, orderBy,
 } from 'firebase/firestore';
 import { getBytes, ref, uploadBytes } from 'firebase/storage';
 
@@ -49,6 +49,24 @@ beforeEach(async () => {
 });
 
 after(async () => entorno?.cleanup());
+
+test('avisos dirigidos solo se leen por destinatarios y administracion', async () => {
+  await entorno.withSecurityRulesDisabled(async (c) => {
+    for (const [id, destinatarios] of [['general', 'todos'], ['propio', ['u1']], ['ajeno', ['u2']]]) {
+      await setDoc(doc(c.firestore(), `complejos/c1/notificaciones/${id}`), { destinatarios, enviadaEn: new Date() });
+    }
+  });
+  const db = entorno.authenticatedContext('r1', { rol: 'residente', complejoId: 'c1', unidadId: 'u1' }).firestore();
+  await assertSucceeds(getDoc(doc(db, 'complejos/c1/notificaciones/propio')));
+  await assertFails(getDoc(doc(db, 'complejos/c1/notificaciones/ajeno')));
+  await assertFails(getDocs(collection(db, 'complejos/c1/notificaciones')));
+  await assertSucceeds(getDocs(query(collection(db, 'complejos/c1/notificaciones'),
+    or(where('destinatarios', '==', 'todos'), where('destinatarios', 'array-contains', 'u1')), orderBy('enviadaEn', 'desc'))));
+  const ajeno = entorno.authenticatedContext('r2', { rol: 'residente', complejoId: 'c2', unidadId: 'u1' }).firestore();
+  await assertFails(getDoc(doc(ajeno, 'complejos/c1/notificaciones/propio')));
+  const admin = entorno.authenticatedContext('a1', { rol: 'admin_complejo', complejoId: 'c1' }).firestore();
+  await assertSucceeds(getDocs(collection(admin, 'complejos/c1/notificaciones')));
+});
 
 test('residente lee su unidad pero no la de un vecino ni el listado', async () => {
   const db = entorno.authenticatedContext('residente-1', {

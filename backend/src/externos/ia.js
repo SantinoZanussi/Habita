@@ -338,3 +338,51 @@ export async function clasificarReclamo({ descripcion, fotoUrl = null, tipoCompl
 export function prioridadDe(clasificacion) {
   return PRIORIDAD[clasificacion?.urgencia] ?? 1;
 }
+
+
+export async function extraerPatenteConGemini(imagenBase64, mimeType = 'image/jpeg') {
+  if (entorno.ia.simulado) {
+    return 'SIMULAD';
+  }
+
+  const partes = [
+    { inlineData: { mimeType, data: imagenBase64 } },
+    { text: 'Extrae únicamente el número de patente (dominio) de este vehículo. Devuelve solo los caracteres alfanuméricos en mayúsculas, sin espacios ni guiones. Si no se detecta ninguna patente, devuelve vacío.' }
+  ];
+
+  const abortador = new AbortController();
+  const reloj = setTimeout(() => abortador.abort(), 15_000);
+  try {
+    const base = entorno.ia.urlBase.replace(/\/$/, '');
+    const url = base + '/models/' + entorno.ia.modelo + ':generateContent';
+    const respuesta = await fetch(
+      url,
+      {
+        method: 'POST',
+        signal: abortador.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': entorno.ia.apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: partes }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 20,
+          },
+        }),
+      }
+    );
+
+    const cuerpo = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) {
+      throw new Error("Gemini respondio " + respuesta.status + ": " + (cuerpo.error?.message ?? 'error desconocido'));
+    }
+    const texto = cuerpo.candidates?.[0]?.content?.parts?.map((parte) => parte.text ?? '').join('').trim();
+    return texto ? texto.replace(/[^A-Z0-9]/g, '') : '';
+  } catch (error) {
+    return '';
+  } finally {
+    clearTimeout(reloj);
+  }
+}
