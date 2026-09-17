@@ -15,7 +15,8 @@
 - Verificado: [auditar-cuenta-online.mjs](../tools/auditar-cuenta-online.mjs) leyó Firebase real sin escribir y encontró tres liquidaciones de la unidad demo. La liquidación `2026-11` está cancelada (`saldoPendiente: 0`, `pagado: true`) pero conserva un `saldoAnterior` informativo y carece de `versionCuenta`; esa combinación activaba el bloqueo al consultar cualquier pago posterior.
 - Verificado: [cuenta.js](../backend/src/dominio/cuenta.js) ahora permite comprobantes históricos con saldo efectivo cero y conserva la conciliación obligatoria cuando una liquidación antigua todavía tiene saldo pendiente y arrastre ambiguo. No se cambiaron documentos, pagos ni saldos de producción.
 - Verificado: se agregaron regresiones para ambos casos en [cuenta.test.js](../backend/test/cuenta.test.js). `npm run verificar` aprobó build web, 2 pruebas web, 88 pruebas de backend y 17 pruebas de reglas con emuladores; `git diff --check` no encontró errores.
-- Pendiente: publicar en `main`, esperar el despliegue automático de Render y validar que el endpoint real deje de devolver el conflicto. La creación de una preferencia real de Mercado Pago y un pago manual requieren una sesión interactiva y pueden escribir datos; no se ejecutaron automáticamente.
+- Verificado: el arreglo y la herramienta de auditoría se publicaron en `main` mediante el commit `734b2c4`; `main` quedó sincronizado con `origin/main`. Tras la publicación, `/api/salud` respondió `ok` desde Render.
+- Pendiente: Render no expone el hash desplegado en `/api/salud`, por lo que falta confirmar desde una sesión autenticada que el despliegue nuevo ya reemplazó al anterior. La creación de una preferencia real de Mercado Pago y un pago manual pueden escribir datos; no se ejecutaron automáticamente.
 - Supuesto: Render está conectado a `main` y desplegará el commit nuevo de forma automática.
 
 ## 2026-09-17 - Revisión e integración de cambios locales
