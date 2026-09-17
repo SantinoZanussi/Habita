@@ -11,6 +11,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../nucleo/api.dart';
 import '../nucleo/tema/tokens.dart';
 import 'widgets.dart';
+import 'reservas_widgets.dart';
+import 'comunidad.dart';
 import 'confirmar_pago_demo.dart';
 
 class ResidenteShell extends StatefulWidget {
@@ -224,7 +226,15 @@ class InicioResidente extends StatelessWidget {
                   children: [
                     const Text('Novedades', style: HabitaTipografia.titulo3),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => _NotificacionesPantalla(
+                            complejoId: complejoId,
+                            unidadId: unidadId,
+                          ),
+                        ),
+                      ),
                       child: const Text('Ver todas'),
                     ),
                   ],
@@ -588,6 +598,43 @@ class _LiquidacionCard extends StatelessWidget {
                   ),
                 ),
               ],
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('¿Qué incluye esta expensa?'),
+                children: [
+                  const Text(
+                    'Gastos totales del complejo en este período. Tu parte es la indicada arriba.',
+                  ),
+                  ...['gastosOrdinarios', 'gastosExtraordinarios'].expand(
+                    (tipo) => (periodo.data()[tipo] as List? ?? [])
+                        .whereType<Map>()
+                        .map(
+                          (g) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('${g['concepto'] ?? 'Gasto'}'),
+                            subtitle: Text(
+                              tipo == 'gastosOrdinarios'
+                                  ? 'Ordinario'
+                                  : 'Extraordinario',
+                            ),
+                            trailing: Text(
+                              pesos(g['montoCentavos'] as num? ?? 0),
+                            ),
+                          ),
+                        ),
+                  ),
+                  if ((periodo.data()['gastosOrdinarios'] as List? ?? [])
+                          .isEmpty &&
+                      (periodo.data()['gastosExtraordinarios'] as List? ?? [])
+                          .isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text(
+                        'La administración no publicó el desglose de este período.',
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -1013,6 +1060,32 @@ class MasResidenteScreen extends StatelessWidget {
     body: ListView(
       padding: const EdgeInsets.all(18),
       children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 18),
+          child: Text('Tu vida en comunidad', style: HabitaTipografia.titulo2),
+        ),
+        _Menu(
+          icono: Icons.home_work_outlined,
+          titulo: 'Mi unidad',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  MiUnidadScreen(complejoId: complejoId, unidadId: unidadId),
+            ),
+          ),
+        ),
+        _Menu(
+          icono: Icons.payments_outlined,
+          titulo: 'Mis pagos',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  MisPagosScreen(complejoId: complejoId, unidadId: unidadId),
+            ),
+          ),
+        ),
         _Menu(
           icono: Icons.calendar_month_outlined,
           titulo: 'Reservar amenities',
@@ -1040,7 +1113,12 @@ class MasResidenteScreen extends StatelessWidget {
         _Menu(
           icono: Icons.construction_outlined,
           titulo: 'Obras del complejo',
-          onTap: () {},
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => ObrasComunidadScreen(complejoId: complejoId),
+            ),
+          ),
         ),
         _Menu(
           icono: Icons.notifications_outlined,
@@ -1058,7 +1136,19 @@ class MasResidenteScreen extends StatelessWidget {
         _Menu(
           icono: Icons.help_outline_rounded,
           titulo: 'Ayuda y soporte',
-          onTap: () {},
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => AyudaComunidadScreen(
+                crearReclamo: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => NuevoReclamoScreen(complejoId: complejoId),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 20),
         OutlinedButton.icon(
@@ -1114,6 +1204,7 @@ class _AmenitiesScreenState extends State<AmenitiesScreen> {
   int _horas = 2;
   int _asistentes = 1;
   bool _operando = false;
+  bool _misReservas = false;
   String get complejoId => widget.complejoId;
   String get unidadId => widget.unidadId;
   FirebaseFirestore get _firestore =>
@@ -1193,7 +1284,6 @@ class _AmenitiesScreenState extends State<AmenitiesScreen> {
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _firestore
               .collection('complejos/$complejoId/reservas')
-              .where('estado', whereIn: const ['confirmada', 'pendiente'])
               .snapshots(),
           builder: (context, reservasSnap) {
             if (reservasSnap.hasError) {
@@ -1208,134 +1298,187 @@ class _AmenitiesScreenState extends State<AmenitiesScreen> {
             final hasta = desde.add(Duration(hours: _horas));
             final propias =
                 reservasSnap.data!.docs
-                    .where(
-                      (r) =>
-                          r.data()['unidadId'] == unidadId &&
-                          (_fechaHora(
-                                r.data()['hasta'],
-                              )?.isAfter(DateTime.now()) ??
-                              false),
-                    )
+                    .where((r) => r.data()['unidadId'] == unidadId)
                     .toList()
                   ..sort(
-                    (a, b) => (_fechaHora(a.data()['desde']) ?? DateTime(0))
+                    (a, b) => (_fechaHora(b.data()['desde']) ?? DateTime(0))
                         .compareTo(
-                          _fechaHora(b.data()['desde']) ?? DateTime(0),
+                          _fechaHora(a.data()['desde']) ?? DateTime(0),
                         ),
                   );
             return ListView(
               padding: const EdgeInsets.all(18),
               children: [
-                HabitaCard(
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  margin: const EdgeInsets.only(bottom: 18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0C344B),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Elegí tu reserva',
-                        style: HabitaTipografia.titulo3,
+                      const Icon(
+                        Icons.spa_outlined,
+                        color: Color(0xFF80DFD2),
+                        size: 32,
                       ),
+                      const SizedBox(height: 12),
                       Text(
-                        'Desde ${DateFormat('dd/MM/yyyy HH:mm').format(desde)}',
-                      ),
-                      Text(
-                        'Hasta ${DateFormat('dd/MM/yyyy HH:mm').format(hasta)}',
-                      ),
-                      TextButton.icon(
-                        onPressed: _operando ? null : _elegirHorario,
-                        icon: const Icon(Icons.event_outlined),
-                        label: const Text('Cambiar fecha y hora'),
-                      ),
-                      DropdownButton<int>(
-                        value: _horas,
-                        isExpanded: true,
-                        items: List.generate(
-                          8,
-                          (i) => DropdownMenuItem(
-                            value: i + 1,
-                            child: Text(
-                              'Duración: ${i + 1} ${i == 0 ? 'hora' : 'horas'}',
-                            ),
-                          ),
+                        'Disfrutá tu complejo',
+                        style: HabitaTipografia.titulo2.copyWith(
+                          color: Colors.white,
                         ),
-                        onChanged: _operando
-                            ? null
-                            : (v) => setState(() => _horas = v!),
                       ),
-                      Row(
-                        children: [
-                          Expanded(child: Text('Asistentes: $_asistentes')),
-                          IconButton(
-                            tooltip: 'Quitar asistente',
-                            onPressed: _operando || _asistentes == 1
-                                ? null
-                                : () => setState(() => _asistentes--),
-                            icon: const Icon(Icons.remove_circle_outline),
-                          ),
-                          IconButton(
-                            tooltip: 'Agregar asistente',
-                            onPressed: _operando
-                                ? null
-                                : () => setState(() => _asistentes++),
-                            icon: const Icon(Icons.add_circle_outline),
-                          ),
-                        ],
-                      ),
+                      const SizedBox(height: 6),
                       const Text(
-                        'El cupo se confirma al enviar la reserva.',
-                        style: HabitaTipografia.micro,
+                        'Un lugar para entrenar, compartir y desconectar.',
+                        style: TextStyle(color: Color(0xFFD5EBEE)),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                if (snap.data!.docs.isEmpty)
-                  const Text(
-                    'Todavía no hay espacios disponibles para reservar.',
-                  ),
-                ...snap.data!.docs.map(
-                  (d) => _AmenityCard(
-                    amenity: d,
-                    reservas: reservasSnap.data!.docs,
-                    unidadId: unidadId,
-                    desde: desde,
-                    hasta: hasta,
-                    asistentes: _asistentes,
-                    operando: _operando,
-                    onReservar: () =>
-                        _reservar(context, d, desde: desde, hasta: hasta),
-                  ),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(
+                      value: false,
+                      label: Text('Explorar'),
+                      icon: Icon(Icons.grid_view_rounded),
+                    ),
+                    ButtonSegment(
+                      value: true,
+                      label: Text('Mis reservas'),
+                      icon: Icon(Icons.event_note_rounded),
+                    ),
+                  ],
+                  selected: {_misReservas},
+                  onSelectionChanged: (v) =>
+                      setState(() => _misReservas = v.single),
                 ),
-                if (propias.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                if (!_misReservas) ...[
+                  Card(
+                    child: ExpansionTile(
+                      title: const Text('Cuándo y cuántos'),
+                      subtitle: Text(
+                        '${DateFormat('dd/MM · HH:mm').format(desde)} · $_horas h · $_asistentes personas',
+                      ),
+                      leading: const Icon(Icons.tune_rounded),
+                      children: [
+                        SelectorReserva(
+                          desde: desde,
+                          horas: _horas,
+                          asistentes: _asistentes,
+                          ocupado: _operando,
+                          elegirFecha: _elegirHorario,
+                          cambiarDia: (v) => setState(() => _desde = v),
+                          cambiarHoras: (v) => setState(() => _horas = v),
+                          cambiarAsistentes: (v) =>
+                              setState(() => _asistentes = v),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   const Text(
-                    'Mis próximas reservas',
+                    'Encontrá tu espacio',
                     style: HabitaTipografia.titulo3,
                   ),
+                  const SizedBox(height: 12),
+                  if (snap.data!.docs.isEmpty)
+                    const HabitaCard(
+                      child: Text('Todavía no hay espacios publicados.'),
+                    ),
+                  ...snap.data!.docs.map(
+                    (d) => _AmenityCard(
+                      amenity: d,
+                      reservas: reservasSnap.data!.docs
+                          .where(
+                            (r) => [
+                              'pendiente',
+                              'confirmada',
+                            ].contains(r.data()['estado']),
+                          )
+                          .toList(),
+                      unidadId: unidadId,
+                      desde: desde,
+                      hasta: hasta,
+                      asistentes: _asistentes,
+                      operando: _operando,
+                      onReservar: () =>
+                          _reservar(context, d, desde: desde, hasta: hasta),
+                    ),
+                  ),
+                ] else ...[
+                  if (propias.isEmpty)
+                    const HabitaCard(
+                      child: Text(
+                        'Todavía no tenés reservas. Explorá los espacios y armá tu próximo plan.',
+                      ),
+                    ),
                   ...propias.map((r) {
-                    final datos = r.data();
-                    final nombres = snap.data!.docs.where(
-                      (a) => a.id == datos['amenityId'],
+                    final d = r.data();
+                    final espacios = snap.data!.docs.where(
+                      (a) => a.id == d['amenityId'],
                     );
-                    final inicio = _fechaHora(datos['desde']);
-                    return HabitaCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            nombres.isEmpty
-                                ? 'Espacio reservado'
-                                : nombres.first.data()['nombre']?.toString() ??
-                                      'Espacio reservado',
-                            style: HabitaTipografia.etiqueta,
-                          ),
-                          Text(
-                            '${inicio == null ? 'Fecha no disponible' : DateFormat('dd/MM/yyyy HH:mm').format(inicio)} · ${datos['asistentes'] ?? 1} asistentes',
-                          ),
-                          EstadoChip(_estado(datos['estado'])),
-                          TextButton(
-                            onPressed: _operando ? null : () => _cancelar(r.id),
-                            child: const Text('Cancelar reserva'),
-                          ),
-                        ],
+                    final nombre = espacios.isEmpty
+                        ? d['amenityNombre']?.toString() ?? 'Espacio reservado'
+                        : espacios.first.data()['nombre']?.toString() ??
+                              'Espacio reservado';
+                    final inicio = _fechaHora(d['desde']);
+                    final fin = _fechaHora(d['hasta']);
+                    final cancelable =
+                        ['pendiente', 'confirmada'].contains(d['estado']) &&
+                        (inicio?.isAfter(DateTime.now()) ?? false);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: HabitaCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  iconoEspacio(nombre),
+                                  color: HabitaColores.marcaActivo,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    nombre,
+                                    style: HabitaTipografia.titulo3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              inicio == null
+                                  ? 'Fecha no disponible'
+                                  : DateFormat(
+                                      'dd/MM/yyyy · HH:mm',
+                                    ).format(inicio),
+                            ),
+                            Text(
+                              'Hasta ${fin == null ? '—' : DateFormat('dd/MM HH:mm').format(fin)} · ${d['asistentes'] ?? 1} asistentes',
+                            ),
+                            const SizedBox(height: 10),
+                            EstadoChip(
+                              _estado(d['estado']),
+                              tipo: d['estado'] == 'confirmada'
+                                  ? 'exito'
+                                  : 'info',
+                            ),
+                            if (cancelable)
+                              TextButton(
+                                onPressed: _operando
+                                    ? null
+                                    : () => _cancelar(r.id),
+                                child: const Text('Cancelar reserva'),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   }),
@@ -1425,79 +1568,17 @@ class _AmenityCard extends StatelessWidget {
     final propia = superpuestas.any(
       (documento) => documento.data()['unidadId'] == unidadId,
     );
-    final agotado = disponibles < asistentes;
-    final estado = propia
-        ? 'Ya reservada'
-        : agotado
-        ? 'Sin cupos'
-        : 'Disponible';
-    final tipoEstado = propia
-        ? 'info'
-        : agotado
-        ? 'error'
-        : 'exito';
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: HabitaCard(
-        child: Row(
-          children: [
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                gradient: HabitaColores.degradeMarca,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.deck_outlined,
-                color: Colors.white,
-                size: 30,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    datos['nombre'] as String? ?? '',
-                    style: HabitaTipografia.etiqueta,
-                  ),
-                  Text(
-                    'Capacidad: $capacidad personas',
-                    style: HabitaTipografia.micro,
-                  ),
-                  Text(
-                    'Disponibles en este horario: $disponibles de $capacidad',
-                    style: HabitaTipografia.micro,
-                  ),
-                  const SizedBox(height: 6),
-                  EstadoChip(estado, tipo: tipoEstado),
-                  if (propia)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 5),
-                      child: Text(
-                        'Tu unidad ya tiene una reserva para este horario.',
-                        style: TextStyle(color: HabitaColores.textoSuave),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            FilledButton.tonal(
-              onPressed: propia || agotado || operando ? null : onReservar,
-              child: Text(
-                propia
-                    ? 'Reservada'
-                    : agotado
-                    ? 'Sin cupos'
-                    : 'Reservar',
-              ),
-            ),
-          ],
-        ),
-      ),
+    return TarjetaEspacio(
+      nombre: datos['nombre']?.toString() ?? 'Espacio común',
+      descripcion: datos['descripcion']?.toString() ?? '',
+      capacidad: capacidad,
+      disponibles: disponibles,
+      asistentes: asistentes,
+      propia: propia,
+      activo: datos['activo'] != false,
+      aprobacion: datos['requiereAprobacion'] == true,
+      ocupado: operando,
+      reservar: onReservar,
     );
   }
 }

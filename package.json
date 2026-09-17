@@ -19,10 +19,12 @@
     "seed": "node tools/sembrar.mjs",
     "backend": "npm run dev --workspace backend",
     "web": "node tools/servidor-web.mjs",
+    "preview:web": "node tools/preview-ui.mjs",
     "test": "npm run test --workspace backend",
+    "test:web": "node --test web/test/gestion.test.mjs",
     "test:reglas": "node tools/probar-reglas.mjs",
     "verificar:servicios": "node tools/verificar-servicios.mjs",
-    "verificar": "npm run tokens && npm run marca && npm run build:web && npm run test && npm run test:reglas",
+    "verificar": "npm run tokens && npm run marca && npm run build:web && npm run test:web && npm run test && npm run test:reglas",
     "deploy:prod": "node tools/desplegar-produccion.mjs"
   },
   "devDependencies": {

@@ -1,8 +1,28 @@
-﻿## 2026-09-15 - Expansión de funcionalidades (Fase 4+)
+﻿## 2026-09-17 - Revisión e integración de cambios locales
+
+- Objetivo: revisar los cambios realizados por el usuario, evaluar su calidad funcional y técnica, corregir únicamente lo necesario, verificar el resultado y publicarlo en `main`.
+- Estado inicial: `main` está un commit por delante de `origin/main` y contiene cambios locales en app móvil, panel web, pruebas y archivos nuevos. Se preservan todos los cambios mientras se revisan.
+- Cambios revisados: la app residente incorpora selector de horario y asistentes, cancelación y listado de reservas, además de pantallas de unidad, pagos, obras y ayuda. El panel agrega configuración de espacios, agenda filtrable e historial/publicación de comunicaciones. Se conserva la lógica sensible en backend y las lecturas respetan los filtros exigidos por las reglas de Firestore.
+- Ajuste de integración: [package.json](../package.json) incorpora `test:web` dentro de `npm run verificar` y `preview:web` para revisar el panel con datos ficticios sin tocar Firebase ni Render. `flutter pub get` regeneró [pubspec.lock](../mobile/pubspec.lock) con versiones compatibles con el SDK mínimo declarado.
+- Verificado: `flutter analyze --no-pub` sin observaciones y `flutter test --no-pub` con 23 pruebas aprobadas. `npm run test:web` aprobó 2 pruebas, `npm test` aprobó 86 y `npm run build:web` recompiló el panel. `git diff --check` y los chequeos de sintaxis JavaScript pasaron.
+- Verificado visual: reservas y comunicaciones se revisaron en [preview-ui.mjs](../tools/preview-ui.mjs); filtros, navegación, jerarquía y diseño respondieron correctamente y la consola no registró errores.
+- Verificado online: `npm run verificar:servicios` confirmó backend, Firestore, producción, landing, panel, CORS y sesión obligatoria. Mercado Pago, IA y FCM informan configuración activa; Maps sigue simulado. Este control es de solo lectura y no demuestra cobros, clasificación IA ni recepción push de extremo a extremo.
+- Pendiente: desplegar el nuevo panel/compilar una nueva APK si se quiere probar estos cambios publicados en GitHub sobre Firebase/Render reales. La prueba con sesión y dispositivo sigue siendo distinta de las verificaciones locales.
+- Supuesto: las nuevas pantallas y el material fuente de `docs/entrega` forman parte de la ampliación solicitada y deben conservarse en el repositorio.
+
+## 2026-09-15 - Expansión de funcionalidades (Fase 4+)
 
 - Objetivo: Iniciar el análisis y planificación de nuevas funciones de gran alcance solicitadas por el usuario: reconocimiento de patentes para guardias, historial de notificaciones, cupos familiares y cuentas individuales para amenities, y desglose de gastos en las expensas.
 - Estado inicial: App y backend funcionales. APK recién compilada con la redirección directa a Mercado Pago corregida.
 - Pendiente: Investigar el código base para crear un plan de implementación detallado para cada una de las funcionalidades solicitadas sin romper el aislamiento multi-tenant ni depender innecesariamente de paquetes externos.
+
+## 2026-09-16 - Rediseño de reservas y ampliación de app y panel
+
+- Objetivo: rediseñar reservas, completar secciones útiles del residente y ampliar la administración de espacios, reservas y comunicaciones con Firebase/Render.
+- Estado inicial: main en `9dfec08`; cambios anteriores verificados. Publicación sigue limitada por permisos GitHub/Firebase de esta PC; no se asume que estén resueltos.
+- Verificado: revisión de las pantallas y endpoints existentes; obras y ayuda tienen acciones vacías, administración sólo muestra solicitudes pendientes y carece de historial de comunicaciones.
+- Pendiente: implementación, pruebas focalizadas, revisión visual y publicación si hay acceso.
+- Supuesto: se extienden flujos existentes sin crear datos de producción ni contratar servicios.
 
 ## 2026-09-16 - Mejoras de uso y corrección de notificaciones
 

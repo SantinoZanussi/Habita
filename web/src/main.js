@@ -1,3 +1,4 @@
+import { reservasFiltradas, destinatariosAviso } from './gestion.js';
 import { initializeApp } from 'firebase/app';
 import {
   connectAuthEmulator, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
@@ -21,6 +22,7 @@ const $$ = (selector, raiz = document) => [...raiz.querySelectorAll(selector)];
 const estado = {
   usuario: null, claims: null, complejoId: null, complejo: null,
   unidades: [], eventos: [], reclamos: [], periodos: [], amenities: [], reservas: [], obras: [],
+  avisos: [], filtroAvisos: '', filtrosReservas: { estado: 'todos', amenity: 'todos', fecha: '' },
   resumen: null, seccion: 'dashboard', listeners: [], filtroUnidades: '', filtroReclamos: '', estadoReclamos: 'todos',
 };
 let temporizadorResumen;
@@ -30,6 +32,13 @@ const login = $('#login');
 const appShell = $('#aplicacion');
 const loginForm = $('#form-login');
 const loginError = $('#login-error');
+if (!config.emuladores.activo) {
+  $('#login-email').value = '';
+  $('#login-password').value = '';
+  $('.demo-access').hidden = true;
+}
+$('.environment strong').textContent = config.emuladores.activo ? 'Entorno local' : 'Entorno online';
+$('.environment small').textContent = config.emuladores.activo ? 'Emuladores Firebase' : 'Firebase + Render';
 
 loginForm.addEventListener('submit', async (evento) => {
   evento.preventDefault();
@@ -127,6 +136,10 @@ function suscribirTiempoReal() {
   escuchar(query(collection(db, `complejos/${cid}/obras`)), (snap) => {
     estado.obras = snap.docs.map(datosDoc); renderTodo();
   });
+  escuchar(query(collection(db, `complejos/${cid}/notificaciones`), orderBy('enviadaEn', 'desc'), limit(100)), (snap) => {
+    estado.avisos = snap.docs.map(datosDoc); renderComunicaciones();
+  });
+
 }
 
 function escuchar(referencia, callback) {
@@ -138,6 +151,7 @@ function escuchar(referencia, callback) {
 function limpiarListeners() {
   clearTimeout(temporizadorResumen);
   solicitudResumen += 1;
+  for (const clave of ['unidades','eventos','reclamos','periodos','amenities','reservas','obras','avisos']) estado[clave] = [];
   estado.resumen = null;
   estado.complejo = null;
   estado.listeners.forEach((cancelar) => cancelar());
@@ -159,7 +173,8 @@ async function cargarResumen() {
 
 function renderTodo() {
   renderDashboard(); renderUnidades(); renderExpensas(); renderCobranza();
-  renderAccesos(); renderReclamos(); renderAmenities(); renderObras(); renderConfiguracion();
+  renderAccesos(); renderReclamos(); renderAmenities(); renderComunicaciones(); renderObras();
+  if (!$('#form-configuracion')?.dataset.dirty) renderConfiguracion();
 }
 
 function renderDashboard() {
@@ -167,9 +182,9 @@ function renderDashboard() {
   const abiertos = estado.reclamos.filter((r) => !['resuelto', 'anulado'].includes(r.estado));
   const accesosHoy = estado.eventos.filter((e) => e.resultado === 'permitido').length;
   $('#section-dashboard').innerHTML = `
-    ${heading('Dashboard', 'La operación de Torre del Parque, en una sola vista.', '<button class="button button--secondary" data-action="nuevo-aviso">+ Nuevo aviso</button>')}
+    ${heading('Dashboard', `La operación de ${estado.complejo?.nombre ?? 'tu complejo'}, en una sola vista.`, '<button class="button button--secondary" data-action="nuevo-aviso">+ Nuevo aviso</button>')}
     <div class="metrics">
-      ${metric('Unidades', estado.unidades.length || '—', '+2 este mes', '▦')}
+      ${metric('Unidades', estado.unidades.length, 'Unidades registradas', '▦')}
       ${metric('Recaudación del período', dinero(resumen.recaudado), `${numero(resumen.porcentajeRecaudado)}% del total`, '$')}
       ${metric('Morosidad', dinero(resumen.morosidadTotal), `${resumen.unidadesMorosas ?? 0} unidades`, '!', true)}
       ${metric('Reclamos abiertos', abiertos.length, `${abiertos.filter((r) => esReciente(r.creadoEn)).length} recientes`, '◇', abiertos.length > 10)}
@@ -296,15 +311,37 @@ function renderTablaReclamos() {
 }
 
 function renderAmenities() {
+  const activas = estado.reservas.filter((r) => ['pendiente','confirmada'].includes(r.estado));
   $('#section-amenities').innerHTML = `
-    ${heading('Amenities', 'Espacios configurables con cupo y disponibilidad compartida.', '<button class="button button--primary" data-action="nuevo-amenity">+ Nuevo amenity</button>')}
-    <div class="amenity-grid">${estado.amenities.map((a) => `<article class="amenity-card"><div class="amenity-card__top"><span class="amenity-card__icon">${iconoAmenity(a.id)}</span><span class="chip ${a.activo === false ? 'chip--danger' : 'chip--success'}">${a.activo === false ? 'Inactivo' : 'Disponible'}</span></div><h3>${safe(a.nombre)}</h3><p>${safe(a.descripcion ?? 'Espacio común del complejo')}</p><div class="amenity-card__meta"><span>Capacidad: <strong>${a.capacidad}</strong></span><span>Hasta ${a.anticipacionMaximaDias ?? 30} días</span></div></article>`).join('') || vacio('Sin amenities', 'Agregá los espacios que ofrece el complejo.')}</div>
-    ${tablaReservas()}`;
+    ${heading('Espacios y reservas', 'Administrá los espacios, revisá solicitudes y consultá la agenda.', '<button class="button button--primary" data-action="nuevo-amenity">+ Nuevo espacio</button>')}
+    <div class="management-hero"><div><span class="eyebrow">Vida en comunidad</span><h2>Todo listo para el próximo encuentro.</h2><p>Capacidades, aprobación y reservas en una misma vista.</p></div><span class="management-hero__icon" aria-hidden="true">⌁</span></div>
+    <div class="metrics">${metric('Espacios habilitados', estado.amenities.filter((a) => a.activo !== false).length, 'Disponibles para residentes', '⌁')}${metric('Por aprobar', activas.filter((r) => r.estado === 'pendiente').length, 'Solicitudes cargadas', '◷')}${metric('Confirmadas', activas.filter((r) => r.estado === 'confirmada').length, 'En las últimas 100 reservas cargadas', '✓')}${metric('Reservas cargadas', estado.reservas.length, 'Hasta 100 por fecha de inicio', '▦')}</div>
+    <div class="amenity-grid">${estado.amenities.map((a) => `<article class="amenity-card"><div class="amenity-card__top"><span class="amenity-card__icon">${iconoAmenity(a.id)}</span><span class="chip ${a.activo === false ? 'chip--warning' : 'chip--success'}">${a.activo === false ? 'No habilitado' : 'Habilitado'}</span></div><h3>${safe(a.nombre)}</h3><p>${safe(a.descripcion ?? 'Espacio común del complejo')}</p><div class="amenity-card__meta"><span><strong>${numero(a.capacidad,0)}</strong> personas</span><span>${a.requiereAprobacion ? 'Con aprobación' : 'Confirmación inmediata'}</span></div><button class="button button--secondary button--wide" data-action="editar-amenity" data-id="${safe(a.id)}">Configurar espacio</button></article>`).join('') || vacio('Sin espacios', 'Agregá los espacios que ofrece el complejo.')}</div>
+    <article class="card agenda-card"><div class="card__header"><div><h3>Agenda de reservas</h3><p>Confirmadas, pendientes e historial. Las reservas que cruzan medianoche aparecen en ambos días.</p></div></div>
+    <div class="toolbar agenda-filters">
+      <label>Estado<select data-reserva-filtro="estado">${opciones(['todos','pendiente','confirmada','cancelada','rechazada'], estado.filtrosReservas.estado)}</select></label>
+      <label>Espacio<select data-reserva-filtro="amenity"><option value="todos">Todos los espacios</option>${estado.amenities.map((a) => `<option value="${safe(a.id)}" ${estado.filtrosReservas.amenity === a.id ? 'selected' : ''}>${safe(a.nombre)}</option>`).join('')}</select></label>
+      <label>Día<input data-reserva-filtro="fecha" type="date" value="${safe(estado.filtrosReservas.fecha)}"></label>
+      <button class="button button--ghost" data-action="limpiar-reservas">Limpiar filtros</button>
+    </div><div id="tabla-reservas">${tablaReservas()}</div></article>`;
 }
 
 function tablaReservas() {
-  const pendientes = estado.reservas.filter((r) => r.estado === 'pendiente');
-  return `<article class="card" style="margin-top:16px"><div class="card__header"><div><h3>Solicitudes de reserva</h3><p>Confirmá o rechazá los horarios que requieren aprobación.</p></div></div><div class="table-wrap"><table><thead><tr><th>Espacio</th><th>Unidad</th><th>Horario</th><th>Personas</th><th></th></tr></thead><tbody>${pendientes.map((r) => `<tr><td>${safe(r.amenityNombre ?? r.amenityId)}</td><td>${safe(idUnidad(r.unidadId))}</td><td>${fechaCorta(r.desde)} a ${fechaHora(r.hasta)}</td><td>${numero(r.asistentes)}</td><td><div class="table-actions"><button class="button button--secondary button--small" data-action="resolver-reserva" data-id="${r.id}" data-estado="confirmada">Confirmar</button><button class="button button--ghost button--small" data-action="resolver-reserva" data-id="${r.id}" data-estado="rechazada">Rechazar</button></div></td></tr>`).join('') || '<tr><td colspan="5" class="table-empty">No hay solicitudes pendientes.</td></tr>'}</tbody></table></div></article>`;
+  const reservas = reservasFiltradas(estado.reservas, estado.filtrosReservas);
+  return `<div class="table-wrap"><table><thead><tr><th>Espacio / unidad</th><th>Desde</th><th>Hasta</th><th>Personas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${reservas.map((r) => `<tr><td><strong>${safe(r.amenityNombre ?? estado.amenities.find((a) => a.id === r.amenityId)?.nombre ?? r.amenityId)}</strong><br>Unidad ${safe(idUnidad(r.unidadId))}</td><td>${fechaHora(r.desde)}</td><td>${fechaHora(r.hasta)}</td><td>${numero(r.asistentes,0)}</td><td><span class="chip ${r.estado === 'confirmada' ? 'chip--success' : r.estado === 'pendiente' ? 'chip--warning' : 'chip--info'}">${safe(textoEstado(r.estado))}</span></td><td>${r.estado === 'pendiente' ? `<div class="table-actions"><button class="button button--secondary button--small" data-action="resolver-reserva" data-id="${safe(r.id)}" data-estado="confirmada">Confirmar</button><button class="button button--ghost button--small" data-action="resolver-reserva" data-id="${safe(r.id)}" data-estado="rechazada">Rechazar</button></div>` : '—'}</td></tr>`).join('') || '<tr><td colspan="6" class="table-empty">No hay reservas con estos filtros.</td></tr>'}</tbody></table></div>`;
+}
+
+function renderComunicaciones() {
+  $('#section-comunicaciones').innerHTML = `
+    ${heading('Comunicaciones', 'Avisos que llegan al historial de los residentes y al servicio de notificaciones.', '<button class="button button--primary" data-action="nuevo-aviso">+ Publicar aviso</button>')}
+    <div class="management-hero"><div><span class="eyebrow">Conectá con tus vecinos</span><h2>La información correcta, a quien la necesita.</h2><p>Publicá para todo el complejo o para unidades específicas.</p></div></div>
+    <div class="toolbar"><div class="search"><input type="search" data-avisos-search aria-label="Buscar comunicados" placeholder="Buscar por título o mensaje…" value="${safe(estado.filtroAvisos)}"></div><span class="chip chip--info">Últimos ${estado.avisos.length} avisos (máximo 100)</span></div>
+    <div id="lista-avisos" class="notice-grid">${listaAvisos()}</div>`;
+}
+
+function listaAvisos() {
+  const filtro = normalizar(estado.filtroAvisos);
+  return estado.avisos.filter((a) => normalizar(`${a.titulo} ${a.cuerpo}`).includes(filtro)).map((a) => `<article class="card notice-card"><div class="card__header"><span class="chip chip--info">${safe(textoEstado(a.tipo ?? 'administracion'))}</span><time>${fechaHora(a.enviadaEn)}</time></div><h3>${safe(a.titulo)}</h3><p class="notice-body">${safe(a.cuerpo)}</p><div class="notice-audience">${a.destinatarios === 'todos' ? 'Todo el complejo' : 'Unidades: ' + safe((Array.isArray(a.destinatarios) ? a.destinatarios : []).map(idUnidad).join(', '))}</div></article>`).join('') || vacio('Sin comunicados para mostrar', 'Publicá un aviso o probá otra búsqueda.');
 }
 
 function renderObras() {
@@ -336,11 +373,13 @@ document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-close-modal]')) return cerrarModal();
   const boton = e.target.closest('[data-action]');
   if (!boton) return;
+  if (boton.disabled) return;
+  boton.disabled = true;
   try {
     await ejecutarAccion(boton.dataset.action, boton);
   } catch (error) {
     mostrarToast('No pudimos completar la operación', error.message, 'error');
-  }
+  } finally { boton.disabled = false; }
 });
 
 document.addEventListener('submit', async (e) => {
@@ -360,6 +399,8 @@ document.addEventListener('submit', async (e) => {
 });
 
 document.addEventListener('input', (e) => {
+  if (e.target.closest('#form-configuracion')) e.target.closest('form').dataset.dirty = 'true';
+  if (e.target.matches('[data-avisos-search]')) { estado.filtroAvisos = e.target.value; $('#lista-avisos').innerHTML = listaAvisos(); return; }
   const campo = e.target.closest('[data-reclamos-search]');
   if (!campo) return;
   estado.filtroReclamos = campo.value;
@@ -367,6 +408,8 @@ document.addEventListener('input', (e) => {
 });
 
 document.addEventListener('change', (e) => {
+  if (e.target.dataset.reservaFiltro) { estado.filtrosReservas[e.target.dataset.reservaFiltro] = e.target.value; $('#tabla-reservas').innerHTML = tablaReservas(); return; }
+  if (e.target.name === 'alcance') { $('#unidades-aviso').hidden = e.target.value === 'todos'; return; }
   const filtro = e.target.closest('[data-reclamos-estado]');
   if (!filtro) return;
   estado.estadoReclamos = filtro.value;
@@ -385,6 +428,8 @@ async function ejecutarAccion(accion, boton) {
   if (accion === 'avanzar-reclamo') return avanzarReclamo(boton.dataset.id, boton.dataset.estado);
   if (accion === 'corregir-reclamo') return modalClasificacion(estado.reclamos.find((r) => r.id === boton.dataset.id));
   if (accion === 'nuevo-amenity') return modalAmenity();
+  if (accion === 'editar-amenity') return modalAmenity(estado.amenities.find((a) => a.id === boton.dataset.id));
+  if (accion === 'limpiar-reservas') { estado.filtrosReservas = {estado:'todos',amenity:'todos',fecha:''}; return renderAmenities(); }
   if (accion === 'pago-manual') return modalPago();
   if (accion === 'nuevo-aviso') return modalAviso();
 }
@@ -420,8 +465,8 @@ function modalAcceso() {
     <form data-form="acceso"><div class="segmented"><button type="button" class="is-active">Código QR</button><button type="button">Patente</button></div><div class="form-grid" style="margin-top:16px"><label class="span-2">Código o patente<input name="credencial" value="HBA-DEMO-VISITA-01" required></label><label>Punto de acceso<select name="punto">${(estado.complejo?.puntosAcceso ?? []).map((p) => `<option value="${safe(p.id)}">${safe(p.nombre)}</option>`).join('')}</select></label><label>Sentido<select name="sentido">${opciones(['ingreso','egreso'], 'ingreso')}</select></label></div><p style="color:var(--texto-suave);margin-top:14px">La validación se rechaza cuando se agotan los usos. El QR demo tiene dos usos y cada intento queda registrado.</p><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Validar ahora</button></div></form>`);
 }
 
-function modalAmenity() {
-  abrirModal('Nuevo amenity', 'Espacios comunes', `<form data-form="amenity"><div class="form-grid"><label>Nombre<input name="nombre" required placeholder="Quincho"></label><label>Capacidad<input name="capacidad" type="number" min="1" required></label><label class="span-2">Descripción<input name="descripcion" placeholder="Espacio equipado para reuniones"></label><label>Anticipación máxima (días)<input name="anticipacionMaximaDias" type="number" min="1" value="30"></label><label>Requiere aprobación<select name="requiereAprobacion"><option value="false">No</option><option value="true">Sí</option></select></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Crear amenity</button></div></form>`);
+function modalAmenity(amenity = null) {
+  abrirModal(amenity ? 'Configurar espacio' : 'Nuevo espacio', 'Espacios comunes', `<form data-form="amenity" data-id="${safe(amenity?.id ?? '')}"><div class="form-grid"><label>Nombre<input name="nombre" maxlength="120" value="${safe(amenity?.nombre ?? '')}" required placeholder="Quincho"></label><label>Capacidad<input name="capacidad" type="number" min="1" step="1" value="${amenity?.capacidad ?? ''}" required></label><label class="span-2">Descripción<textarea name="descripcion" maxlength="1000" placeholder="Equipamiento y recomendaciones de uso">${safe(amenity?.descripcion ?? '')}</textarea></label><label>Estado<select name="activo"><option value="true" ${amenity?.activo !== false ? 'selected' : ''}>Habilitado</option><option value="false" ${amenity?.activo === false ? 'selected' : ''}>No habilitado</option></select></label><label>Requiere aprobación<select name="requiereAprobacion"><option value="false">No</option><option value="true" ${amenity?.requiereAprobacion ? 'selected' : ''}>Sí</option></select></label></div><p class="form-help">Deshabilitar impide nuevas reservas. Las existentes conservan su estado.</p><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Guardar espacio</button></div></form>`);
 }
 
 function modalPago() {
@@ -429,7 +474,7 @@ function modalPago() {
 }
 
 function modalAviso() {
-  abrirModal('Nuevo aviso', 'Notificaciones', `<form data-form="aviso"><div class="form-grid"><label class="span-2">Título<input name="titulo" required placeholder="Corte de agua programado"></label><label class="span-2">Mensaje<textarea name="cuerpo" required></textarea></label><label>Tipo<select name="tipo">${opciones(['administracion','mantenimiento','asamblea','seguridad'], 'administracion')}</select></label><label>Destinatarios<select name="destinatarios"><option value="todos">Todo el complejo</option></select></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Publicar aviso</button></div></form>`);
+  abrirModal('Nuevo aviso', 'Comunicaciones', `<form data-form="aviso"><div class="form-grid"><label class="span-2">Título<input name="titulo" maxlength="120" required placeholder="Corte de agua programado"></label><label class="span-2">Mensaje<textarea name="cuerpo" maxlength="4000" required rows="5"></textarea></label><label>Tipo<select name="tipo">${opciones(['administracion','mantenimiento','asamblea','seguridad'], 'administracion')}</select></label><label>Destinatarios<select name="alcance"><option value="todos">Todo el complejo</option><option value="unidades">Elegir unidades</option></select></label><fieldset id="unidades-aviso" class="span-2 audience-picker" hidden><legend>Unidades destinatarias (hasta 30)</legend>${estado.unidades.map((u) => `<label><input type="checkbox" name="unidades" value="${safe(u.id)}"> ${safe(u.identificador)}</label>`).join('') || '<p>No hay unidades registradas.</p>'}</fieldset></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Publicar aviso</button></div></form>`);
 }
 
 async function enviarModal(tipo, form) {
@@ -448,12 +493,12 @@ async function enviarModal(tipo, form) {
     mostrarResultadoAcceso(resultado);
     return;
   } else if (tipo === 'amenity') {
-    await api(`/complejos/${cid}/amenities`, { method: 'POST', body: { ...datos, capacidad: Number(datos.capacidad), anticipacionMaximaDias: Number(datos.anticipacionMaximaDias), requiereAprobacion: datos.requiereAprobacion === 'true' } });
+    await api(`/complejos/${cid}/amenities${form.dataset.id ? `/${form.dataset.id}` : ''}`, { method: form.dataset.id ? 'PATCH' : 'POST', body: { ...datos, capacidad: Number(datos.capacidad), activo: datos.activo === 'true', requiereAprobacion: datos.requiereAprobacion === 'true' } });
   } else if (tipo === 'pago') {
     await api(`/complejos/${cid}/expensas/pagos/manual`, { method: 'POST', body: { ...datos, monto: Number(datos.monto) } });
     await cargarResumen();
   } else if (tipo === 'aviso') {
-    await api(`/complejos/${cid}/notificaciones`, { method: 'POST', body: datos });
+    await api(`/complejos/${cid}/notificaciones`, { method: 'POST', body: { titulo: datos.titulo, cuerpo: datos.cuerpo, tipo: datos.tipo, destinatarios: destinatariosAviso(new FormData(form)) } });
   } else if (tipo === 'clasificacion') {
     await api(`/complejos/${cid}/reclamos/${form.dataset.id}/clasificacion`, {
       method: 'PATCH',
@@ -504,6 +549,7 @@ async function guardarConfiguracion(form) {
   const datos = Object.fromEntries(new FormData(form));
   for (const campo of ['porcentajeFondoReserva', 'tasaMoraMensual', 'diasGraciaMora']) datos[campo] = Number(datos[campo]);
   await api(`/complejos/${estado.complejoId}/configuracion`, { method: 'PATCH', body: datos });
+  delete form.dataset.dirty;
   mostrarToast('Configuración guardada', 'La app y el panel usarán la nueva nomenclatura.');
 }
 
@@ -549,9 +595,9 @@ async function api(ruta, opciones = {}) {
   const token = await estado.usuario.getIdToken();
   let respuesta;
   try {
-    respuesta = await fetch(`${config.apiUrl}${ruta}`, { method: opciones.method ?? 'GET', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: opciones.body === undefined ? undefined : JSON.stringify(opciones.body) });
+    respuesta = await fetch(`${config.apiUrl}${ruta}`, { method: opciones.method ?? 'GET', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: opciones.body === undefined ? undefined : JSON.stringify(opciones.body), signal: AbortSignal.timeout(75000) });
   } catch (error) {
-    throw new Error('No pudimos conectar con el backend. Revisá que esté iniciado e intentá de nuevo.');
+    throw new Error('No recibimos respuesta del servidor. Revisá el estado de la operación antes de repetirla.');
   }
   const cuerpo = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) throw new Error(cuerpo.error?.mensaje ?? `La operación falló (${respuesta.status}).`);
@@ -562,7 +608,7 @@ function datosDoc(d) { return { id: d.id, ...d.data() }; }
 function safe(v) { return String(v ?? '').replace(/[&<>'"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c])); }
 function normalizar(v) { return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 function numero(v, decimales = 1) { return Number(v ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: decimales }); }
-function dinero(centavos) { if (centavos === undefined || centavos === null) return '—'; return (Number(centavos) / 100).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }); }
+function dinero(centavos) { if (centavos === undefined || centavos === null) return '—'; return (Number(centavos) / 100).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fechaHora(v) { const d = v?.toDate ? v.toDate() : new Date(v); return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
 function fechaCorta(v) { return fechaHora(v); }
 function porcentaje(parte, total) { return `${numero(Number(parte ?? 0) / Math.max(Number(total ?? 0), 1) * 100)}% del total`; }

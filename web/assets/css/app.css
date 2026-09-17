@@ -192,6 +192,28 @@ tbody tr:hover { background: #f9fcfe; }
 .toast button { border: 0; background: none; color: var(--texto-suave); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
 
+.management-hero { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:30px; margin-bottom:24px; border-radius:20px; color:#fff; background:linear-gradient(115deg,#0c344b,#147c88); }
+.management-hero h2 { font-size:clamp(22px,3vw,30px); line-height:1.2; max-width:650px; margin:10px 0; color:#fff; }
+.management-hero p { color:#d2e9ed; margin:0; }
+.management-hero .eyebrow { color:#93e7d8; }
+.management-hero__icon { font-size:72px; color:#93e7d8; }
+.amenity-card .button { margin-top:20px; }
+.agenda-card { margin-top:24px; }
+.agenda-filters { align-items:end; flex-wrap:wrap; gap:14px; }
+.agenda-filters label { display:grid; gap:6px; flex:1; min-width:150px; font-size:12px; font-weight:600; color:var(--texto-suave); }
+.agenda-filters input, .agenda-filters select { width:100%; }
+.notice-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:18px; }
+.notice-card h3 { margin:12px 0; }
+.notice-card time { font-size:11px; color:var(--texto-suave); }
+.notice-body { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; }
+.notice-audience { border-top:1px solid var(--borde,#dde5ea); padding-top:14px; margin-top:18px; font-size:12px; color:var(--texto-suave); }
+.audience-picker { border:1px solid var(--borde,#dde5ea); border-radius:12px; padding:16px; max-height:220px; overflow:auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:10px; }
+.audience-picker[hidden] { display:none; }
+.audience-picker label { display:flex; align-items:center; gap:6px; }
+.audience-picker input { width:auto; }
+.form-help { margin-top:16px; color:var(--texto-suave); font-size:12px; }
+@media (max-width:620px) { .management-hero { padding:22px; } .management-hero__icon { display:none; } .agenda-filters label { min-width:100%; } }
+
 @media (max-width: 1180px) {
   .metrics { grid-template-columns: repeat(2, 1fr); }
   .grid--2 { grid-template-columns: 1fr; }

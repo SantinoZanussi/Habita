@@ -51,9 +51,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Cuándo y cuántos'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Agregar asistente'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Agregar asistente'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Reservar'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Reservar'));
     await tester.pumpAndSettle();
     expect(api.ruta, '/complejos/torre/amenities/sum/reservas');
@@ -84,6 +89,8 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mis reservas'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Cancelar reserva'));
     await tester.pumpAndSettle();
