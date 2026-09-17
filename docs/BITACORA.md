@@ -1,4 +1,14 @@
-﻿## 2026-09-17 - Revisión e integración de cambios locales
+﻿## 2026-09-17 - Generación de APK Android actualizada
+
+- Objetivo: compilar una APK release instalable con los últimos cambios de `main`, conectada a Firebase y Render reales mediante la configuración productiva local.
+- Estado inicial: `main` sincronizado con `origin/main` en `2211697`; `mobile/firebase.production.json` está disponible localmente y no se incluirá en Git.
+- Verificado: `npm run build:mobile:prod` completó `assembleRelease` en 825 segundos y generó [app-release.apk](../mobile/build/app/outputs/flutter-apk/app-release.apk), de 74.630.163 bytes (71,17 MiB), con fecha local `2026-09-17T11:39:34`.
+- Verificado: SHA-256 `50213F438CB76CC091E33E961E8D2B986937B1A0E8BAFA41B7F8E730E84322EE`; `apksigner verify --verbose` confirmó una firma válida mediante APK Signature Scheme v2.
+- Verificado: el build usó `mobile/firebase.production.json` mediante `--dart-define-from-file`; el archivo continúa excluido de Git. Las advertencias del SDK XML y de APIs Java obsoletas provinieron de las herramientas/dependencias Android y no interrumpieron la compilación.
+- Pendiente: instalar la APK en el dispositivo físico y validar inicio de sesión, reservas, comunicaciones, QR/cámara y notificaciones con Firebase/Render reales.
+- Supuesto: la APK se instalará manualmente en un dispositivo Android para validar los flujos reales.
+
+## 2026-09-17 - Revisión e integración de cambios locales
 
 - Objetivo: revisar los cambios realizados por el usuario, evaluar su calidad funcional y técnica, corregir únicamente lo necesario, verificar el resultado y publicarlo en `main`.
 - Estado inicial: `main` está un commit por delante de `origin/main` y contiene cambios locales en app móvil, panel web, pruebas y archivos nuevos. Se preservan todos los cambios mientras se revisan.
