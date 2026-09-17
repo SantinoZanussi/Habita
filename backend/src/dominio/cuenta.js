@@ -5,13 +5,18 @@ const fecha = (v) => v?.toDate ? v.toDate() : new Date(v);
 
 // Los comprobantes antiguos con arrastre requieren conciliacion, no una resta ciega.
 export function deudaDePeriodo({ detalle, periodo, complejo, hasta = new Date() }) {
-  if (detalle.versionCuenta !== 2 && (detalle.saldoAnterior > 0 || detalle.interesesMora > 0)) {
+  const capital = Math.max(0, Number(detalle.saldoPendiente ?? 0));
+  const pendiente = Math.max(0, Number(detalle.interesesPendientes ?? 0));
+  // Un detalle historico ya cancelado puede conservar el saldo anterior que se
+  // mostraba en su comprobante. No es deuda activa y no debe bloquear pagos de
+  // periodos posteriores. Si aun queda saldo, se mantiene el freno porque no
+  // podemos distinguir con seguridad capital nuevo de deuda ya arrastrada.
+  if (capital + pendiente > 0 && detalle.versionCuenta !== 2 &&
+      (detalle.saldoAnterior > 0 || detalle.interesesMora > 0)) {
     throw errores.conflicto('Esta cuenta requiere conciliacion de liquidaciones anteriores antes de operar.', {
       periodoId: periodo.id, unidadId: detalle.unidadId,
     });
   }
-  const capital = Math.max(0, Number(detalle.saldoPendiente ?? 0));
-  const pendiente = Math.max(0, Number(detalle.interesesPendientes ?? 0));
   const vencimiento = fecha(periodo.vencimiento);
   const inicio = new Date(vencimiento);
   inicio.setUTCDate(inicio.getUTCDate() + Number(complejo.diasGraciaMora ?? 0));

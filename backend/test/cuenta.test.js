@@ -25,3 +25,33 @@ test('gracia y tope no se reinician despues de un pago', () => {
     detalle: { saldoPendiente: 10000, moraCalculadaHasta: '2026-01-05' } });
   assert.equal(antes.interesesCentavos, 0);
 });
+
+test('un comprobante historico cancelado no bloquea pagos posteriores', () => {
+  const deuda = deudaDePeriodo({
+    periodo,
+    complejo,
+    hasta: new Date('2026-03-02'),
+    detalle: {
+      unidadId: 'unidad-3a',
+      saldoAnterior: 20_100_000_000,
+      interesesMora: 0,
+      saldoPendiente: 0,
+      pagado: true,
+    },
+  });
+
+  assert.equal(deuda.saldoCentavos, 0);
+  assert.equal(deuda.interesesCentavos, 0);
+});
+
+test('una deuda historica con arrastre pendiente sigue requiriendo conciliacion', () => {
+  assert.throws(() => deudaDePeriodo({
+    periodo,
+    complejo,
+    detalle: {
+      unidadId: 'unidad-3a',
+      saldoAnterior: 5000,
+      saldoPendiente: 5000,
+    },
+  }), /requiere conciliacion/);
+});
