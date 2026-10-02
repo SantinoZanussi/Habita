@@ -6,9 +6,10 @@ Dejar una prueba reproducible para que otra persona o equipo use la app móvil y
 
 ## Estado actual
 
+- La [matriz de QA del 2026-10-02](QA_2026-10-02.md) separa resultados automáticos y casos pendientes de sesión/dispositivo para los cinco roles.
 - El backend, las reglas de Firebase y la app móvil tienen suites automatizadas.
 - El panel permite avanzar el estado de un reclamo y corregir su área o urgencia. La corrección queda registrada por usuario y actualiza la prioridad.
-- Mercado Pago queda fuera de esta ronda: el portal del proveedor no permite activar las credenciales de prueba. El flujo de pagos demo autenticado sigue disponible y está marcado como simulado.
+- Mercado Pago requiere una prueba independiente de sandbox y retorno al cliente. El 2026-10-02 el backend online informa configuración activa; esa señal no confirma un pago. El modo simulado depende de la configuración del entorno y sólo se usa con datos demo.
 - Falta ejecutar la prueba con una persona externa y adjuntar sus hallazgos en una sección de resultados.
 
 ## Preparación local

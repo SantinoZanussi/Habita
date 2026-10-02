@@ -8,6 +8,15 @@
 - Pendiente: instalar la APK en el dispositivo físico y validar inicio de sesión, reservas, comunicaciones, QR/cámara y notificaciones con Firebase/Render reales.
 - Supuesto: la APK se instalará manualmente en un dispositivo Android para validar los flujos reales.
 
+## 2026-09-17 - Comprobación del despliegue de la corrección de pagos
+
+- Objetivo: resolver la persistencia del error y comprobar qué revisión ejecuta Render.
+- Estado inicial: `main` sincronizado; el arreglo está publicado en GitHub, pero la sesión anterior no confirmó su despliegue. El panel de Render requiere iniciar sesión; se solicitó al usuario completar el acceso.
+- Verificado: la auditoría de solo lectura volvió a confirmar el mismo caso histórico cancelado; la APK productiva y la configuración web apuntan a `habita-api-goiburu.onrender.com`. No se encontraron cambios en los saldos auditados que expliquen el error persistente.
+- Verificado: el usuario tiene Render abierto en Chrome. Browser Use no ofrece Chrome; Computer Use detectó la ventana, pero falló al obtenerla y también en el único reintento (ventana no encontrada). La pestaña de Render dentro de Codex está en login. No se realizó ni se confirmó un despliegue.
+- Pendiente: acceso interactivo a Render o información del usuario sobre el commit marcado Live; identificar repositorio/rama y último despliegue, publicar el arreglo y comprobarlo online.
+- Supuesto: el servicio podría estar usando una revisión anterior; no se considera probado sólo por recibir `ok` en salud.
+
 ## 2026-09-17 - Compatibilidad de pagos con liquidaciones anteriores
 
 - Objetivo: corregir el bloqueo compartido por Mercado Pago y pagos manuales cuando una cuenta contiene liquidaciones anteriores al modelo contable versionado.
@@ -555,3 +564,36 @@ pm run verificar\ (incluyendo corrección de sintaxis y charset).
 
 ### Pendiente
 Verificar el uso real y las dimensiones de la UI en dispositivos físicos. 
+## 2026-10-01 - Carga del tablero GitHub Habita (interrumpida)
+
+- Objetivo: completar el proyecto GitHub `Habita - Startup` con el diagnóstico y el objetivo del sprint del 2 de octubre, sin duplicar tarjetas existentes.
+- Estado inicial: repositorio `main` sin cambios de código; hay modificaciones locales previas en esta bitácora y el directorio `outputs/`, que se conservan. El tablero abrió con las columnas `Pendiente`, `En proceso` y `Finalizado`, todas vacías.
+- Verificado: el tablero contiene borradores en `En proceso` para el objetivo del sprint del 2 de octubre, desbloqueo de pagos y prueba sandbox de Mercado Pago; también hay un borrador en `Pendiente` para confirmar en Render el despliegue de `734b2c4` y revisar expensas en app/panel. La automatización se interrumpió durante la carga y no se inspeccionó el estado posterior completo.
+- Cambios: se crearon esas cuatro tarjetas borrador en GitHub Projects. No se crearon issues vinculados al repositorio ni se modificaron columnas. El intento previo de crear una tarjeta de sprint inició el editor de issue, que se cerró sin publicar.
+- Pendiente: completar el tablero con tareas restantes de desarrollo, validación y fases 3 a 5, verificar duplicados/estados y tomar evidencia visual del resultado. No marcar QA cruzado, demo presencial ni presentación como terminados sin evidencia.
+- Resultado de sesión: incompleto por interrupción del control del navegador.
+- Supuesto: usar las tareas y estados del diagnóstico del Excel preparado hoy; no marcar como terminado ningún hito que requiera validación de despliegue, dispositivo o QA externo aún no observada.
+## 2026-10-02 - Diagnóstico y sprint en Google Sheets
+
+- Objetivo: completar la planilla del tercer trimestre del profesor con el estado documentado de Habita.
+- Estado inicial: diagnóstico y sprints vacíos. La organización rechazó la cuenta personal y el usuario completó el acceso con la cuenta del colegio.
+- Verificado: se cargaron 13 entradas en `FUNCIONANDO`, 13 en `A MEDIAS` y 34 en `POR EMPEZAR`. El desplegable de objetivos muestra las 47 tareas de las dos columnas pendientes.
+- Verificado: se seleccionó el objetivo del 2 de octubre sobre Render y consulta de expensas sin error de conciliación. Google confirmó `Guardado en Drive`.
+- Cambios: responsable de actualización en `Diagnóstico!B3`; texto ajustado y alto del primer sprint adaptado al contenido. Fórmulas, desplegables, fechas y aprobación/cumplimiento preservados.
+- Pendiente: ejecutar y documentar el resultado del sprint; completar el tablero GitHub interrumpido. Aprobación docente y cumplimiento siguen vacíos.
+- Supuesto: el diagnóstico refleja la implementación y las verificaciones documentadas; las pruebas reales y las fases presenciales siguen pendientes donde se indica.
+- Planilla: [Registro del tercer trimestre](https://docs.google.com/spreadsheets/d/1C36qSaOgDZzIdiSCcnQrlan674dMUNDXCEfIL0cujNw/edit).
+- Evidencia: [Sprint guardado](../outputs/habita-sprint-2026-10-01/sheets_sprint_guardado.png).
+## 2026-10-02 - Ejecución de pendientes del diagnóstico
+
+- Objetivo: realizar pendientes verificables de Habita y reflejar únicamente resultados comprobados en Google Sheets.
+- Estado inicial: `main` coincide con `origin/main` en `253fed9`; hay cambios locales previos en esta bitácora y `outputs/`, que se preservan. El sprint sobre expensas todavía no tiene cumplimiento registrado.
+- Verificado: `npm run verificar` pasó con código 0: 2 pruebas web, 88 de backend y 20 de integración/reglas. Las tres pruebas contables nuevas comprueban entrega simultánea del mismo pago, estados no aprobados y transición pendiente/aprobado con reintento. Se usó Firestore en emulador, con datos aislados eliminados al cierre y sin cobros reales.
+- Verificado: `npm run verificar:servicios` falló primero con `SyntaxError` al interpretar una respuesta online; al repetirlo pasaron salud, Firestore real, producción, landing, panel, CORS y sesión obligatoria. No se determinó la causa exacta de la respuesta inicial. MP, IA y FCM informan configuración activa, sin prueba de operación externa.
+- Verificado: los archivos publicados `assets/js/app.js`, `assets/css/app.css` y `panel/index.html` responden 200 pero sus SHA-256 difieren del repo incluso normalizando CRLF/LF. Una primera orden auxiliar de comparación falló por sintaxis de módulos Node; se corrigió la orden y se ejecutó la comparación. Esto no identifica el commit de Render.
+- Verificado: Google Sheets tiene tres actividades completadas en `Diagnóstico!B18:B20`, con notas que enlazan pruebas e informe. Se retiraron sus duplicados de `F10`, `F12` y `F29`: quedan 31 tareas en `POR EMPEZAR`. Google confirmó `Guardado en Drive`; el objetivo original del sprint conserva su cumplimiento sin marcar.
+- Cambios: [pruebas contables](../firebase/tests/contabilidad.test.mjs), [matriz con resultados](QA_2026-10-02.md), enlace y estado actualizado en [guía de Fase 3](FASE_3_QA.md). Se conserva la bitácora previa y los archivos locales de `outputs/`. Se añadió evidencia a la tarea del panel publicado en `Diagnóstico!F25`.
+- Evidencia: [actividades completadas en Sheets](../outputs/habita-sprint-2026-10-01/sheets_actividades_completadas_2026-10-02.png).
+- Publicación: se creó el commit sobre `main`, pero `git push origin main` fue rechazado con HTTP 403. Git Credential Manager sólo disponía de una cuenta sin permiso de escritura en este repo. El usuario identificó `JuanmaGoiburu` como cuenta autorizada. Se canceló el inicio de sesión automático porque abrió el perfil de otro alumno de esta notebook compartida; se reemplazó por autenticación de dispositivo con enlace para abrir en el Chrome del usuario, pendiente de su confirmación. No se guardan códigos de acceso en esta bitácora. El remoto se conserva; el usuario de credenciales se configura únicamente para este repo. Las notas de Sheets aclaran que los enlaces de los archivos nuevos en GitHub estarán disponibles después del push; la evidencia local ya existe.
+- Pendiente: confirmar y publicar la revisión actual del panel; confirmar commit activo de Render y comprobar expensas con sesión; pago sandbox completo, Android/QR, push, QA externo y tablero GitHub pendiente de la sesión anterior. Las pruebas automáticas no cierran esos puntos. No se modificó código móvil ni se repitieron verificaciones Flutter.
+- Supuesto: la ejecución automatizada puede cerrar casos de backend con evidencia; no reemplaza recepción push, cámara/QR en Android, QA externo ni exposición presencial.

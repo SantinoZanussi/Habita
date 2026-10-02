@@ -52,6 +52,52 @@ test('dos pagos concurrentes descuentan ambos importes y el reintento no duplica
   assert.equal((await cuenta()).totalAdeudado, 3000);
 });
 
+test('dos notificaciones simultaneas del mismo pago acreditan una sola vez', async () => {
+  await periodo('2026-01'); await cerrar('2026-01');
+  const id = randomUUID();
+  const resultados = await Promise.all([pagar(3000, id), pagar(3000, id)]);
+  assert.equal(resultados.filter((r) => r.procesado).length, 1);
+  assert.equal(resultados.filter((r) => r.idempotente).length, 1);
+  assert.equal((await cuenta()).totalAdeudado, 7000);
+  assert.equal((await rutas.pagos(complejoId).get()).size, 1);
+  assert.equal((await pagar(3000, id)).idempotente, true);
+  assert.equal((await cuenta()).totalAdeudado, 7000);
+  const resumen = await resumenCobranza({ complejoId });
+  assert.equal(resumen.serie.reduce((s, p) => s + p.recaudado, 0), 3000);
+});
+
+test('pagos rechazados, pendientes y cancelados no modifican deuda ni cobranza', async () => {
+  await periodo('2026-01'); await cerrar('2026-01');
+  const revisionInicial = (await rutas.complejo(complejoId).get()).data().revisionCuenta;
+  for (const estado of ['rejected', 'pending', 'cancelled']) {
+    const resultado = await procesarPago({ pagoId: randomUUID(), simulado: {
+      estado, montoCentavos: 3000, simulado: true,
+      referencia: armarReferencia({ complejoId, unidadId: 'u1', periodoId: '2026-01' }),
+    } });
+    assert.equal(resultado.procesado, false, estado);
+    assert.equal(resultado.motivo, `estado_${estado}`);
+    assert.equal((await cuenta()).totalAdeudado, 10000, estado);
+  }
+  assert.equal((await rutas.pagos(complejoId).get()).size, 0);
+  assert.equal((await rutas.complejo(complejoId).get()).data().revisionCuenta, revisionInicial);
+  const resumen = await resumenCobranza({ complejoId });
+  assert.equal(resumen.serie.reduce((s, p) => s + p.recaudado, 0), 0);
+});
+
+test('un pago pendiente puede aprobarse despues y sus reintentos no lo duplican', async () => {
+  await periodo('2026-01'); await cerrar('2026-01');
+  const id = randomUUID();
+  await procesarPago({ pagoId: id, simulado: {
+    estado: 'pending', montoCentavos: 3000, simulado: true,
+    referencia: armarReferencia({ complejoId, unidadId: 'u1', periodoId: '2026-01' }),
+  } });
+  assert.equal((await cuenta()).totalAdeudado, 10000);
+  assert.equal((await pagar(3000, id)).procesado, true);
+  assert.equal((await pagar(3000, id)).idempotente, true);
+  assert.equal((await cuenta()).totalAdeudado, 7000);
+  assert.equal((await rutas.pagos(complejoId).get()).size, 1);
+});
+
 test('un pago concurrente con cierre conserva deuda y aplica excedente al siguiente cargo', async () => {
   await periodo('2026-01'); await cerrar('2026-01');
   await periodo('2026-02');
