@@ -24,6 +24,7 @@
     "test:web": "node --test web/test/gestion.test.mjs",
     "test:reglas": "node tools/probar-reglas.mjs",
     "verificar:servicios": "node tools/verificar-servicios.mjs",
+    "verificar:version-web": "node tools/verificar-version-web.mjs",
     "verificar": "npm run tokens && npm run marca && npm run build:web && npm run test:web && npm run test && npm run test:reglas",
     "deploy:prod": "node tools/desplegar-produccion.mjs"
   },

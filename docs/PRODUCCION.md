@@ -136,6 +136,16 @@ La comprobación de solo lectura del 3 de septiembre encontró **cero usuarios d
 
 Pendientes para cerrar la validación de fase 2: usuarios con roles y datos de demostración en el proyecto publicado; prueba app/panel con esos usuarios; clasificación real por Gemini; permiso, registro de token y recepción de FCM en un dispositivo Android. No reutilizar `npm run seed` para poblar Firebase real: ese comando está diseñado para borrar y recrear únicamente los emuladores.
 
+## Comprobar la versión publicada del panel
+
+Después de construir y publicar Hosting desde el mismo checkout, ejecutar:
+
+```powershell
+npm run verificar:version-web
+```
+
+Compara SHA-256 del HTML de landing/panel, CSS y bundle JavaScript con los archivos publicados, normalizando los saltos CRLF/LF. Devuelve un código de error si un archivo difiere, falla la consulta o no está disponible. Esto complementa `verificar:servicios`: una página accesible puede seguir usando una versión anterior. No demuestra el commit activo de Render ni sustituye las pruebas con sesión, Android o proveedores.
+
 ## Costos
 
 - Firebase: Spark, sin método de pago.
