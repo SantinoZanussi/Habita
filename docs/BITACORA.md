@@ -625,3 +625,18 @@ Verificar el uso real y las dimensiones de la UI en dispositivos físicos.
 - Evidencia: [tablero publicado y verificado](../outputs/habita-sprint-2026-10-01/github_tablero_2026-10-09.png).
 - Pendiente: instalación y pruebas de APK en Android; confirmar commit activo de Render y expensas con sesión; sandbox MP, QR/cámara, FCM y Gemini reales; recorridos manuales y QA cruzado; video, slides, ensayo y exposición. Los criterios están en el tablero; esta carga no realizó esas actividades.
 - Supuesto: GitHub Projects es el registro de trabajo; QA presencial, instalación Android y pruebas externas seguirán pendientes sin evidencia.
+
+## 2026-10-09 - Actualizar diagnóstico y sprints en Google Sheets
+
+- Objetivo: sincronizar el diagnóstico con el tablero GitHub y completar objetivos semanales concretos en la planilla del profesor.
+- Estado inicial: `main` publicado en `e6d644f`; se conservan artefactos locales sin seguimiento y compromisos previos de la planilla.
+- Verificado: conector Google Sheets devuelve 403; el navegador tiene acceso de edición con la cuenta escolar del usuario.
+- Verificado: se leyeron ambas hojas por rangos acotados y se inspeccionó la regla nativa de objetivos (`Sprints!C5:E11`, origen `'Diagnóstico'!$I$4:$I$149`) y aprobación (`F5:F11`: Aprobado/No aprobado). No se cambiaron reglas, fórmulas ni permisos.
+- Cambios: en Diagnóstico se agregaron cuatro avances `B22:B25`, se actualizaron integraciones `D5:D17` conservando los dos textos ya elegidos para sprints y se reordenaron 25 pendientes `F5:F29`. Se limpiaron valores repetidos `F30:F38` y notas antiguas del bloque pendiente que ya no correspondían al nuevo orden. Nota en el título con fecha, responsable y links a Projects/criterios.
+- Verificado: lectura de `B5:F38` confirmó 21 entradas Funcionando, 13 A medias y 25 Por empezar. Se comprobó en el desplegable que la lista auxiliar ofrece los textos nuevos; no se editó su fórmula ni se incluyeron avances finalizados como objetivos pendientes.
+- Cambios: se completaron dos objetivos adicionales de la semana actual en `D6:E6` y 15 objetivos para las cinco semanas siguientes en `C7:E11`. Se preservaron `C5`, `C6`, las nueve fechas del 02/10 al 27/11 y el bloque de presentación del 20/11 y 27/11. `F5:G11` sigue vacío para revisión docente/cumplimiento. Notas en el título del sprint y en MP para distinguir propuesta, evidencia y dependencia externa.
+- Verificado: tras recargar, lectura de `B4:H13` confirmó los objetivos, fechas y revisión vacía. Google muestra Guardado en Drive. Se ajustó texto y altura sólo en objetivos editados y filas de diagnóstico para lectura a 100%, conservando estilos y chips de la plantilla. Primera selección de rango superó los límites de Sprints y fue rechazada sin escribir; se corrigió a su bloque real.
+- Cambios locales: [plan semanal](SPRINTS_TERCER_TRIMESTRE.md), esta bitácora y tres capturas: [diagnóstico](../outputs/habita-sprint-2026-10-01/sheets_diagnostico_2026-10-09.png), [sprints](../outputs/habita-sprint-2026-10-01/sheets_sprints_2026-10-09.png) y [cierre](../outputs/habita-sprint-2026-10-01/sheets_sprints_cierre_2026-10-09.png). No se modificó código del producto ni datos de Firebase/Render; no corresponde repetir suites de software para esta edición documental.
+- Verificado: diagnóstico leído también después de recargar, con coincidencia exacta de sus 59 entradas y el registro preparado. La hoja Sprints queda abierta para el usuario.
+- Pendiente: realizar los objetivos y registrar evidencia en cada revisión semanal. Instalar APK, pruebas físicas/proveedores, QA cruzado, video, ensayo y presentación siguen abiertos.
+- Supuesto: los sprints futuros se planifican, pero no se marcan aprobados o cumplidos sin revisión docente y evidencia.
