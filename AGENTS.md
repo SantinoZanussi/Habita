@@ -20,6 +20,8 @@ Habita administra edificios, consorcios, barrios cerrados y countries desde una 
 4. `docs/FASE_2_ENTREGA.md` y `docs/PRODUCCION.md` para arquitectura, límites y despliegue.
 5. `git status --short --branch`, `git log -10 --oneline` y el diff existente.
 
+El tablero compartido está en [GitHub Projects](https://github.com/users/SantinoZanussi/projects/2). [docs/TABLERO_GITHUB.json](docs/TABLERO_GITHUB.json) conserva títulos, estados y criterios de cierre con fecha de actualización. Compará con el tablero antes de crear tarjetas para evitar duplicados. Actualizá el estado después de verificar el trabajo; preservá compromisos semanales y evidencia presencial. Si el acceso al tablero falla, registrá la diferencia pendiente en la bitácora.
+
 No borres cambios locales ni uses `git reset --hard` o `git checkout --` para limpiar el árbol. Los cambios sin commit pueden pertenecer a otra sesión. Si hay modificaciones que no entendés, documentalas y trabajá alrededor de ellas.
 
 ## Reglas de trabajo

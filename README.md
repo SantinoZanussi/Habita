@@ -4,6 +4,8 @@ Habita centraliza la operación de edificios, consorcios, barrios y countries en
 
 La Fase 2 implementa todo el alcance P0 definido en `docs/PROYECTO_CONTEXTO.md` y suma una base funcional de amenities, notificaciones y obras. La portada pública de Fase 4 está en `/` y el panel autenticado en `/panel`.
 
+El trabajo de las fases 1 a 5 se registra en [GitHub Projects: Habita - Startup](https://github.com/users/SantinoZanussi/projects/2). Los títulos, estados y criterios de cierre tienen una copia en [docs/TABLERO_GITHUB.md](docs/TABLERO_GITHUB.md) y su [registro estructurado](docs/TABLERO_GITHUB.json). Al retomar desde otra PC, leer primero [AGENTS.md](AGENTS.md) y [docs/BITACORA.md](docs/BITACORA.md), comprobar el tablero actual y actualizar ambos registros después de verificar cada actividad. Una implementación terminada no da por realizadas sus pruebas en dispositivo, el QA cruzado ni la presentación.
+
 ## Arranque local
 
 Requisitos: Node.js 20 o superior, Java 21 (se reutiliza el JBR de Android Studio si está instalado) y Flutter 3.44 o superior.
