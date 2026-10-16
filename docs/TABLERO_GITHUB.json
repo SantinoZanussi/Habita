@@ -1,6 +1,17 @@
 {
   "project": "https://github.com/users/SantinoZanussi/projects/2",
-  "updated": "2026-10-09",
+  "updated": "2026-10-16",
+  "audit": {
+    "report": "docs/AUDITORIA_2026-10-16.md",
+    "codeCommit": "8ee4e8ada4ed06ef051378580f6c276946e81ad8",
+    "published": "Render Live, Firebase Hosting y reglas verificados; cinco archivos web coinciden.",
+    "tests": "94 backend, 30 integración/reglas, 2 web, 26 Flutter; análisis y builds Android/web aprobados.",
+    "apk": "Habita-Android-2026-10-16.apk 1.0.1+2; instalación y sandbox pendientes.",
+    "updatedProjectItem": "259771299",
+    "sheets": "Diagnóstico!B26:B31; notas Sprints!G7 y C8. Aprobación y cumplimiento preservados.",
+    "boardObservedCounts": {"Finalizado": 23, "En proceso": 13, "Pendiente": 25},
+    "reconciliation": "61 tarjetas observadas; dos títulos repetidos preservados. items/existing conserva los 59 títulos originales y sus criterios base del 09/10. No se crearon ni eliminaron tarjetas."
+  },
   "evidence": "https://github.com/SantinoZanussi/Habita/blob/main/docs/BITACORA.md",
   "items": [
     ["Finalizado", "[F1] Definir problema, público, modelo de negocio e identidad Habita", "Concepto, cliente, escalabilidad e identidad disponibles en docs/PROYECTO_CONTEXTO.md y brand/. No equivale a validar ventas."],

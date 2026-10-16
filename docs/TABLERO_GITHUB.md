@@ -1,8 +1,14 @@
 # Habita: registro de GitHub Projects
 
-Actualizado: 2026-10-09. [Tablero Habita - Startup](https://github.com/users/SantinoZanussi/projects/2).
+Actualizado: 2026-10-16. [Tablero Habita - Startup](https://github.com/users/SantinoZanussi/projects/2).
 
-59 tarjetas activas: **21 Finalizado**, **13 En proceso**, **25 Pendiente**. Se conservan las 11 tarjetas previas y se agregan 48 actividades, incluyendo las fases 1 a 5. El sprint del 02/10 conserva su compromiso y no se da por cumplido sin evidencia.
+Registro original del 09/10: 59 títulos (**21 Finalizado**, **13 En proceso**, **25 Pendiente**), con 11 tarjetas previas y 48 actividades de las fases 1 a 5. El 16/10 el tablero muestra 61 tarjetas (**23 Finalizado**, **13 En proceso**, **25 Pendiente**) y dos títulos repetidos; se preservan sin crear ni borrar tarjetas. La copia estructurada mantiene los 59 títulos originales. El sprint del 02/10 conserva su compromiso y no se da por cumplido sin evidencia.
+
+## Avance del 16/10
+
+Código `8ee4e8a` publicado y verificado Live en Render; Hosting y reglas también publicados. APK 1.0.1+2 firmada para pruebas, compilación Flutter web aprobada; 94 pruebas backend, 30 integración/reglas, 2 web y 26 Flutter, análisis limpio. Correcciones de expensas/checkout, pagos manuales, reservas, validaciones y privacidad documentadas en [AUDITORIA_2026-10-16.md](AUDITORIA_2026-10-16.md). Sheets tiene seis avances y notas de sprints.
+
+Se actualizó la descripción de la [tarjeta de pagos](https://github.com/users/SantinoZanussi/projects/2/views/1?pane=issue&itemId=259771299), manteniendo En proceso hasta instalación/recorrido de la misma cuenta y checkout sandbox. Los criterios de las listas siguientes son el registro base del 09/10; prevalece esta evidencia fechada para publicaciones y APK. No se afirma QA físico, operación de proveedores ni aprobación docente por pasar pruebas automáticas.
 
 ## Cómo usarlo
 
