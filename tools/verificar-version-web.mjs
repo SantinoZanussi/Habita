@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 
 const raiz = resolve(import.meta.dirname, '../web');
 const sitio = new URL('/', process.env.HABITA_PANEL_URL ?? 'https://habita-complejos-goiburu.web.app/panel/');
-const archivos = ['index.html', 'panel/index.html', 'assets/css/app.css', 'assets/js/app.js'];
+const archivos = ['index.html', 'panel/index.html', 'pago/index.html', 'assets/css/app.css', 'assets/js/app.js'];
 const digest = (texto) => createHash('sha256').update(texto.replace(/\r\n/g, '\n')).digest('hex');
 
 const resultados = await Promise.all(archivos.map(async (archivo) => {

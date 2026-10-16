@@ -94,6 +94,8 @@ test('guardia no puede crear ni editar periodos', async () => {
   await assertFails(setDoc(doc(db, 'complejos/c1/periodos/2026-09'), { estado: 'borrador' }));
   await assertFails(updateDoc(doc(db, 'complejos/c1/periodos/2026-08'), { estado: 'borrador' }));
   await assertFails(getDoc(doc(db, 'usuarios/residente-1')));
+  await assertFails(getDoc(doc(db, 'complejos/c1/unidades/u1')));
+  await assertFails(getDocs(collection(db, 'complejos/c1/unidades')));
 });
 
 test('administrador solo lista perfiles de su complejo con una consulta restringida', async () => {
@@ -145,6 +147,7 @@ test('residente crea un reclamo valido solo para su propia unidad', async () => 
   const base = { autorUid: 'residente-1', estado: 'pendiente', descripcion: 'Hay una pérdida de agua importante' };
   await assertSucceeds(setDoc(doc(db, 'complejos/c1/reclamos/r1'), { ...base, unidadId: 'u1' }));
   await assertFails(setDoc(doc(db, 'complejos/c1/reclamos/r2'), { ...base, unidadId: 'u2' }));
+  await assertFails(setDoc(doc(db, 'complejos/c1/reclamos/falso'), { ...base, unidadId: 'u1', clasificacionFinal: { urgencia: 'critica' } }));
 });
 
 test('una foto de reclamo queda aislada por usuario, complejo y tipo de archivo', async () => {

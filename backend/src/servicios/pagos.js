@@ -52,21 +52,22 @@ export async function generarLinkDePago({ complejoId, unidadId, periodoId = null
   const unidad = aObjeto(await rutas.unidad(complejoId, unidadId).get());
   const complejo = aObjeto(await rutas.complejo(complejoId).get());
   const nomenclatura = (complejo?.nomenclaturaAporte ?? 'expensa');
-  const concepto = `${nomenclatura[0].toUpperCase()}${nomenclatura.slice(1)} ${objetivo.etiqueta} - ` +
+  const montoCentavos = periodoId ? objetivo.saldoPendiente : cuenta.totalAdeudado;
+  const concepto = `${nomenclatura[0].toUpperCase()}${nomenclatura.slice(1)} ${periodoId ? objetivo.etiqueta : 'saldo de cuenta'} - ` +
                    `${unidad?.identificador ?? unidadId}`;
 
   const preferencia = await crearPreferencia({
     referencia: armarReferencia({ complejoId, unidadId, periodoId: objetivo.periodoId }),
     concepto,
-    montoCentavos: objetivo.saldoPendiente,
+    montoCentavos,
     pagador: { email },
   });
 
   return {
     ...preferencia,
     periodoId: objetivo.periodoId,
-    montoCentavos: objetivo.saldoPendiente,
-    montoFormateado: formatearPesos(objetivo.saldoPendiente),
+    montoCentavos,
+    montoFormateado: formatearPesos(montoCentavos),
     concepto,
   };
 }
@@ -80,6 +81,9 @@ export async function generarLinkDePago({ complejoId, unidadId, periodoId = null
  */
 export async function procesarPago({ pagoId, simulado = null }) {
   const pago = simulado ?? await consultarPago(pagoId);
+  if (!simulado && (pago.moneda !== 'ARS' || pago.id !== String(pagoId))) {
+    return { procesado: false, motivo: 'pago_invalido' };
+  }
 
   if (pago.estado !== 'approved') {
     log.info('Pago no aprobado, no se imputa', { pagoId, estado: pago.estado });
@@ -104,7 +108,18 @@ export async function procesarPago({ pagoId, simulado = null }) {
 
   const resultado = await db.runTransaction(async (tx) => {
   const yaExiste = await tx.get(refPago);
-  if (yaExiste.exists) return { duplicado: true, pagoId: String(pagoId) };
+  if (yaExiste.exists) {
+    const anterior = yaExiste.data();
+    if (anterior.unidadId !== unidadId || anterior.periodoId !== periodoId || anterior.monto !== montoCentavos) {
+      throw errores.conflicto('Este identificador de pago ya se usó con otros datos. Revisá el pago registrado.');
+    }
+    return { duplicado: true, pagoId: String(pagoId) };
+  }
+  const periodo = aObjeto(await tx.get(rutas.periodo(complejoId, periodoId)));
+  const detalle = await tx.get(rutas.detalle(complejoId, periodoId).doc(unidadId));
+  if (!periodo || periodo.estado !== 'cerrado' || !detalle.exists) {
+    throw errores.conflicto('El pago requiere una liquidación cerrada de esta unidad.');
+  }
   const hasta = new Date();
   const cuenta = await estadoDeCuenta({ complejoId, unidadId, hasta, leer: (ref) => tx.get(ref) });
   const deudas = cuenta.deudas.map((d) => ({
@@ -200,8 +215,8 @@ async function avisarAlResidente({ complejoId, unidadId, montoCentavos, periodoI
 }
 
 /** Registra un pago hecho fuera del sistema (transferencia, efectivo en la administracion). */
-export async function registrarPagoManual({ complejoId, unidadId, periodoId, montoCentavos, medio, adminUid, observacion }) {
-  const idManual = `manual-${randomUUID()}`;
+export async function registrarPagoManual({ complejoId, unidadId, periodoId, montoCentavos, medio, adminUid, observacion, idempotencyKey }) {
+  const idManual = `manual-${idempotencyKey ?? randomUUID()}`;
   return procesarPago({
     pagoId: idManual,
     simulado: {

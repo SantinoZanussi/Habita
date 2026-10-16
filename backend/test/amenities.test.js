@@ -1,7 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { reservasSuperpuestas, validarIntervaloReserva } from '../src/servicios/amenities.js';
+import { reservasSuperpuestas, validarIntervaloReserva, validarHorarioAmenity } from '../src/servicios/amenities.js';
+
+test('horarios del complejo, pasado y anticipación se validan en el servidor', () => {
+  const amenity = { horarios: [{ desde: '08:00', hasta: '23:00' }], anticipacionMaximaDias: 30 };
+  const ahora = new Date('2026-10-16T12:00:00Z');
+  const validar = (inicio, fin) => validarHorarioAmenity(amenity, new Date(inicio), new Date(fin), ahora);
+  assert.doesNotThrow(() => validar('2026-10-17T11:00:00Z', '2026-10-17T13:00:00Z'));
+  assert.throws(() => validar('2026-10-17T09:00:00Z', '2026-10-17T13:00:00Z'), /datos/i);
+  assert.throws(() => validar('2026-10-15T13:00:00Z', '2026-10-15T15:00:00Z'), /datos/i);
+  assert.throws(() => validar('2026-12-20T13:00:00Z', '2026-12-20T15:00:00Z'), /datos/i);
+  assert.throws(() => validarIntervaloReserva({ desde: null, hasta: '2026-10-17T13:00:00Z' }), /datos/i);
+  const nocturno = { horarios: [{ desde: '22:00', hasta: '02:00' }] };
+  assert.doesNotThrow(() => validarHorarioAmenity(nocturno, new Date('2026-10-17T02:00:00Z'), new Date('2026-10-17T04:00:00Z'), ahora));
+  assert.throws(() => validarHorarioAmenity(nocturno, new Date('2026-10-17T02:00:00Z'), new Date('2026-10-17T06:00:00Z'), ahora));
+});
 
 test('el intervalo de reserva exige fechas válidas, ordenadas y asistentes positivos', () => {
   const resultado = validarIntervaloReserva({

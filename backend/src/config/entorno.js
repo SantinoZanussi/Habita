@@ -106,7 +106,7 @@ export const entorno = {
       return texto('MP_URL_WEBHOOK', `${entorno.basePublica}/api/webhooks/mercadopago`);
     },
     get urlRetorno() {
-      return texto('MP_URL_RETORNO', `${entorno.basePublica}/panel/?pago=resultado`);
+      return texto('MP_URL_RETORNO', `https://${entorno.firebase.projectId}.web.app/pago/`);
     },
     get secretoWebhook() { return texto('MP_SECRETO_WEBHOOK', ''); },
     /** Sin token configurado, el modulo entra en modo simulado para la demo. */

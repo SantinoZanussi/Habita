@@ -14,7 +14,7 @@ import { db, rutas, FieldValue, aObjeto, aLista } from '../infra/firebase.js';
 import { errores } from '../infra/errores.js';
 import { log } from '../infra/log.js';
 import { liquidarPeriodo, armarCuentaCorriente, validarCoeficientes } from '../dominio/liquidacion.js';
-import { calcularMoraDeCuenta, tramoDeMorosidad, TRAMOS_MOROSIDAD } from '../dominio/mora.js';
+import { tramoDeMorosidad, TRAMOS_MOROSIDAD } from '../dominio/mora.js';
 import { formatearPesos } from '../dominio/dinero.js';
 import { deudaDePeriodo } from '../dominio/cuenta.js';
 
@@ -232,14 +232,6 @@ async function saldoYMora({ complejoId, complejo, unidadId, hasta, excluirPeriod
 
   const saldoAnteriorCentavos = deudas.reduce((acc, d) => acc + d.saldoCentavos, 0);
 
-  const mora = calcularMoraDeCuenta(deudas, {
-    fechaCalculo: hasta,
-    tasaMensualPorcentaje: complejo.tasaMoraMensual ?? 0,
-    modo: complejo.modoMora ?? 'simple',
-    diasGracia: complejo.diasGraciaMora ?? 0,
-    topePorcentaje: complejo.topeMoraPorcentaje ?? 0,
-  });
-
   return {
     saldoAnteriorCentavos,
     interesesCentavos: deudas.reduce((suma, d) => suma + d.interesesCentavos, 0),
@@ -261,8 +253,7 @@ export async function estadoDeCuenta({ complejoId, unidadId, leer = (ref) => ref
   const periodosSnapshot = await leer(rutas.periodos(complejoId)
     .where('estado', '==', 'cerrado'));
   const periodos = periodosSnapshot.docs
-    .sort((a, b) => b.id.localeCompare(a.id))
-    .slice(0, 12);
+    .sort((a, b) => b.id.localeCompare(a.id));
 
   const liquidaciones = [];
   for (const periodoDoc of periodos) {
@@ -276,6 +267,9 @@ export async function estadoDeCuenta({ complejoId, unidadId, leer = (ref) => ref
       vencimiento: aFecha(periodo.vencimiento)?.toISOString() ?? null,
       totalAPagar: detalle.totalAPagar,
       saldoPendiente: deuda.saldoCentavos + deuda.interesesCentavos,
+      capitalPendiente: deuda.saldoCentavos,
+      interesesPendientes: deuda.interesesCentavos,
+      creditoAplicado: detalle.creditoAplicado ?? 0,
       pagado: deuda.saldoCentavos + deuda.interesesCentavos === 0,
       montoOrdinario: detalle.montoOrdinario,
       montoExtraordinario: detalle.montoExtraordinario,
@@ -291,7 +285,8 @@ export async function estadoDeCuenta({ complejoId, unidadId, leer = (ref) => ref
     complejoId, complejo, unidadId, hasta, leer,
   });
 
-  const proximo = liquidaciones.find((l) => !l.pagado) ?? null;
+  const proximo = liquidaciones.filter((l) => !l.pagado)
+    .sort((a, b) => new Date(a.vencimiento) - new Date(b.vencimiento) || a.periodoId.localeCompare(b.periodoId))[0] ?? null;
 
   return {
     unidadId,
@@ -326,6 +321,7 @@ export async function resumenCobranza({ complejoId, periodoId = null }) {
 
   const porTramo = Object.fromEntries(TRAMOS_MOROSIDAD.map((t) => [t.clave, { monto: 0, unidades: 0 }]));
   let saldoPendienteTotal = 0;
+  let interesesTotal = 0;
   let unidadesConSaldo = 0;
   let morosidadTotal = 0;
   let unidadesMorosas = 0;
@@ -342,14 +338,9 @@ export async function resumenCobranza({ complejoId, periodoId = null }) {
   for (const periodo of periodos) {
     for (const detalle of detallesPorPeriodo.get(periodo.id) ?? []) {
       const deuda = deudaDePeriodo({ detalle, periodo, complejo });
-      const saldoCentavos = deuda.saldoCentavos;
-      if (saldoCentavos <= 0) continue;
+      if (deuda.saldoCentavos + deuda.interesesCentavos <= 0) continue;
       const deudas = deudasPorUnidad.get(detalle.id) ?? [];
-      deudas.push({
-        periodoId: periodo.id,
-        saldoCentavos,
-        vencimiento: aFecha(periodo.vencimiento) ?? new Date(),
-      });
+      deudas.push(deuda);
       deudasPorUnidad.set(detalle.id, deudas);
     }
   }
@@ -357,19 +348,13 @@ export async function resumenCobranza({ complejoId, periodoId = null }) {
   for (const unidad of unidades) {
     const deudas = deudasPorUnidad.get(unidad.id) ?? [];
     const saldoAnteriorCentavos = deudas.reduce((total, deuda) => total + deuda.saldoCentavos, 0);
-    const mora = calcularMoraDeCuenta(deudas, {
-      fechaCalculo: new Date(),
-      tasaMensualPorcentaje: complejo.tasaMoraMensual ?? 0,
-      modo: complejo.modoMora ?? 'simple',
-      diasGracia: complejo.diasGraciaMora ?? 0,
-      topePorcentaje: complejo.topeMoraPorcentaje ?? 0,
-    });
+    interesesTotal += deudas.reduce((total, deuda) => total + deuda.interesesCentavos, 0);
     if (saldoAnteriorCentavos > 0) {
       saldoPendienteTotal += saldoAnteriorCentavos;
       unidadesConSaldo += 1;
     }
-    const deudasVencidas = mora.detalle.filter((deuda) => deuda.dias > 0);
-    const capitalVencido = deudasVencidas.reduce((total, deuda) => total + deuda.saldoCentavos, 0);
+    const deudasVencidas = deudas.filter((deuda) => deuda.dias > 0);
+    const capitalVencido = deudasVencidas.reduce((total, deuda) => total + deuda.saldoCentavos + deuda.interesesCentavos, 0);
     if (capitalVencido > 0) {
       const diasMaximos = deudasVencidas.reduce((maximo, deuda) => Math.max(maximo, deuda.dias), 0);
       morosidadTotal += capitalVencido;
@@ -411,6 +396,8 @@ export async function resumenCobranza({ complejoId, periodoId = null }) {
     recaudado,
     porcentajeRecaudado: liquidado > 0 ? Math.round((recaudado / liquidado) * 1000) / 10 : 0,
     saldoPendienteTotal,
+    interesesTotal,
+    totalAdeudado: saldoPendienteTotal + interesesTotal,
     unidadesConSaldo,
     morosidadTotal,
     morosidadFormateada: formatearPesos(morosidadTotal),

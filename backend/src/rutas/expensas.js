@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 
-import { rutas, FieldValue, aObjeto } from '../infra/firebase.js';
+import { db, rutas, FieldValue, aObjeto } from '../infra/firebase.js';
 import { asincrono, errores } from '../infra/errores.js';
 import { autenticar, exigirComplejo, exigirRol, exigirUnidadPropia, ROLES } from '../middleware/autenticar.js';
 import { calcularBorrador, cerrarPeriodo, estadoDeCuenta, resumenCobranza } from '../servicios/liquidacion.js';
@@ -16,18 +16,24 @@ router.post('/periodos', exigirRol(ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(asy
   const periodoId = String(req.body?.periodoId ?? '').trim();
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(periodoId)) throw errores.datosInvalidos({ periodoId: 'debe tener formato AAAA-MM' });
   const ref = rutas.periodo(req.complejoId, periodoId);
-  if ((await ref.get()).exists) throw errores.conflicto('Ese período ya existe.');
   const datos = normalizarPeriodo(req.body);
-  await ref.set({ ...datos, estado: 'borrador', creadoPorUid: req.usuario.uid, creadoEn: FieldValue.serverTimestamp(), actualizadoEn: FieldValue.serverTimestamp() });
+  if (!datos.vencimiento) throw errores.datosInvalidos({ vencimiento: 'es obligatorio' });
+  await db.runTransaction(async (tx) => {
+    if ((await tx.get(ref)).exists) throw errores.conflicto('Ese período ya existe.');
+    tx.set(ref, { ...datos, estado: 'borrador', creadoPorUid: req.usuario.uid, creadoEn: FieldValue.serverTimestamp(), actualizadoEn: FieldValue.serverTimestamp() });
+  });
   res.status(201).json(aObjeto(await ref.get()));
 }));
 
 router.patch('/periodos/:periodoId', exigirRol(ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
   const ref = rutas.periodo(req.complejoId, req.params.periodoId);
-  const actual = aObjeto(await ref.get());
+  const datos = normalizarPeriodo(req.body);
+  await db.runTransaction(async (tx) => {
+  const actual = aObjeto(await tx.get(ref));
   if (!actual) throw errores.noEncontrado('El período');
   if (actual.estado === 'cerrado') throw errores.conflicto('Un período cerrado es inmutable; cargá un ajuste en el siguiente.');
-  await ref.update({ ...normalizarPeriodo(req.body), actualizadoEn: FieldValue.serverTimestamp(), actualizadoPorUid: req.usuario.uid });
+  tx.update(ref, { ...datos, actualizadoEn: FieldValue.serverTimestamp(), actualizadoPorUid: req.usuario.uid });
+  });
   res.json(aObjeto(await ref.get()));
 }));
 
@@ -63,7 +69,18 @@ router.post('/pagar', exigirRol(ROLES.RESIDENTE), asincrono(async (req, res) => 
 
 router.post('/pagos/manual', exigirRol(ROLES.ADMIN, ROLES.SUPERADMIN), asincrono(async (req, res) => {
   const montoCentavos = Math.round(Number(req.body?.monto) * 100);
-  if (!Number.isInteger(montoCentavos) || montoCentavos <= 0) throw errores.datosInvalidos({ monto: 'debe ser mayor a cero' });
+  if (!Number.isSafeInteger(montoCentavos) || montoCentavos <= 0) throw errores.datosInvalidos({ monto: 'debe ser un importe válido mayor a cero' });
+  for (const clave of ['unidadId', 'periodoId']) {
+    if (typeof req.body[clave] !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(req.body[clave])) {
+      throw errores.datosInvalidos({ [clave]: 'seleccioná un valor válido' });
+    }
+  }
+  if (req.body.idempotencyKey !== undefined && !/^[A-Za-z0-9_-]{16,128}$/.test(req.body.idempotencyKey)) {
+    throw errores.datosInvalidos({ idempotencyKey: 'identificador inválido' });
+  }
+  if (!['transferencia', 'efectivo', 'debito'].includes(req.body.medio ?? 'transferencia')) {
+    throw errores.datosInvalidos({ medio: 'seleccioná transferencia, efectivo o débito' });
+  }
   res.status(201).json(await registrarPagoManual({
     complejoId: req.complejoId,
     unidadId: req.body.unidadId,
@@ -71,6 +88,7 @@ router.post('/pagos/manual', exigirRol(ROLES.ADMIN, ROLES.SUPERADMIN), asincrono
     montoCentavos,
     medio: req.body.medio,
     observacion: req.body.observacion,
+    idempotencyKey: req.body.idempotencyKey,
     adminUid: req.usuario.uid,
   }));
 }));
@@ -86,19 +104,28 @@ router.post('/pagos/simular', exigirRol(ROLES.RESIDENTE), exigirPagoSimulado, as
   res.json(await procesarPago({
     pagoId,
     simulado: {
-      id: pagoId, estado: 'approved', montoCentavos: objetivo.saldoPendiente,
+      id: pagoId, estado: 'approved', montoCentavos: req.body.periodoId ? objetivo.saldoPendiente : cuenta.totalAdeudado,
       referencia: armarReferencia({ complejoId: req.complejoId, unidadId: req.usuario.unidadId, periodoId }),
       medio: 'mercadopago_simulado', fecha: new Date().toISOString(), simulado: true,
     },
   }));
 }));
 
-function normalizarPeriodo(datos) {
+export function normalizarPeriodo(datos) {
   const salida = {};
   for (const clave of ['etiqueta', 'vencimiento', 'politicaRedondeo']) {
     if (datos?.[clave] !== undefined) salida[clave] = clave === 'vencimiento' ? new Date(datos[clave]) : datos[clave];
   }
-  if (datos?.fondoReserva !== undefined) salida.fondoReserva = datos.fondoReserva;
+  if (salida.vencimiento && Number.isNaN(salida.vencimiento.getTime())) throw errores.datosInvalidos({ vencimiento: 'usá una fecha válida' });
+  if (salida.politicaRedondeo && !['mayorResto', 'mayorCoeficiente'].includes(salida.politicaRedondeo)) throw errores.datosInvalidos({ politicaRedondeo: 'no es válida' });
+  if (datos?.fondoReserva !== undefined) {
+    const fondo = datos.fondoReserva;
+    if (!['monto', 'porcentaje'].includes(fondo?.modo) || !Number.isFinite(fondo.valor) || fondo.valor < 0 ||
+      (fondo.modo === 'monto' && !Number.isSafeInteger(fondo.valor)) || (fondo.modo === 'porcentaje' && fondo.valor > 100)) {
+      throw errores.datosInvalidos({ fondoReserva: 'indicá monto en centavos o porcentaje entre 0 y 100' });
+    }
+    salida.fondoReserva = { modo: fondo.modo, valor: fondo.valor };
+  }
   if (datos?.gastosOrdinarios !== undefined) salida.gastosOrdinarios = normalizarGastos(datos.gastosOrdinarios, 'ocupante');
   if (datos?.gastosExtraordinarios !== undefined) salida.gastosExtraordinarios = normalizarGastos(datos.gastosExtraordinarios, 'propietario');
   return salida;
@@ -108,7 +135,10 @@ function normalizarGastos(gastos, cargoDefault) {
   if (!Array.isArray(gastos)) throw errores.datosInvalidos({ gastos: 'deben ser una lista' });
   return gastos.map((g) => {
     const montoCentavos = Number.isInteger(g.montoCentavos) ? g.montoCentavos : Math.round(Number(g.monto) * 100);
-    if (!g.concepto || !Number.isInteger(montoCentavos) || montoCentavos < 0) throw errores.datosInvalidos({ gasto: 'cada gasto necesita concepto y monto válido' });
+    if (!String(g.concepto ?? '').trim() || !Number.isSafeInteger(montoCentavos) || montoCentavos < 0) throw errores.datosInvalidos({ gasto: 'cada gasto necesita concepto y monto válido' });
+    if (!['coeficiente', 'partesIguales'].includes(g.criterio ?? 'coeficiente') || !['ocupante', 'propietario'].includes(g.aCargoDe ?? cargoDefault)) {
+      throw errores.datosInvalidos({ gasto: 'criterio o responsable inválido' });
+    }
     return {
       id: g.id ?? randomUUID(), concepto: String(g.concepto).trim(), montoCentavos,
       criterio: g.criterio ?? 'coeficiente', aCargoDe: g.aCargoDe ?? cargoDefault,

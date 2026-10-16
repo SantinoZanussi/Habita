@@ -45,7 +45,7 @@ const cabeceras = (idempotencyKey) => ({
  * @param {object} [entrada.pagador]    { email, nombre }
  */
 export async function crearPreferencia({ referencia, concepto, montoCentavos, pagador = {} }) {
-  if (montoCentavos <= 0) {
+  if (!Number.isSafeInteger(montoCentavos) || montoCentavos <= 0) {
     throw errores.reglaDeNegocio('MONTO_INVALIDO', 'No se puede generar un cobro por un importe menor o igual a cero.');
   }
 
@@ -90,7 +90,7 @@ export async function crearPreferencia({ referencia, concepto, montoCentavos, pa
   try {
     const respuesta = await pedirJson(`${API}/checkout/preferences`, {
       method: 'POST',
-      headers: cabeceras(referencia),
+      headers: cabeceras(randomUUID()),
       body: JSON.stringify(cuerpo),
       nombre: 'Mercado Pago (preferencia)',
       timeoutMs: 12_000,
@@ -135,6 +135,7 @@ export async function consultarPago(pagoId) {
 
     return {
       id: String(pago.id),
+      moneda: pago.currency_id,
       estado: pago.status,                       // approved | pending | rejected | refunded ...
       detalleEstado: pago.status_detail ?? null,
       montoCentavos: Math.round((pago.transaction_amount ?? 0) * 100),
@@ -204,6 +205,8 @@ export function armarReferencia({ complejoId, unidadId, periodoId }) {
 }
 
 export function leerReferencia(referencia) {
-  const [complejoId, unidadId, periodoId] = String(referencia ?? '').split('|');
-  return complejoId && unidadId && periodoId ? { complejoId, unidadId, periodoId } : null;
+  const partes = String(referencia ?? '').split('|');
+  if (partes.length !== 3 || partes.some((p) => !/^[A-Za-z0-9_-]{1,128}$/.test(p))) return null;
+  const [complejoId, unidadId, periodoId] = partes;
+  return { complejoId, unidadId, periodoId };
 }

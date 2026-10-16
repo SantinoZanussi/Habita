@@ -30703,6 +30703,9 @@ var Me2 = "4.17.1";
 
 // web/src/main.js
 var config = await window.HABITA_CONFIG_PROMISE;
+if (new URLSearchParams(location.search).get("pago") === "resultado") {
+  location.replace("/pago/");
+}
 var firebaseApp = initializeApp(config.firebase);
 var auth = getAuth(firebaseApp);
 var db = getFirestore(firebaseApp);
@@ -30825,7 +30828,7 @@ function suscribirTiempoReal() {
     renderTodo();
   });
   escuchar(query(collection(db, `complejos/${cid}/periodos`)), (snap) => {
-    estado.periodos = snap.docs.map(datosDoc).sort((a, b2) => b2.id.localeCompare(a.id)).slice(0, 18);
+    estado.periodos = snap.docs.map(datosDoc).sort((a, b2) => b2.id.localeCompare(a.id));
     renderTodo();
   });
   escuchar(query(collection(db, `complejos/${cid}/amenities`)), (snap) => {
@@ -30969,7 +30972,7 @@ function renderCobranza() {
     <div class="metrics">
       ${metric("Total liquidado", dinero(r2.liquidado), r2.periodoId ?? "Sin per\xEDodo", "$")}
       ${metric("Recaudado", dinero(r2.recaudado), `${numero(r2.porcentajeRecaudado)}% cobrado`, "\u2713")}
-      ${metric("Saldo pendiente", dinero(r2.saldoPendienteTotal ?? r2.morosidadTotal), `${r2.unidadesConSaldo ?? r2.unidadesMorosas ?? 0} unidades`, "!", true)}
+      ${metric("Saldo pendiente", dinero(r2.totalAdeudado ?? r2.saldoPendienteTotal ?? r2.morosidadTotal), `Incluye ${dinero(r2.interesesTotal ?? 0)} de intereses`, "!", true)}
       ${metric("Unidades al d\xEDa", Math.max(0, (r2.cantidadUnidades ?? estado.unidades.length) - (r2.unidadesMorosas ?? 0)), "Sobre el total activo", "\u25CB")}
     </div>
     <div class="grid grid--2"><article class="card"><div class="card__header"><div><h3>Evoluci\xF3n de la recaudaci\xF3n</h3><p>\xDAltimos per\xEDodos cerrados</p></div></div>${graficoBarras(r2.serie ?? [])}</article><article class="card"><div class="card__header"><div><h3>Antig\xFCedad de deuda</h3><p>Distribuci\xF3n del saldo pendiente</p></div></div>${donutMorosidad(r2)}</article></div>
@@ -31167,7 +31170,7 @@ function modalAmenity(amenity = null) {
   abrirModal(amenity ? "Configurar espacio" : "Nuevo espacio", "Espacios comunes", `<form data-form="amenity" data-id="${safe(amenity?.id ?? "")}"><div class="form-grid"><label>Nombre<input name="nombre" maxlength="120" value="${safe(amenity?.nombre ?? "")}" required placeholder="Quincho"></label><label>Capacidad<input name="capacidad" type="number" min="1" step="1" value="${amenity?.capacidad ?? ""}" required></label><label class="span-2">Descripci\xF3n<textarea name="descripcion" maxlength="1000" placeholder="Equipamiento y recomendaciones de uso">${safe(amenity?.descripcion ?? "")}</textarea></label><label>Estado<select name="activo"><option value="true" ${amenity?.activo !== false ? "selected" : ""}>Habilitado</option><option value="false" ${amenity?.activo === false ? "selected" : ""}>No habilitado</option></select></label><label>Requiere aprobaci\xF3n<select name="requiereAprobacion"><option value="false">No</option><option value="true" ${amenity?.requiereAprobacion ? "selected" : ""}>S\xED</option></select></label></div><p class="form-help">Deshabilitar impide nuevas reservas. Las existentes conservan su estado.</p><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Guardar espacio</button></div></form>`);
 }
 function modalPago() {
-  abrirModal("Registrar pago manual", "Cobranza", `<form data-form="pago"><div class="form-grid"><label>Unidad<select name="unidadId">${estado.unidades.slice(0, 152).map((u2) => `<option value="${u2.id}">${safe(u2.identificador)}</option>`).join("")}</select></label><label>Per\xEDodo<select name="periodoId">${estado.periodos.filter((p2) => p2.estado === "cerrado").map((p2) => `<option value="${p2.id}">${safe(p2.etiqueta ?? p2.id)}</option>`).join("")}</select></label><label>Monto ($)<input name="monto" type="number" min=".01" step=".01" required></label><label>Medio<select name="medio">${opciones(["transferencia", "efectivo", "debito"], "transferencia")}</select></label><label class="span-2">Observaci\xF3n<textarea name="observacion" placeholder="Referencia o comprobante"></textarea></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Registrar e imputar</button></div></form>`);
+  abrirModal("Registrar pago manual", "Cobranza", `<form data-form="pago"><input type="hidden" name="idempotencyKey" value="${crypto.randomUUID()}"><div class="form-grid"><label>Unidad<select name="unidadId">${estado.unidades.map((u2) => `<option value="${u2.id}">${safe(u2.identificador)}</option>`).join("")}</select></label><label>Per\xEDodo<select name="periodoId">${estado.periodos.filter((p2) => p2.estado === "cerrado").map((p2) => `<option value="${p2.id}">${safe(p2.etiqueta ?? p2.id)}</option>`).join("")}</select></label><label>Monto ($)<input name="monto" type="number" min=".01" step=".01" required></label><label>Medio<select name="medio">${opciones(["transferencia", "efectivo", "debito"], "transferencia")}</select></label><label class="span-2">Observaci\xF3n<textarea name="observacion" placeholder="Referencia o comprobante"></textarea></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Registrar e imputar</button></div></form>`);
 }
 function modalAviso() {
   abrirModal("Nuevo aviso", "Comunicaciones", `<form data-form="aviso"><div class="form-grid"><label class="span-2">T\xEDtulo<input name="titulo" maxlength="120" required placeholder="Corte de agua programado"></label><label class="span-2">Mensaje<textarea name="cuerpo" maxlength="4000" required rows="5"></textarea></label><label>Tipo<select name="tipo">${opciones(["administracion", "mantenimiento", "asamblea", "seguridad"], "administracion")}</select></label><label>Destinatarios<select name="alcance"><option value="todos">Todo el complejo</option><option value="unidades">Elegir unidades</option></select></label><fieldset id="unidades-aviso" class="span-2 audience-picker" hidden><legend>Unidades destinatarias (hasta 30)</legend>${estado.unidades.map((u2) => `<label><input type="checkbox" name="unidades" value="${safe(u2.id)}"> ${safe(u2.identificador)}</label>`).join("") || "<p>No hay unidades registradas.</p>"}</fieldset></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Publicar aviso</button></div></form>`);

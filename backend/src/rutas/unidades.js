@@ -26,7 +26,7 @@ router.patch('/:unidadId', asincrono(async (req, res) => {
   if (req.body?.habitantes !== undefined && (!Number.isInteger(Number(req.body.habitantes)) || Number(req.body.habitantes) < 1)) {
     throw errores.datosInvalidos({ habitantes: 'debe ser un entero mayor o igual a 1' });
   }
-  if (req.body?.coeficiente !== undefined && (Number(req.body.coeficiente) <= 0 || Number(req.body.coeficiente) > 100)) {
+  if (req.body?.coeficiente !== undefined && (!Number.isFinite(Number(req.body.coeficiente)) || Number(req.body.coeficiente) <= 0 || Number(req.body.coeficiente) > 100)) {
     throw errores.datosInvalidos({ coeficiente: 'debe estar entre 0 y 100' });
   }
   res.json(await actualizarUnidad({ complejoId: req.complejoId, unidadId: req.params.unidadId, cambios: req.body, actorUid: req.usuario.uid }));

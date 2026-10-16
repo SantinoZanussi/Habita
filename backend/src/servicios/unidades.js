@@ -42,7 +42,10 @@ export async function validarCoeficientesDelComplejo(complejoId) {
 }
 
 function normalizar(datos) {
-  const salida = { ...datos };
+  // Los saldos y las marcas de auditoría sólo se cambian desde contabilidad.
+  const permitidos = ['identificador', 'coeficiente', 'habitantes', 'superficie', 'patentesAutorizadas',
+    'estado', 'propietarioUid', 'inquilinoUid', 'tipo', 'piso', 'nombreTitular', 'telefono', 'email'];
+  const salida = Object.fromEntries(Object.entries(datos).filter(([clave]) => permitidos.includes(clave)));
   if (datos.identificador !== undefined) {
     salida.identificador = datos.identificador.trim();
     salida.identificadorNormalizado = salida.identificador.toUpperCase();

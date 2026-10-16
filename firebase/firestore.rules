@@ -130,9 +130,8 @@ service cloud.firestore {
         // La regla compara contra la claim del token, no contra un campo del
         // documento, asi que no hay forma de falsearlo desde el cliente.
         allow get: if esAdmin(cid)
-                   || esGuardia(cid)
                    || (esResidente(cid) && esMiUnidad(unidadId));
-        allow list: if esAdmin(cid) || esGuardia(cid);
+        allow list: if esAdmin(cid);
         allow write: if false;          // ABM por backend (valida coeficientes)
       }
 
@@ -157,7 +156,8 @@ service cloud.firestore {
         allow get, list: if esAdmin(cid)
                          || esGuardia(cid)
                          || (esResidente(cid) && esMiUnidad(resource.data.unidadId))
-                         || (esResponsableObra(cid) && resource.data.tipo == 'obra');
+                         || (esResponsableObra(cid) && resource.data.tipo == 'obra'
+                             && resource.data.obraId in claims().get('obraIds', []));
 
         // El backend genera el código aleatorio y valida unidad, puntos,
         // vigencia y usos. El cliente no puede inventar ultimoSentido ni
@@ -198,6 +198,7 @@ service cloud.firestore {
         // El residente crea el reclamo; la clasificacion por IA la escribe
         // despues el backend, porque la API key no puede vivir en el celular.
         allow create: if esResidente(cid)
+                      && request.resource.data.keys().hasOnly(['unidadId', 'autorUid', 'estado', 'descripcion', 'fotoUrl', 'creadoEn'])
                       && request.resource.data.unidadId == unidadDelToken()
                       && request.resource.data.autorUid == request.auth.uid
                       && request.resource.data.estado == 'pendiente'

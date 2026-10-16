@@ -135,6 +135,15 @@ export async function registrarAvance({
       'Cada avance necesita una clave de idempotencia generada en el dispositivo'
     );
   }
+  if (!Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 100) {
+    throw errores.datosInvalidos({ porcentaje: 'debe estar entre 0 y 100' });
+  }
+  if (typeof idempotencyKey !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(idempotencyKey)) {
+    throw errores.datosInvalidos({ idempotencyKey: 'no es válido' });
+  }
+  if (timestampCliente && Number.isNaN(new Date(timestampCliente).getTime())) {
+    throw errores.datosInvalidos({ timestampCliente: 'usá una fecha válida' });
+  }
 
   const [obraSnap, partidaSnap] = await Promise.all([
     rutas.obra(complejoId, obraId).get(),

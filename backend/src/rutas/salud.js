@@ -15,7 +15,8 @@ import { asincrono } from '../infra/errores.js';
 const router = Router();
 
 router.get('/salud', (_req, res) => {
-  res.json({ estado: 'ok', servicio: 'habita-backend', version: '1.0.0-fase2' });
+  res.json({ estado: 'ok', servicio: 'habita-backend', version: '1.0.0-fase2',
+    revision: process.env.RENDER_GIT_COMMIT ?? null });
 });
 
 router.get('/estado', asincrono(async (_req, res) => {

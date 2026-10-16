@@ -9,6 +9,10 @@ import {
 } from 'firebase/firestore';
 
 const config = await window.HABITA_CONFIG_PROMISE;
+// Compatibilidad con preferencias antiguas cuyo retorno apuntaba al panel.
+if (new URLSearchParams(location.search).get('pago') === 'resultado') {
+  location.replace('/pago/');
+}
 const firebaseApp = initializeApp(config.firebase);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
@@ -123,8 +127,7 @@ function suscribirTiempoReal() {
   });
   escuchar(query(collection(db, `complejos/${cid}/periodos`)), (snap) => {
     estado.periodos = snap.docs.map(datosDoc)
-      .sort((a, b) => b.id.localeCompare(a.id))
-      .slice(0, 18);
+      .sort((a, b) => b.id.localeCompare(a.id));
     renderTodo();
   });
   escuchar(query(collection(db, `complejos/${cid}/amenities`)), (snap) => {
@@ -263,7 +266,7 @@ function renderCobranza() {
     <div class="metrics">
       ${metric('Total liquidado', dinero(r.liquidado), r.periodoId ?? 'Sin período', '$')}
       ${metric('Recaudado', dinero(r.recaudado), `${numero(r.porcentajeRecaudado)}% cobrado`, '✓')}
-      ${metric('Saldo pendiente', dinero(r.saldoPendienteTotal ?? r.morosidadTotal), `${r.unidadesConSaldo ?? r.unidadesMorosas ?? 0} unidades`, '!', true)}
+      ${metric('Saldo pendiente', dinero(r.totalAdeudado ?? r.saldoPendienteTotal ?? r.morosidadTotal), `Incluye ${dinero(r.interesesTotal ?? 0)} de intereses`, '!', true)}
       ${metric('Unidades al día', Math.max(0, (r.cantidadUnidades ?? estado.unidades.length) - (r.unidadesMorosas ?? 0)), 'Sobre el total activo', '○')}
     </div>
     <div class="grid grid--2"><article class="card"><div class="card__header"><div><h3>Evolución de la recaudación</h3><p>Últimos períodos cerrados</p></div></div>${graficoBarras(r.serie ?? [])}</article><article class="card"><div class="card__header"><div><h3>Antigüedad de deuda</h3><p>Distribución del saldo pendiente</p></div></div>${donutMorosidad(r)}</article></div>
@@ -470,7 +473,7 @@ function modalAmenity(amenity = null) {
 }
 
 function modalPago() {
-  abrirModal('Registrar pago manual', 'Cobranza', `<form data-form="pago"><div class="form-grid"><label>Unidad<select name="unidadId">${estado.unidades.slice(0, 152).map((u) => `<option value="${u.id}">${safe(u.identificador)}</option>`).join('')}</select></label><label>Período<select name="periodoId">${estado.periodos.filter((p) => p.estado === 'cerrado').map((p) => `<option value="${p.id}">${safe(p.etiqueta ?? p.id)}</option>`).join('')}</select></label><label>Monto ($)<input name="monto" type="number" min=".01" step=".01" required></label><label>Medio<select name="medio">${opciones(['transferencia','efectivo','debito'], 'transferencia')}</select></label><label class="span-2">Observación<textarea name="observacion" placeholder="Referencia o comprobante"></textarea></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Registrar e imputar</button></div></form>`);
+  abrirModal('Registrar pago manual', 'Cobranza', `<form data-form="pago"><input type="hidden" name="idempotencyKey" value="${crypto.randomUUID()}"><div class="form-grid"><label>Unidad<select name="unidadId">${estado.unidades.map((u) => `<option value="${u.id}">${safe(u.identificador)}</option>`).join('')}</select></label><label>Período<select name="periodoId">${estado.periodos.filter((p) => p.estado === 'cerrado').map((p) => `<option value="${p.id}">${safe(p.etiqueta ?? p.id)}</option>`).join('')}</select></label><label>Monto ($)<input name="monto" type="number" min=".01" step=".01" required></label><label>Medio<select name="medio">${opciones(['transferencia','efectivo','debito'], 'transferencia')}</select></label><label class="span-2">Observación<textarea name="observacion" placeholder="Referencia o comprobante"></textarea></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Registrar e imputar</button></div></form>`);
 }
 
 function modalAviso() {

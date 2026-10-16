@@ -31,6 +31,6 @@ services:
       - key: MP_URL_WEBHOOK
         value: https://habita-api-goiburu.onrender.com/api/webhooks/mercadopago
       - key: MP_URL_RETORNO
-        value: https://habita-complejos-goiburu.web.app/panel/?pago=resultado
+        value: https://habita-complejos-goiburu.web.app/pago/
       - key: FCM_ACTIVO
         value: "true"

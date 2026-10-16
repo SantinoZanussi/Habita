@@ -640,3 +640,13 @@ Verificar el uso real y las dimensiones de la UI en dispositivos físicos.
 - Verificado: diagnóstico leído también después de recargar, con coincidencia exacta de sus 59 entradas y el registro preparado. La hoja Sprints queda abierta para el usuario.
 - Pendiente: realizar los objetivos y registrar evidencia en cada revisión semanal. Instalar APK, pruebas físicas/proveedores, QA cruzado, video, ensayo y presentación siguen abiertos.
 - Supuesto: los sprints futuros se planifican, pero no se marcan aprobados o cumplidos sin revisión docente y evidencia.
+
+## 2026-10-16 - Auditoría integral de app, panel y servicios
+
+- Objetivo: revisar Flutter, panel y backend, corregir fallos con prioridad en expensas/Mercado Pago y registrar evidencia en el tablero y Sheets.
+- Estado inicial: `main` sincronizado con `origin/main` en `eec48a5`; se conservan los artefactos locales no versionados de la planilla. No hay cambios de código previos a esta sesión.
+- Verificado: lectura de instrucciones y contexto; `git pull --rebase` sin cambios remotos.
+- Verificado: auditoría y correcciones detalladas en [AUDITORIA_2026-10-16.md](AUDITORIA_2026-10-16.md). Contabilidad, checkout móvil, idempotencia manual, reservas concurrentes, validaciones, permisos y retorno MP corregidos. Suite inicial: 2 web + 89 backend + 28 reglas; ampliación: 5 backend adicionales y segunda pasada 30 reglas/integración. Flutter: 26 pruebas completas, 4 focalizadas y análisis limpio. APK 1.0.1+2 compilada con configuración productiva.
+- Verificado: Firebase real auditado sin escrituras contables. Render estaba Live en `253fed9` y Auto-Deploy deshabilitado tras rollback. Primer intento de red falló; recuperación comprobada sin cambiar credenciales. Se publicó Hosting y reglas; falta verificar la revisión final.
+- Pendiente: publicación final de código/backend, verificación de versiones y actualización de Sheets/Projects. Prueba física Android y checkout sandbox completo siguen pendientes; no se crearon pagos ni datos de prueba en producción.
+- Supuesto: el fallo comunicado puede involucrar tanto el despliegue de Render como el cliente Android; se comprobarán por separado.
