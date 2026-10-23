@@ -21,7 +21,7 @@
     "web": "node tools/servidor-web.mjs",
     "preview:web": "node tools/preview-ui.mjs",
     "test": "npm run test --workspace backend",
-    "test:web": "node --test web/test/gestion.test.mjs",
+    "test:web": "node --test web/test/*.test.mjs",
     "test:reglas": "node tools/probar-reglas.mjs",
     "verificar:servicios": "node tools/verificar-servicios.mjs",
     "verificar:version-web": "node tools/verificar-version-web.mjs",
@@ -29,6 +29,7 @@
     "deploy:prod": "node tools/desplegar-produccion.mjs"
   },
   "devDependencies": {
+    "qrcode": "1.5.4",
     "@firebase/rules-unit-testing": "^5.0.2",
     "esbuild": "^0.28.2",
     "firebase": "^12.18.0",

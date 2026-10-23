@@ -3,12 +3,15 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
+import { build } from 'esbuild';
+
+const qrBundle = await build({ stdin: { contents: "import QRCode from 'qrcode'; window.QRCode = QRCode;", resolveDir: process.cwd() }, bundle: true, write: false, format: 'iife' });
 
 const web = resolve(import.meta.dirname, '../web');
 const source = await readFile(resolve(web, 'src/main.js'), 'utf8');
 const gestion = (await readFile(resolve(web, 'src/gestion.js'), 'utf8')).replaceAll('export function', 'function');
 const estado = {
-  complejoId: 'demo', complejo: {nombre:'Torre del Parque · Prueba'}, resumen: {},
+  complejoId: 'demo', complejo: {nombre:'Torre del Parque · Prueba', puntosAcceso:[{id:'entrada',nombre:'Entrada principal',activo:true}]}, resumen: {}, autorizaciones:[],
   usuario: {}, claims: {}, seccion:'amenities', listeners: [], eventos:[], reclamos:[], periodos:[], obras:[],
   filtroUnidades:'', filtroReclamos:'', estadoReclamos:'todos', filtroAvisos:'',
   filtrosReservas:{estado:'todos',amenity:'todos',fecha:''},
@@ -30,14 +33,33 @@ const estado = {
 };
 const bootstrap = [
   'const $=(s,r=document)=>r.querySelector(s);',
+  'let focoAntesModal; const cargarResumen=async()=>{};',
   'const $$=(s,r=document)=>[...r.querySelectorAll(s)];',
   'const appShell=$("#aplicacion"); const estado='+JSON.stringify(estado)+';',
   'const config={emuladores:{activo:true}};',
+  qrBundle.outputFiles[0].text,
   gestion,
   source.slice(source.indexOf('function renderTodo()')),
   'window.peticionesPrueba=[];',
+  'const partidasVista={}; const collection=(...args)=>args; const db={}; const getDocs=async(ref)=>({docs:(partidasVista[ref[1]]??[]).map(p=>({id:p.id,data:()=>p}))});',
   'api=async(ruta,opciones={})=>{ window.peticionesPrueba.push({ruta,...opciones}); const d=opciones.body; if(opciones.method==="POST"&&ruta.endsWith("/notificaciones")) estado.avisos.unshift({id:"nuevo",...d,enviadaEn:new Date().toISOString()}); else if(ruta.includes("/reservas/")) Object.assign(estado.reservas.find(r=>r.id===ruta.split("/").at(-1)),d); else if(ruta.includes("/amenities/")) Object.assign(estado.amenities.find(a=>a.id===ruta.split("/").at(-1)),d); else throw new Error("Acción no incluida en esta vista de prueba"); renderTodo(); return {}; };',
-  '$("#login").hidden=true; appShell.hidden=false; renderTodo(); navegar("amenities");',
+  `const apiAnterior=api; api=async(ruta, opciones={})=>{
+    const datos=opciones.body, id='prueba-'+crypto.randomUUID();
+    let resultado;
+    if(ruta.endsWith('/expensas/periodos') && opciones.method==='POST') {
+      resultado={...datos,id:datos.periodoId,estado:'borrador',gastosOrdinarios:datos.gastosOrdinarios.map(g=>({...g,montoCentavos:Math.round(g.monto*100)})),gastosExtraordinarios:datos.gastosExtraordinarios.map(g=>({...g,montoCentavos:Math.round(g.monto*100)}))}; estado.periodos.unshift(resultado);
+    } else if(ruta.endsWith('/obras') && opciones.method==='POST') {
+      resultado={...datos,id,estado:'planificada',presupuestoAprobado:Math.round(datos.presupuestoAprobado*100)}; estado.obras.push(resultado);
+    } else if(ruta.endsWith('/partidas') && opciones.method==='POST') {
+      resultado={...datos,id,avancePorcentaje:0}; (partidasVista[ruta.slice(1)]??=[]).push(resultado);
+    } else if(ruta.endsWith('/autorizaciones') && opciones.method==='POST') {
+      resultado={...datos,id,codigoQr:'HBA-LOCAL-SIN-VALIDEZ',estado:'vigente',usosConsumidos:0}; estado.autorizaciones.push(resultado);
+    } else if(ruta.endsWith('/revocar')) {
+      resultado=estado.autorizaciones.find(a=>a.id===ruta.split('/').at(-2)); resultado.estado='revocada';
+    } else return apiAnterior(ruta,opciones);
+    window.peticionesPrueba.push({ruta,...opciones}); renderTodo(); return resultado;
+  };`,
+  '$("#login").hidden=true; appShell.hidden=false; renderTodo(); navegar("expensas");',
   '$("#menu-movil").onclick=()=>appShell.classList.toggle("menu-open");',
 ].join('\n');
 const tipos={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.ttf':'font/ttf','.woff2':'font/woff2'};

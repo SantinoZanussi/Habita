@@ -131,7 +131,11 @@ class ResumenCuentaExpensas extends StatelessWidget {
                 ? 'Tu cuenta está al día.'
                 : 'Incluye deuda anterior e intereses calculados al consultar.',
           ),
-          TextButton(onPressed: onTap, child: const Text('Ver mi cuenta')),
+          FilledButton.icon(
+            onPressed: onTap,
+            icon: Icon(cuenta['alDia'] == true ? Icons.receipt_long : Icons.payments_outlined),
+            label: Text(cuenta['alDia'] == true ? 'Ver mis expensas' : 'Ver detalle y pagar'),
+          ),
         ],
       ),
     ),
@@ -182,6 +186,11 @@ class ExpensasScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   if (cuenta['alDia'] != true)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text('Pagá el saldo desde el botón de abajo. Vas a revisar el importe antes de continuar. Si ya transferiste, pedile a la administración que registre el pago.'),
+                    ),
+                  if (cuenta['alDia'] != true)
                     PagoExpensas(
                       crearPreferencia: () => HabitaApi().post(
                         '/complejos/$complejoId/expensas/pagar',
@@ -196,7 +205,12 @@ class ExpensasScreen extends StatelessWidget {
                       actualizar: actualizar,
                     )
                   else
-                    const Text('Tu cuenta está al día.'),
+                    const ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.check_circle_outline, color: Colors.teal),
+                      title: Text('Tu cuenta está al día'),
+                      subtitle: Text('No tenés pagos pendientes. Podés consultar el detalle de tus expensas abajo.'),
+                    ),
                   TextButton(
                     onPressed: actualizar,
                     child: const Text('Actualizar cuenta'),
@@ -205,7 +219,7 @@ class ExpensasScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            const Text('Liquidaciones', style: HabitaTipografia.titulo3),
+            const Text('Expensas por mes', style: HabitaTipografia.titulo3),
             const Text(
               'El saldo pendiente se actualiza con los pagos. El importe original es histórico.',
             ),

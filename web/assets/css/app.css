@@ -177,6 +177,23 @@ tbody tr:hover { background: #f9fcfe; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
 
 /* Modal and notifications */
+.workflow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin:0 0 24px; padding:22px; background:#edf6f5; border:1px solid #cce4df; border-radius:16px; }
+.workflow strong { color:#18584c; font-size:15px; }
+.form-error { color:#9b1c1c; background:#fff0f0; border:1px solid #edbebe; border-radius:8px; padding:12px; }
+.quick-actions { margin-bottom:24px; }
+.workflow p { margin:8px 0 0; color:var(--texto-suave); line-height:1.6; }
+.period-picker { display:flex; align-items:center; gap:12px; margin:20px 0; font-weight:600; }
+.period-picker select { max-width:340px; }
+.expense-line { margin:20px 0; padding:18px; border:1px solid var(--borde); border-radius:12px; min-width:0; }
+.expense-line legend { font-weight:600; padding:0 8px; }
+.credential { display:grid; justify-items:center; gap:12px; margin:16px 0 24px; }
+.credential img { max-width:100%; height:auto; }
+details { margin:20px 0; padding:12px 0; border-top:1px solid var(--borde); }
+summary { cursor:pointer; font-weight:600; padding:8px 0; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline:3px solid #24a6bd; outline-offset:3px; }
+.page-actions, .toolbar { flex-wrap:wrap; }
+@media (max-width:620px) { .workflow { grid-template-columns:1fr; padding:18px; } .period-picker { align-items:stretch; flex-direction:column; } .period-picker select { max-width:none; } }
+
 .modal { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: 22px; }
 .modal__backdrop { position: absolute; inset: 0; border: 0; background: rgba(7,26,45,.54); backdrop-filter: blur(4px); }
 .modal__dialog { position: relative; width: min(620px, 100%); max-height: calc(100vh - 44px); overflow: auto; border: 1px solid rgba(255,255,255,.55); border-radius: 18px; background: white; box-shadow: 0 30px 80px rgba(7,26,45,.3); }

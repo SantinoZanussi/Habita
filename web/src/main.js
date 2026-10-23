@@ -1,11 +1,12 @@
 import { reservasFiltradas, destinatariosAviso } from './gestion.js';
+import QRCode from 'qrcode';
 import { initializeApp } from 'firebase/app';
 import {
   connectAuthEmulator, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
 } from 'firebase/auth';
 import {
   collection, connectFirestoreEmulator, doc, getFirestore, limit, onSnapshot,
-  orderBy, query,
+  orderBy, query, getDocs,
 } from 'firebase/firestore';
 
 const config = await window.HABITA_CONFIG_PROMISE;
@@ -26,11 +27,12 @@ const $$ = (selector, raiz = document) => [...raiz.querySelectorAll(selector)];
 const estado = {
   usuario: null, claims: null, complejoId: null, complejo: null,
   unidades: [], eventos: [], reclamos: [], periodos: [], amenities: [], reservas: [], obras: [],
-  avisos: [], filtroAvisos: '', filtrosReservas: { estado: 'todos', amenity: 'todos', fecha: '' },
+  autorizaciones: [], periodoSeleccionado: '', avisos: [], filtroAvisos: '', filtrosReservas: { estado: 'todos', amenity: 'todos', fecha: '' },
   resumen: null, seccion: 'dashboard', listeners: [], filtroUnidades: '', filtroReclamos: '', estadoReclamos: 'todos',
 };
 let temporizadorResumen;
 let solicitudResumen = 0;
+let focoAntesModal;
 
 const login = $('#login');
 const appShell = $('#aplicacion');
@@ -104,6 +106,9 @@ onAuthStateChanged(auth, async (usuario) => {
 
 function suscribirTiempoReal() {
   const cid = estado.complejoId;
+  escuchar(query(collection(db, `complejos/${cid}/autorizaciones`)), (snap) => {
+    estado.autorizaciones = snap.docs.map(datosDoc); renderAccesos();
+  });
   escuchar(doc(db, 'complejos', cid), (snap) => {
     const revisionAnterior = estado.complejo?.revisionCuenta;
     estado.complejo = snap.exists() ? { id: snap.id, ...snap.data() } : null;
@@ -152,6 +157,8 @@ function escuchar(referencia, callback) {
 }
 
 function limpiarListeners() {
+  estado.autorizaciones = [];
+  estado.periodoSeleccionado = '';
   clearTimeout(temporizadorResumen);
   solicitudResumen += 1;
   for (const clave of ['unidades','eventos','reclamos','periodos','amenities','reservas','obras','avisos']) estado[clave] = [];
@@ -186,6 +193,7 @@ function renderDashboard() {
   const accesosHoy = estado.eventos.filter((e) => e.resultado === 'permitido').length;
   $('#section-dashboard').innerHTML = `
     ${heading('Dashboard', `La operación de ${estado.complejo?.nombre ?? 'tu complejo'}, en una sola vista.`, '<button class="button button--secondary" data-action="nuevo-aviso">+ Nuevo aviso</button>')}
+    <div class="toolbar quick-actions"><button class="button button--primary" data-action="nuevo-periodo">Cargar gastos</button><button class="button button--secondary" data-action="pago-manual">Registrar pago recibido</button><button class="button button--secondary" data-action="nueva-autorizacion">Autorizar visita</button><button class="button button--secondary" data-action="nueva-obra">Cargar obra</button></div>
     <div class="metrics">
       ${metric('Unidades', estado.unidades.length, 'Unidades registradas', '▦')}
       ${metric('Recaudación del período', dinero(resumen.recaudado), `${numero(resumen.porcentajeRecaudado)}% del total`, '$')}
@@ -228,14 +236,15 @@ function renderUnidades() {
 }
 
 function renderExpensas() {
-  const periodo = estado.periodos[0];
+  const periodo = estado.periodos.find((p) => p.id === estado.periodoSeleccionado) ?? estado.periodos[0];
   const ordinario = periodo?.totalOrdinario ?? sumarGastos(periodo?.gastosOrdinarios);
   const extraordinario = periodo?.totalExtraordinario ?? sumarGastos(periodo?.gastosExtraordinarios);
   const fondo = periodo?.totalFondoReserva ?? Number(periodo?.fondoReserva?.valor ?? 0);
   const total = periodo?.totalLiquidado ?? ordinario + extraordinario + fondo;
   $('#section-expensas').innerHTML = `
     ${heading('Liquidación de expensas', periodo ? `${safe(periodo.etiqueta ?? periodo.id)} · ${estado.unidades.length} unidades` : 'Creá el primer período para comenzar.', '<button class="button button--primary" data-action="nuevo-periodo">+ Nuevo período</button>')}
-    ${periodo ? `<div class="metrics">
+    <div class="workflow"><div><strong>1. Cargá los gastos</strong><p>Agregá cada concepto del mes en un borrador.</p></div><div><strong>2. Revisá el reparto</strong><p>Consultá cuánto corresponde a cada unidad.</p></div><div><strong>3. Publicá y cobrá</strong><p>Los residentes pagan desde Mis expensas en la app.</p><button class="button button--ghost" data-nav="cobranza">Ver cobranza →</button></div></div>
+    ${periodo ? `<label class="period-picker">Período a consultar<select data-periodo>${estado.periodos.map((p) => `<option value="${safe(p.id)}" ${p.id === periodo.id ? 'selected' : ''}>${safe(p.etiqueta ?? p.id)} · ${textoEstado(p.estado)}</option>`).join('')}</select></label><div class="metrics">
       ${metric('Gasto total', dinero(total), periodo.estado === 'cerrado' ? 'Período cerrado' : 'Borrador', '$')}
       ${metric('Gastos ordinarios', dinero(ordinario), porcentaje(ordinario, total), '○')}
       ${metric('Gastos extraordinarios', dinero(extraordinario), porcentaje(extraordinario, total), '△')}
@@ -245,10 +254,10 @@ function renderExpensas() {
       <article class="card">
         <div class="card__header"><div><h3>Distribución del gasto</h3><p>Composición del período</p></div><span class="chip ${periodo.estado === 'cerrado' ? 'chip--success' : 'chip--warning'}">${textoEstado(periodo.estado)}</span></div>
         ${donutGastos({ ordinario, extraordinario, fondo, total })}
-        <div class="verification"><span>✓ La suma de liquidaciones individuales coincide con el gasto total.</span><strong>Diferencia $ 0,00</strong></div>
+        <div class="verification">${periodo.estado === 'cerrado' ? 'Publicado: las unidades ya pueden consultar su liquidación.' : 'Borrador: revisá el reparto antes de publicar. Todavía no se cobra a los residentes.'}</div>
       </article>
       <article class="card">
-        <div class="card__header"><div><h3>Control del período</h3><p>El cierre es atómico e irreversible</p></div></div>
+        <div class="card__header"><div><h3>Revisar y publicar</h3><p>Después de publicar, los importes no se pueden editar.</p></div></div>
         <div class="access-line"><span class="access-line__icon">1</span><span><strong>${periodo.gastosOrdinarios?.length ?? 0} gastos ordinarios</strong><small>Criterios por coeficiente y partes iguales</small></span></div>
         <div class="access-line"><span class="access-line__icon">2</span><span><strong>${periodo.gastosExtraordinarios?.length ?? 0} gastos extraordinarios</strong><small>Separados por propietario u ocupante</small></span></div>
         <div class="access-line"><span class="access-line__icon">3</span><span><strong>${estado.unidades.length} liquidaciones</strong><small>Prorrateo exacto al centavo</small></span></div>
@@ -277,7 +286,8 @@ function renderAccesos() {
   const permitidos = estado.eventos.filter((e) => e.resultado === 'permitido');
   const dentro = presentes(estado.eventos);
   $('#section-accesos').innerHTML = `
-    ${heading('Control de accesos', 'Eventos append-only y validación transaccional en cada ingreso.', '<button class="button button--primary" data-action="validar-acceso">Validar credencial</button>')}
+    ${heading('Visitas y accesos', 'Autorizá a una persona y luego validá su credencial al entrar o salir.', '<button class="button button--secondary" data-action="validar-acceso">Registrar ingreso / salida</button><button class="button button--primary" data-action="nueva-autorizacion">+ Autorizar persona</button>')}
+    <article class="card"><div class="card__header"><div><h3>Autorizaciones</h3><p>Crear una autorización no registra un ingreso. La guardia valida la credencial al llegar.</p></div></div>${tablaAutorizaciones()}</article>
     <div class="metrics">${metric('Personas dentro', dentro.length, 'Según último movimiento', '◇')}${metric('Ingresos recientes', permitidos.filter((e) => e.sentido === 'ingreso').length, 'Tiempo real', '→')}${metric('Rechazos', estado.eventos.filter((e) => e.resultado === 'rechazado').length, 'Con motivo auditable', '!', true)}${metric('Puntos activos', estado.complejo?.puntosAcceso?.length ?? 0, 'Torre y garaje', '⌂')}</div>
     <div class="grid grid--2"><article class="card card--flush"><div class="card__header" style="padding:18px 18px 0"><div><h3>Historial reciente</h3><p>Este registro no se puede editar ni borrar</p></div><span class="live-pill"><span class="status-dot"></span>En vivo</span></div>${tablaAccesos(estado.eventos)}</article><article class="card"><div class="card__header"><div><h3>Ahora en el complejo</h3><p>${dentro.length} personas o vehículos</p></div></div>${lineasAcceso(dentro.slice(0, 8))}</article></div>`;
 }
@@ -349,7 +359,8 @@ function listaAvisos() {
 
 function renderObras() {
   $('#section-obras').innerHTML = `
-    ${heading('Obras', 'Avance físico, presupuesto y camino crítico en la misma vista.', '')}
+    ${heading('Obras', 'Creá la obra, agregá sus tareas y registrá los avances.', '<button class="button button--primary" data-action="nueva-obra">+ Cargar obra</button>')}
+    <div class="toolbar">${estado.obras.map((o) => `<button class="button button--secondary" data-action="gestionar-obra" data-id="${safe(o.id)}">Gestionar ${safe(o.nombre)}</button>`).join('')}</div>
     <div class="work-grid">${estado.obras.map((o) => `<article class="work-card"><div class="amenity-card__top"><span class="chip chip--info">${o.tipo === 'comun' ? 'Obra común' : 'Obra privada'}</span><span class="chip ${o.estado === 'en_progreso' ? 'chip--warning' : 'chip--success'}">${textoEstado(o.estado)}</span></div><h3>${safe(o.nombre)}</h3><p>Avance físico <strong>${numero(o.avanceFisicoPorcentaje)}%</strong> · gasto ejecutado <strong>${porcentaje(o.gastoEjecutado, o.presupuestoAprobado)}</strong></p><div class="progress"><span style="width:${Math.min(100, o.avanceFisicoPorcentaje ?? 0)}%"></span></div><div class="amenity-card__meta" style="margin-top:14px"><span>Presupuesto ${dinero(o.presupuestoAprobado)}</span><span>${o.caminoCritico?.length ?? 0} partidas críticas</span></div></article>`).join('') || vacio('No hay obras activas', 'Las obras comunes y privadas aparecerán acá.')}</div>`;
 }
 
@@ -364,6 +375,16 @@ function renderConfiguracion() {
 }
 
 // Acciones -----------------------------------------------------------------
+document.addEventListener('keydown', (e) => {
+  if ($('#modal').hidden) return;
+  if (e.key === 'Escape') cerrarModal();
+  if (e.key === 'Tab') {
+    const campos = $$('button, input, select, textarea, a[href], summary', $('#modal')).filter((el) => !el.disabled && el.offsetParent !== null);
+    const primero = campos[0], ultimo = campos.at(-1);
+    if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo?.focus(); }
+    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero?.focus(); }
+  }
+});
 $('#navegacion').addEventListener('click', (e) => {
   const boton = e.target.closest('[data-section]');
   if (!boton) return;
@@ -395,6 +416,10 @@ document.addEventListener('submit', async (e) => {
     if (form.id === 'form-configuracion') await guardarConfiguracion(form);
     else if (form.dataset.form) await enviarModal(form.dataset.form, form);
   } catch (error) {
+    let aviso = $('[data-form-error]', form);
+    if (!aviso) { form.insertAdjacentHTML('afterbegin', '<p data-form-error role="alert" class="form-error"></p>'); aviso = $('[data-form-error]', form); }
+    aviso.textContent = error.message;
+    aviso.scrollIntoView({ block: 'nearest' });
     mostrarToast('Revisá los datos', error.message, 'error');
   } finally {
     if (boton) boton.disabled = false;
@@ -411,6 +436,7 @@ document.addEventListener('input', (e) => {
 });
 
 document.addEventListener('change', (e) => {
+  if (e.target.matches('[data-periodo]')) { estado.periodoSeleccionado = e.target.value; renderExpensas(); return; }
   if (e.target.dataset.reservaFiltro) { estado.filtrosReservas[e.target.dataset.reservaFiltro] = e.target.value; $('#tabla-reservas').innerHTML = tablaReservas(); return; }
   if (e.target.name === 'alcance') { $('#unidades-aviso').hidden = e.target.value === 'todos'; return; }
   const filtro = e.target.closest('[data-reclamos-estado]');
@@ -420,6 +446,17 @@ document.addEventListener('change', (e) => {
 });
 
 async function ejecutarAccion(accion, boton) {
+  if (accion === 'nueva-obra') return modalObra();
+  if (accion === 'gestionar-obra') return modalGestionObra(boton.dataset.id);
+  if (accion === 'nueva-autorizacion') return modalAutorizacion();
+  if (accion === 'ver-credencial') return mostrarCredencial(estado.autorizaciones.find((a) => a.id === boton.dataset.id));
+  if (accion === 'revocar-autorizacion') {
+    if (!confirm('¿Revocar esta autorización? Ya no permitirá nuevos ingresos.')) return;
+    await api(`/complejos/${estado.complejoId}/accesos/autorizaciones/${boton.dataset.id}/revocar`, { method: 'PATCH' });
+    mostrarToast('Autorización revocada', 'Los nuevos ingresos con esta credencial serán rechazados.'); return;
+  }
+  if (accion === 'agregar-gasto') { $('#gastos-periodo').insertAdjacentHTML('beforeend', filaGasto()); return; }
+  if (accion === 'quitar-gasto') { if ($$('[data-gasto]').length > 1) boton.closest('[data-gasto]').remove(); return; }
   if (accion === 'nueva-unidad') return modalUnidad();
   if (accion === 'editar-unidad') return modalUnidad(estado.unidades.find((u) => u.id === boton.dataset.id));
   if (accion === 'nueva-unidad') return modalUnidad();
@@ -454,18 +491,24 @@ function navegar(seccion) {
 
 function modalUnidad(unidad = null) {
   abrirModal(unidad ? 'Editar unidad' : 'Nueva unidad', 'Configuración y unidades', `
-    <form data-form="unidad" data-id="${unidad?.id ?? ''}"><div class="form-grid"><label>Identificador<input name="identificador" value="${safe(unidad?.identificador ?? '')}" placeholder="3A" required></label><label>Coeficiente (%)<input name="coeficiente" type="number" step=".0001" min=".0001" max="100" value="${unidad?.coeficiente ?? ''}" required></label><label>Superficie (m²)<input name="superficie" type="number" min="0" value="${unidad?.superficie ?? ''}"></label><label>Estado<select name="estado">${opciones(['ocupada','vacante','en_obra'], unidad?.estado ?? 'ocupada')}</select></label><label class="span-2">Patentes autorizadas<input name="patentesAutorizadas" value="${safe(unidad?.patentesAutorizadas?.join(', ') ?? '')}" placeholder="ABC123, AB123CD"></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">${unidad ? 'Guardar cambios' : 'Crear unidad'}</button></div></form>`);
+    <form data-form="unidad" data-id="${unidad?.id ?? ''}"><div class="form-grid"><label>Identificador<input name="identificador" value="${safe(unidad?.identificador ?? '')}" placeholder="3A" required></label><label>Coeficiente (%)<input name="coeficiente" type="number" step=".0001" min=".0001" max="100" value="${unidad?.coeficiente ?? ''}" required></label><label>Superficie (m²)<input name="superficie" type="number" min="0" value="${unidad?.superficie ?? ''}"></label><label>Estado<select name="estado">${opciones(['ocupada','vacante','en_obra'], unidad?.estado ?? 'ocupada')}</select></label><label>Habitantes<input name="habitantes" type="number" min="1" step="1" value="${unidad?.habitantes ?? 1}" required></label><label class="span-2">Patentes autorizadas<input name="patentesAutorizadas" value="${safe(unidad?.patentesAutorizadas?.join(', ') ?? '')}" placeholder="ABC123, AB123CD"></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">${unidad ? 'Guardar cambios' : 'Crear unidad'}</button></div></form>`);
+}
+
+function filaGasto() {
+  return `<fieldset data-gasto class="expense-line"><legend>Concepto de gasto</legend><div class="form-grid"><label class="span-2">Descripción<input data-campo="concepto" placeholder="Ej.: limpieza de espacios comunes" required maxlength="200"></label><label>Importe ($)<input data-campo="monto" type="number" min="0.01" step=".01" required></label><label>Tipo<select data-campo="tipo"><option value="ordinario">Ordinario · habitual</option><option value="extraordinario">Extraordinario · excepcional</option></select></label><label>Repartir por<select data-campo="criterio"><option value="coeficiente">Coeficiente de la unidad</option><option value="partesIguales">Partes iguales</option></select></label><label>A cargo de<select data-campo="aCargoDe"><option value="ocupante">Ocupante</option><option value="propietario">Propietario</option></select></label></div><button type="button" class="button button--ghost" data-action="quitar-gasto">Quitar concepto</button></fieldset>`;
 }
 
 function modalPeriodo() {
+  if (!estado.unidades.length) throw new Error('Creá las unidades y sus coeficientes antes de liquidar expensas.');
   const proximo = proximoPeriodo();
-  abrirModal('Nuevo período', 'Liquidación de expensas', `
-    <form data-form="periodo"><div class="form-grid"><label>Período<input name="periodoId" value="${proximo}" pattern="\\d{4}-(0[1-9]|1[0-2])" required></label><label>Etiqueta<input name="etiqueta" value="${etiquetaPeriodo(proximo)}" required></label><label>Vencimiento<input name="vencimiento" type="date" required></label><label>Fondo de reserva ($)<input name="fondo" type="number" min="0" value="320000"></label><label class="span-2">Gasto ordinario principal<input name="ordinarioConcepto" value="Personal y cargas sociales" required></label><label>Monto ordinario ($)<input name="ordinarioMonto" type="number" min="0" value="3680000" required></label><label>Criterio<select name="ordinarioCriterio">${opciones(['coeficiente','partesIguales'], 'coeficiente')}</select></label><label class="span-2">Gasto extraordinario<input name="extraConcepto" value="Obra extraordinaria"></label><label>Monto extraordinario ($)<input name="extraMonto" type="number" min="0" value="0"></label><label>A cargo de<select name="extraCargo">${opciones(['propietario','ocupante'], 'propietario')}</select></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Crear borrador</button></div></form>`);
+  abrirModal('Cargar gastos del período', 'Paso 1 de 3 · Borrador', `
+    <form data-form="periodo"><p class="form-help">Cargá los importes en pesos. Podés sumar varios conceptos; todavía no se publicarán a los residentes.</p><div class="form-grid"><label>Mes<input type="month" name="periodoId" value="${proximo}" required></label><label>Nombre visible<input name="etiqueta" value="${etiquetaPeriodo(proximo)}" required></label><label>Vencimiento<input name="vencimiento" type="date" required></label><label>Fondo de reserva ($)<input name="fondo" type="number" min="0" step=".01" value="0" required></label></div><div id="gastos-periodo">${filaGasto()}</div><button type="button" class="button button--secondary" data-action="agregar-gasto">+ Agregar otro gasto</button><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Guardar borrador</button></div></form>`);
 }
 
 function modalAcceso() {
-  abrirModal('Validar credencial', 'Control de acceso', `
-    <form data-form="acceso"><div class="segmented"><button type="button" class="is-active">Código QR</button><button type="button">Patente</button></div><div class="form-grid" style="margin-top:16px"><label class="span-2">Código o patente<input name="credencial" value="HBA-DEMO-VISITA-01" required></label><label>Punto de acceso<select name="punto">${(estado.complejo?.puntosAcceso ?? []).map((p) => `<option value="${safe(p.id)}">${safe(p.nombre)}</option>`).join('')}</select></label><label>Sentido<select name="sentido">${opciones(['ingreso','egreso'], 'ingreso')}</select></label></div><p style="color:var(--texto-suave);margin-top:14px">La validación se rechaza cuando se agotan los usos. El QR demo tiene dos usos y cada intento queda registrado.</p><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Validar ahora</button></div></form>`);
+  const puntos = (estado.complejo?.puntosAcceso ?? []).filter((p) => p.activo !== false);
+  if (!puntos.length) throw new Error('El complejo no tiene puntos de acceso activos configurados.');
+  abrirModal('Registrar ingreso o salida', 'Validar credencial', `<form data-form="acceso"><div class="form-grid"><label>Método<select name="metodo"><option value="codigo">Código de la credencial QR</option><option value="patente">Patente del vehículo</option></select></label><label>Movimiento<select name="sentido">${opciones(['ingreso','egreso'], 'ingreso')}</select></label><label class="span-2">Código o patente<input name="credencial" placeholder="Pegá el contenido del QR o escribí la patente" required autocomplete="off"></label><label class="span-2">Punto de acceso<select name="punto">${puntos.map((p) => `<option value="${safe(p.id)}">${safe(p.nombre)}</option>`).join('')}</select></label></div><p class="form-help">Se comprobarán la vigencia, los usos y el punto habilitado. Cada intento queda en el historial.</p><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Validar y registrar</button></div></form>`);
 }
 
 function modalAmenity(amenity = null) {
@@ -473,11 +516,52 @@ function modalAmenity(amenity = null) {
 }
 
 function modalPago() {
-  abrirModal('Registrar pago manual', 'Cobranza', `<form data-form="pago"><input type="hidden" name="idempotencyKey" value="${crypto.randomUUID()}"><div class="form-grid"><label>Unidad<select name="unidadId">${estado.unidades.map((u) => `<option value="${u.id}">${safe(u.identificador)}</option>`).join('')}</select></label><label>Período<select name="periodoId">${estado.periodos.filter((p) => p.estado === 'cerrado').map((p) => `<option value="${p.id}">${safe(p.etiqueta ?? p.id)}</option>`).join('')}</select></label><label>Monto ($)<input name="monto" type="number" min=".01" step=".01" required></label><label>Medio<select name="medio">${opciones(['transferencia','efectivo','debito'], 'transferencia')}</select></label><label class="span-2">Observación<textarea name="observacion" placeholder="Referencia o comprobante"></textarea></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Registrar e imputar</button></div></form>`);
+  if (!estado.unidades.length || !estado.periodos.some((p) => p.estado === 'cerrado')) throw new Error('Para registrar un pago necesitás unidades y al menos un período publicado.');
+  abrirModal('Registrar pago manual', 'Cobranza', `<form data-form="pago"><p class="form-help">Usá este formulario sólo después de comprobar que recibiste el dinero. El registro acredita el saldo de la unidad; no inicia un cobro. Para pagar con Mercado Pago, el residente usa Mis expensas en la app.</p><input type="hidden" name="idempotencyKey" value="${crypto.randomUUID()}"><div class="form-grid"><label>Unidad<select name="unidadId">${estado.unidades.map((u) => `<option value="${u.id}">${safe(u.identificador)}</option>`).join('')}</select></label><label>Período<select name="periodoId">${estado.periodos.filter((p) => p.estado === 'cerrado').map((p) => `<option value="${p.id}">${safe(p.etiqueta ?? p.id)}</option>`).join('')}</select></label><label>Monto ($)<input name="monto" type="number" min=".01" step=".01" required></label><label>Medio<select name="medio">${opciones(['transferencia','efectivo','debito'], 'transferencia')}</select></label><label class="span-2">Observación<textarea name="observacion" placeholder="Referencia o comprobante"></textarea></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Registrar e imputar</button></div></form>`);
 }
 
 function modalAviso() {
   abrirModal('Nuevo aviso', 'Comunicaciones', `<form data-form="aviso"><div class="form-grid"><label class="span-2">Título<input name="titulo" maxlength="120" required placeholder="Corte de agua programado"></label><label class="span-2">Mensaje<textarea name="cuerpo" maxlength="4000" required rows="5"></textarea></label><label>Tipo<select name="tipo">${opciones(['administracion','mantenimiento','asamblea','seguridad'], 'administracion')}</select></label><label>Destinatarios<select name="alcance"><option value="todos">Todo el complejo</option><option value="unidades">Elegir unidades</option></select></label><fieldset id="unidades-aviso" class="span-2 audience-picker" hidden><legend>Unidades destinatarias (hasta 30)</legend>${estado.unidades.map((u) => `<label><input type="checkbox" name="unidades" value="${safe(u.id)}"> ${safe(u.identificador)}</label>`).join('') || '<p>No hay unidades registradas.</p>'}</fieldset></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Publicar aviso</button></div></form>`);
+}
+
+function accionesFormulario(texto) {
+  return `<div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">${texto}</button></div>`;
+}
+
+function modalObra() {
+  abrirModal('Cargar obra', 'Obras · Datos iniciales', `<form data-form="obra"><p class="form-help">Primero creá la obra. Después agregá las tareas para planificar y registrar su avance.</p><div class="form-grid"><label class="span-2">Nombre<input name="nombre" minlength="3" maxlength="120" required placeholder="Ej.: renovación del ascensor"></label><label>Tipo<select name="tipo"><option value="comun">Común · todo el complejo</option><option value="privada">Privada · una unidad</option></select></label><label>Unidad (para obra privada)<select name="unidadId"><option value="">Sin unidad · obra común</option>${estado.unidades.map((u) => `<option value="${safe(u.id)}">${safe(u.identificador)}</option>`).join('')}</select></label><label>Fecha de inicio<input type="date" name="fechaInicio" required></label><label>Presupuesto aprobado ($)<input type="number" name="presupuestoAprobado" min="0" step=".01" required></label></div>${accionesFormulario('Crear obra')}</form>`);
+}
+
+async function modalGestionObra(id) {
+  const obra = estado.obras.find((o) => o.id === id);
+  if (!obra) throw new Error('La obra ya no está disponible.');
+  const snap = await getDocs(collection(db, `complejos/${estado.complejoId}/obras/${id}/partidas`));
+  const partidas = snap.docs.map(datosDoc);
+  abrirModal(safe(obra.nombre), 'Planificación y avances', `<h3>Tareas de la obra</h3><div class="table-wrap"><table><thead><tr><th>Tarea</th><th>Duración</th><th>Avance</th></tr></thead><tbody>${partidas.map((p) => `<tr><td>${safe(p.nombre)}</td><td>${numero(p.duracionEstimada)} días</td><td>${numero(p.avancePorcentaje)}%</td></tr>`).join('') || '<tr><td colspan="3">Agregá la primera tarea para comenzar.</td></tr>'}</tbody></table></div><details open><summary>Agregar tarea</summary><form data-form="partida" data-id="${safe(id)}"><div class="form-grid"><label class="span-2">Nombre<input name="nombre" required minlength="3"></label><label>Duración (días)<input name="duracionEstimada" type="number" min="1" step="1" required></label><label>Presupuesto ($)<input name="presupuesto" type="number" min="0" step=".01" required></label><label class="span-2">Comienza después de<select name="predecesora"><option value="">No depende de otra tarea</option>${partidas.map((p) => `<option value="${safe(p.id)}">${safe(p.nombre)}</option>`).join('')}</select></label></div>${accionesFormulario('Agregar tarea')}</form></details>${partidas.length ? `<details><summary>Registrar avance</summary><form data-form="avance" data-id="${safe(id)}"><input type="hidden" name="idempotencyKey" value="${crypto.randomUUID()}"><div class="form-grid"><label>Tarea<select name="partidaId">${partidas.map((p) => `<option value="${safe(p.id)}">${safe(p.nombre)}</option>`).join('')}</select></label><label>Avance total de la tarea (%)<input type="number" name="porcentaje" min="0" max="100" step=".1" required></label><label class="span-2">Observación<textarea name="observacion" required></textarea></label></div><p class="form-help">Ingresá el porcentaje alcanzado, no cuánto aumentó. El registro queda en el historial.</p>${accionesFormulario('Guardar avance')}</form></details>` : ''}`);
+}
+
+function modalAutorizacion() {
+  if (!estado.unidades.length) throw new Error('Primero creá la unidad que recibirá a la persona.');
+  const puntos = (estado.complejo?.puntosAcceso ?? []).filter((p) => p.activo !== false);
+  if (!puntos.length) throw new Error('El complejo necesita un punto de acceso activo.');
+  abrirModal('Autorizar persona', 'Visitas, proveedores y personal de obra', `<form data-form="autorizacion"><div class="form-grid"><label>Nombre y apellido<input name="nombre" minlength="2" required></label><label>Documento<input name="documento" minlength="6" required></label><label>Tipo<select name="tipo">${opciones(['visita','proveedor','obra'], 'visita')}</select></label><label>Unidad<select name="unidadId">${estado.unidades.map((u) => `<option value="${safe(u.id)}">${safe(u.identificador)}</option>`).join('')}</select></label><label>Válida desde<input type="datetime-local" name="vigenciaDesde" required></label><label>Válida hasta<input type="datetime-local" name="vigenciaHasta" required></label><label>Ingresos permitidos<input name="usosPermitidos" type="number" min="1" max="10" value="1" required></label><label>Patente (opcional)<input name="patente" placeholder="AB123CD"></label><label>Punto habilitado<select name="punto">${puntos.map((p) => `<option value="${safe(p.id)}">${safe(p.nombre)}</option>`).join('')}</select></label><label>Días habilitados<select name="dias"><option value="todos">Todos los días</option><option value="laborables">Lunes a viernes</option><option value="obra">Lunes a sábado</option></select></label><label>Horario diario desde<input name="horaDesde" type="time" value="00:00" required></label><label>Horario diario hasta<input name="horaHasta" type="time" value="23:59" required></label></div><p class="form-help">Las fechas usan la hora de este dispositivo; el horario diario se aplica en la zona del complejo (${safe(estado.complejo?.zonaHoraria ?? 'America/Argentina/Buenos_Aires')}). La credencial se genera al guardar.</p>${accionesFormulario('Crear autorización')}</form>`);
+}
+
+function tablaAutorizaciones() {
+  const lista = estado.autorizaciones ?? [];
+  if (!lista.length) return '<p class="form-help">Todavía no hay autorizaciones. Usá «Autorizar persona» para crear la primera.</p>';
+  return `<div class="table-wrap"><table><thead><tr><th>Persona / unidad</th><th>Vigencia</th><th>Ingresos usados</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${lista.map((a) => {
+    const hasta = a.vigenciaHasta?.toDate?.() ?? new Date(a.vigenciaHasta);
+    const desde = a.vigenciaDesde?.toDate?.() ?? new Date(a.vigenciaDesde);
+    const etiqueta = a.estado === 'revocada' ? 'Revocada' : hasta < new Date() ? 'Vencida' : a.usosConsumidos >= a.usosPermitidos ? 'Sin usos' : desde > new Date() ? 'Programada' : 'Vigente';
+    return `<tr><td><strong>${safe(a.nombre)}</strong><br>${safe(idUnidad(a.unidadId))} · ${safe(textoEstado(a.tipo))}</td><td>${fechaHora(a.vigenciaDesde)}<br>${fechaHora(a.vigenciaHasta)}</td><td>${numero(a.usosConsumidos)} / ${numero(a.usosPermitidos)}</td><td>${etiqueta}</td><td><button class="button button--ghost" data-action="ver-credencial" data-id="${safe(a.id)}">Ver credencial</button>${a.estado !== 'revocada' ? `<button class="button button--ghost" data-action="revocar-autorizacion" data-id="${safe(a.id)}">Revocar</button>` : ''}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+async function mostrarCredencial(a) {
+  if (!a) throw new Error('No se encontró la autorización.');
+  const imagen = await QRCode.toDataURL(a.codigoQr, { width: 256, margin: 4 });
+  abrirModal('Credencial de acceso', a.nombre, `<div class="credential"><img src="${imagen}" width="256" height="256" alt="QR de la autorización"><a class="button button--secondary" href="${imagen}" download="habita-acceso.png">Descargar QR</a></div><p>Compartí este código sólo con la persona autorizada. La guardia puede pegarlo en «Registrar ingreso / salida».</p><label>Código de la credencial QR<input readonly value="${safe(a.codigoQr)}" onclick="this.select()"></label><p class="form-help">Unidad ${safe(idUnidad(a.unidadId))} · Válida desde ${fechaHora(a.vigenciaDesde)} hasta ${fechaHora(a.vigenciaHasta)}. Hasta ${numero(a.usosPermitidos)} ingresos, sujetos a los días y horarios autorizados.</p>`);
 }
 
 async function enviarModal(tipo, form) {
@@ -486,11 +570,26 @@ async function enviarModal(tipo, form) {
   if (tipo === 'unidad') {
     const cuerpo = { ...datos, coeficiente: Number(datos.coeficiente), superficie: Number(datos.superficie || 0), habitantes: Number(datos.habitantes || 4), patentesAutorizadas: datos.patentesAutorizadas.split(',').map((p) => p.trim()).filter(Boolean) };
     await api(`/complejos/${cid}/unidades${form.dataset.id ? `/${form.dataset.id}` : ''}`, { method: form.dataset.id ? 'PATCH' : 'POST', body: cuerpo });
+  } else if (tipo === 'obra') {
+    if (datos.tipo === 'privada' && !datos.unidadId) throw new Error('Elegí la unidad de la obra privada.');
+    await api(`/complejos/${cid}/obras`, { method: 'POST', body: { nombre: datos.nombre.trim(), tipo: datos.tipo, unidadId: datos.tipo === 'privada' ? datos.unidadId : null, fechaInicio: datos.fechaInicio, presupuestoAprobado: Number(datos.presupuestoAprobado) } });
+  } else if (tipo === 'partida') {
+    await api(`/complejos/${cid}/obras/${form.dataset.id}/partidas`, { method: 'POST', body: { nombre: datos.nombre.trim(), duracionEstimada: Number(datos.duracionEstimada), presupuesto: Number(datos.presupuesto), predecesoras: datos.predecesora ? [datos.predecesora] : [] } });
+    await modalGestionObra(form.dataset.id); return;
+  } else if (tipo === 'avance') {
+    await api(`/complejos/${cid}/obras/${form.dataset.id}/avances`, { method: 'POST', body: { partidaId: datos.partidaId, porcentaje: Number(datos.porcentaje), observacion: datos.observacion, idempotencyKey: datos.idempotencyKey } });
+    await modalGestionObra(form.dataset.id); return;
+  } else if (tipo === 'autorizacion') {
+    if (new Date(datos.vigenciaHasta) <= new Date(datos.vigenciaDesde)) throw new Error('El vencimiento debe ser posterior al inicio.');
+    const autorizacion = await api(`/complejos/${cid}/accesos/autorizaciones`, { method: 'POST', body: { nombre: datos.nombre.trim(), documento: datos.documento.trim(), tipo: datos.tipo, unidadId: datos.unidadId, patente: datos.patente.trim() || null, vigenciaDesde: new Date(datos.vigenciaDesde).toISOString(), vigenciaHasta: new Date(datos.vigenciaHasta).toISOString(), usosPermitidos: Number(datos.usosPermitidos), puntosHabilitados: [datos.punto], diasPermitidos: datos.dias === 'todos' ? [0,1,2,3,4,5,6] : datos.dias === 'obra' ? [1,2,3,4,5,6] : [1,2,3,4,5], franjaHoraria: { desde: datos.horaDesde, hasta: datos.horaHasta } } });
+    await mostrarCredencial(autorizacion); return;
   } else if (tipo === 'periodo') {
-    await api(`/complejos/${cid}/expensas/periodos`, { method: 'POST', body: { periodoId: datos.periodoId, etiqueta: datos.etiqueta, vencimiento: datos.vencimiento, gastosOrdinarios: [{ concepto: datos.ordinarioConcepto, monto: Number(datos.ordinarioMonto), criterio: datos.ordinarioCriterio, aCargoDe: 'ocupante' }], gastosExtraordinarios: Number(datos.extraMonto) > 0 ? [{ concepto: datos.extraConcepto, monto: Number(datos.extraMonto), criterio: 'coeficiente', aCargoDe: datos.extraCargo }] : [], fondoReserva: { modo: 'monto', valor: Math.round(Number(datos.fondo) * 100) } } });
+    const gastos = $$('[data-gasto]', form).map((fila) => Object.fromEntries($$('[data-campo]', fila).map((input) => [input.dataset.campo, input.dataset.campo === 'monto' ? Number(input.value) : input.value.trim()])));
+    await api(`/complejos/${cid}/expensas/periodos`, { method: 'POST', body: { periodoId: datos.periodoId, etiqueta: datos.etiqueta, vencimiento: datos.vencimiento, gastosOrdinarios: gastos.filter((g) => g.tipo === 'ordinario'), gastosExtraordinarios: gastos.filter((g) => g.tipo === 'extraordinario'), fondoReserva: { modo: 'monto', valor: Math.round(Number(datos.fondo) * 100) } } });
+    estado.periodoSeleccionado = datos.periodoId;
   } else if (tipo === 'acceso') {
     const credencial = datos.credencial.trim();
-    const cuerpo = /^[A-Z]{2,3}\d{3}[A-Z]{0,2}$/i.test(credencial.replace(/[^A-Z0-9]/gi, '')) ? { patente: credencial } : { codigo: credencial };
+    const cuerpo = datos.metodo === 'patente' ? { patente: credencial } : { codigo: credencial };
     const resultado = await api(`/complejos/${cid}/accesos/validar`, { method: 'POST', body: { ...cuerpo, punto: datos.punto, sentido: datos.sentido } });
     cerrarModal();
     mostrarResultadoAcceso(resultado);
@@ -514,10 +613,12 @@ async function enviarModal(tipo, form) {
 
 async function previsualizarPeriodo(id) {
   const resultado = await api(`/complejos/${estado.complejoId}/expensas/periodos/${id}/borrador`);
-  abrirModal(`Vista previa · ${id}`, 'Cierre exacto', `<div class="metrics" style="grid-template-columns:1fr 1fr">${metric('Total del período', dinero(resultado.totales.periodo), `${resultado.detalle.length} unidades`, '$')}${metric('Diferencia', dinero(resultado.verificacion.total?.diferencia ?? 0), resultado.verificacion.cierra ? 'Cierra exacto' : 'No cerrar', '✓')}</div><div class="verification">${resultado.verificacion.cierra ? '✓ La suma de todas las liquidaciones coincide exactamente con el gasto total.' : 'Hay una diferencia; el backend impedirá el cierre.'}</div><div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Unidad</th><th>Ordinario</th><th>Extraordinario</th><th>Total</th></tr></thead><tbody>${resultado.detalle.slice(0, 12).map((d) => `<tr><td>${safe(d.identificador)}</td><td>${dinero(d.ordinario)}</td><td>${dinero(d.extraordinario)}</td><td><strong>${dinero(d.totalAPagar)}</strong></td></tr>`).join('')}</tbody></table></div>`);
+  abrirModal(`Vista previa · ${id}`, 'Cierre exacto', `<div class="metrics" style="grid-template-columns:1fr 1fr">${metric('Total del período', dinero(resultado.totales.periodo), `${resultado.detalle.length} unidades`, '$')}${metric('Diferencia', dinero(resultado.verificacion.total?.diferencia ?? 0), resultado.verificacion.cierra ? 'Cierra exacto' : 'No cerrar', '✓')}</div><div class="verification">${resultado.verificacion.cierra ? '✓ La suma de todas las liquidaciones coincide exactamente con el gasto total.' : 'Hay una diferencia; el backend impedirá el cierre.'}</div><div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Unidad</th><th>Ordinario</th><th>Extraordinario</th><th>Total</th></tr></thead><tbody>${resultado.detalle.map((d) => `<tr><td>${safe(d.identificador)}</td><td>${dinero(d.ordinario)}</td><td>${dinero(d.extraordinario)}</td><td><strong>${dinero(d.totalAPagar)}</strong></td></tr>`).join('')}</tbody></table></div>`);
 }
 
 async function cerrarPeriodo(id) {
+  const borrador = await api(`/complejos/${estado.complejoId}/expensas/periodos/${id}/borrador`);
+  if (!borrador.verificacion?.cierra) throw new Error('El reparto no cierra. Revisá los gastos y coeficientes antes de publicar.');
   if (!confirm(`¿Cerrar ${id}? Las liquidaciones publicadas no podrán editarse.`)) return;
   await api(`/complejos/${estado.complejoId}/expensas/periodos/${id}/cerrar`, { method: 'POST' });
   await cargarResumen();
@@ -590,8 +691,8 @@ function tablaAccesos(eventos) { return `<div class="table-wrap"><table><thead><
 function tablaTramos(tramos) { return `<div class="table-wrap"><table><thead><tr><th>Antigüedad</th><th>Unidades</th><th>Monto</th><th>Participación</th></tr></thead><tbody>${tramos.map((t) => `<tr><td><span class="chip ${t.clave === 'mas_90' ? 'chip--danger' : 'chip--warning'}">${safe(t.etiqueta)}</span></td><td>${t.unidades}</td><td><strong>${dinero(t.monto)}</strong></td><td>${numero(t.porcentaje)}%</td></tr>`).join('')}</tbody></table></div>`; }
 function lineasAcceso(eventos) { return eventos.map((e) => `<div class="access-line"><span class="access-line__icon ${e.resultado === 'rechazado' ? 'access-line__icon--danger' : ''}">${e.sentido === 'egreso' ? '←' : e.resultado === 'rechazado' ? '×' : '→'}</span><span><strong>${safe(e.nombre ?? e.patente ?? 'Movimiento')}</strong><small>${safe(idUnidad(e.unidadId))} · ${safe(textoEstado(e.punto ?? e.metodo))}</small></span><time>${hora(e.timestampServidor)}</time></div>`).join('') || '<p style="color:var(--texto-suave)">Sin movimientos recientes.</p>'; }
 
-function abrirModal(titulo, eyebrow, cuerpo) { $('#modal-title').textContent = titulo; $('#modal-eyebrow').textContent = eyebrow; $('#modal-body').innerHTML = cuerpo; $('#modal').hidden = false; document.body.style.overflow = 'hidden'; setTimeout(() => $('#modal input, #modal select, #modal button')?.focus(), 20); }
-function cerrarModal() { $('#modal').hidden = true; document.body.style.overflow = ''; }
+function abrirModal(titulo, eyebrow, cuerpo) { focoAntesModal = document.activeElement; $('#aplicacion').inert = true; $('#modal-title').textContent = titulo; $('#modal-eyebrow').textContent = eyebrow; $('#modal-body').innerHTML = cuerpo; $('#modal').hidden = false; document.body.style.overflow = 'hidden'; setTimeout(() => $('#modal input, #modal select, #modal button')?.focus(), 20); }
+function cerrarModal() { $('#modal').hidden = true; document.body.style.overflow = ''; $('#aplicacion').inert = false; focoAntesModal?.focus(); }
 function mostrarToast(titulo, mensaje, tipo = 'ok') { const id = crypto.randomUUID(); $('#toasts').insertAdjacentHTML('beforeend', `<div id="toast-${id}" class="toast ${tipo === 'error' ? 'toast--error' : ''}"><span class="toast__mark">${tipo === 'error' ? '!' : '✓'}</span><span><strong>${safe(titulo)}</strong><span>${safe(mensaje)}</span></span><button aria-label="Cerrar">×</button></div>`); const toast = $(`#toast-${id}`); $('button', toast).onclick = () => toast.remove(); setTimeout(() => toast?.remove(), 6000); }
 
 async function api(ruta, opciones = {}) {

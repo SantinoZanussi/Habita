@@ -1,3 +1,2111 @@
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __commonJS = (cb, mod) => function __require() {
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e2) {
+    throw mod = 0, e2;
+  }
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+
+// node_modules/qrcode/lib/can-promise.js
+var require_can_promise = __commonJS({
+  "node_modules/qrcode/lib/can-promise.js"(exports, module) {
+    module.exports = function() {
+      return typeof Promise === "function" && Promise.prototype && Promise.prototype.then;
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/utils.js
+var require_utils = __commonJS({
+  "node_modules/qrcode/lib/core/utils.js"(exports) {
+    var toSJISFunction;
+    var CODEWORDS_COUNT = [
+      0,
+      // Not used
+      26,
+      44,
+      70,
+      100,
+      134,
+      172,
+      196,
+      242,
+      292,
+      346,
+      404,
+      466,
+      532,
+      581,
+      655,
+      733,
+      815,
+      901,
+      991,
+      1085,
+      1156,
+      1258,
+      1364,
+      1474,
+      1588,
+      1706,
+      1828,
+      1921,
+      2051,
+      2185,
+      2323,
+      2465,
+      2611,
+      2761,
+      2876,
+      3034,
+      3196,
+      3362,
+      3532,
+      3706
+    ];
+    exports.getSymbolSize = function getSymbolSize(version4) {
+      if (!version4) throw new Error('"version" cannot be null or undefined');
+      if (version4 < 1 || version4 > 40) throw new Error('"version" should be in range from 1 to 40');
+      return version4 * 4 + 17;
+    };
+    exports.getSymbolTotalCodewords = function getSymbolTotalCodewords(version4) {
+      return CODEWORDS_COUNT[version4];
+    };
+    exports.getBCHDigit = function(data) {
+      let digit = 0;
+      while (data !== 0) {
+        digit++;
+        data >>>= 1;
+      }
+      return digit;
+    };
+    exports.setToSJISFunction = function setToSJISFunction(f) {
+      if (typeof f !== "function") {
+        throw new Error('"toSJISFunc" is not a valid function.');
+      }
+      toSJISFunction = f;
+    };
+    exports.isKanjiModeEnabled = function() {
+      return typeof toSJISFunction !== "undefined";
+    };
+    exports.toSJIS = function toSJIS(kanji) {
+      return toSJISFunction(kanji);
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/error-correction-level.js
+var require_error_correction_level = __commonJS({
+  "node_modules/qrcode/lib/core/error-correction-level.js"(exports) {
+    exports.L = { bit: 1 };
+    exports.M = { bit: 0 };
+    exports.Q = { bit: 3 };
+    exports.H = { bit: 2 };
+    function fromString(string) {
+      if (typeof string !== "string") {
+        throw new Error("Param is not a string");
+      }
+      const lcStr = string.toLowerCase();
+      switch (lcStr) {
+        case "l":
+        case "low":
+          return exports.L;
+        case "m":
+        case "medium":
+          return exports.M;
+        case "q":
+        case "quartile":
+          return exports.Q;
+        case "h":
+        case "high":
+          return exports.H;
+        default:
+          throw new Error("Unknown EC Level: " + string);
+      }
+    }
+    exports.isValid = function isValid(level) {
+      return level && typeof level.bit !== "undefined" && level.bit >= 0 && level.bit < 4;
+    };
+    exports.from = function from(value, defaultValue) {
+      if (exports.isValid(value)) {
+        return value;
+      }
+      try {
+        return fromString(value);
+      } catch (e2) {
+        return defaultValue;
+      }
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/bit-buffer.js
+var require_bit_buffer = __commonJS({
+  "node_modules/qrcode/lib/core/bit-buffer.js"(exports, module) {
+    function BitBuffer() {
+      this.buffer = [];
+      this.length = 0;
+    }
+    BitBuffer.prototype = {
+      get: function(index) {
+        const bufIndex = Math.floor(index / 8);
+        return (this.buffer[bufIndex] >>> 7 - index % 8 & 1) === 1;
+      },
+      put: function(num, length) {
+        for (let i2 = 0; i2 < length; i2++) {
+          this.putBit((num >>> length - i2 - 1 & 1) === 1);
+        }
+      },
+      getLengthInBits: function() {
+        return this.length;
+      },
+      putBit: function(bit) {
+        const bufIndex = Math.floor(this.length / 8);
+        if (this.buffer.length <= bufIndex) {
+          this.buffer.push(0);
+        }
+        if (bit) {
+          this.buffer[bufIndex] |= 128 >>> this.length % 8;
+        }
+        this.length++;
+      }
+    };
+    module.exports = BitBuffer;
+  }
+});
+
+// node_modules/qrcode/lib/core/bit-matrix.js
+var require_bit_matrix = __commonJS({
+  "node_modules/qrcode/lib/core/bit-matrix.js"(exports, module) {
+    function BitMatrix(size) {
+      if (!size || size < 1) {
+        throw new Error("BitMatrix size must be defined and greater than 0");
+      }
+      this.size = size;
+      this.data = new Uint8Array(size * size);
+      this.reservedBit = new Uint8Array(size * size);
+    }
+    BitMatrix.prototype.set = function(row, col, value, reserved) {
+      const index = row * this.size + col;
+      this.data[index] = value;
+      if (reserved) this.reservedBit[index] = true;
+    };
+    BitMatrix.prototype.get = function(row, col) {
+      return this.data[row * this.size + col];
+    };
+    BitMatrix.prototype.xor = function(row, col, value) {
+      this.data[row * this.size + col] ^= value;
+    };
+    BitMatrix.prototype.isReserved = function(row, col) {
+      return this.reservedBit[row * this.size + col];
+    };
+    module.exports = BitMatrix;
+  }
+});
+
+// node_modules/qrcode/lib/core/alignment-pattern.js
+var require_alignment_pattern = __commonJS({
+  "node_modules/qrcode/lib/core/alignment-pattern.js"(exports) {
+    var getSymbolSize = require_utils().getSymbolSize;
+    exports.getRowColCoords = function getRowColCoords(version4) {
+      if (version4 === 1) return [];
+      const posCount = Math.floor(version4 / 7) + 2;
+      const size = getSymbolSize(version4);
+      const intervals = size === 145 ? 26 : Math.ceil((size - 13) / (2 * posCount - 2)) * 2;
+      const positions = [size - 7];
+      for (let i2 = 1; i2 < posCount - 1; i2++) {
+        positions[i2] = positions[i2 - 1] - intervals;
+      }
+      positions.push(6);
+      return positions.reverse();
+    };
+    exports.getPositions = function getPositions(version4) {
+      const coords = [];
+      const pos = exports.getRowColCoords(version4);
+      const posLength = pos.length;
+      for (let i2 = 0; i2 < posLength; i2++) {
+        for (let j = 0; j < posLength; j++) {
+          if (i2 === 0 && j === 0 || // top-left
+          i2 === 0 && j === posLength - 1 || // bottom-left
+          i2 === posLength - 1 && j === 0) {
+            continue;
+          }
+          coords.push([pos[i2], pos[j]]);
+        }
+      }
+      return coords;
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/finder-pattern.js
+var require_finder_pattern = __commonJS({
+  "node_modules/qrcode/lib/core/finder-pattern.js"(exports) {
+    var getSymbolSize = require_utils().getSymbolSize;
+    var FINDER_PATTERN_SIZE = 7;
+    exports.getPositions = function getPositions(version4) {
+      const size = getSymbolSize(version4);
+      return [
+        // top-left
+        [0, 0],
+        // top-right
+        [size - FINDER_PATTERN_SIZE, 0],
+        // bottom-left
+        [0, size - FINDER_PATTERN_SIZE]
+      ];
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/mask-pattern.js
+var require_mask_pattern = __commonJS({
+  "node_modules/qrcode/lib/core/mask-pattern.js"(exports) {
+    exports.Patterns = {
+      PATTERN000: 0,
+      PATTERN001: 1,
+      PATTERN010: 2,
+      PATTERN011: 3,
+      PATTERN100: 4,
+      PATTERN101: 5,
+      PATTERN110: 6,
+      PATTERN111: 7
+    };
+    var PenaltyScores = {
+      N1: 3,
+      N2: 3,
+      N3: 40,
+      N4: 10
+    };
+    exports.isValid = function isValid(mask) {
+      return mask != null && mask !== "" && !isNaN(mask) && mask >= 0 && mask <= 7;
+    };
+    exports.from = function from(value) {
+      return exports.isValid(value) ? parseInt(value, 10) : void 0;
+    };
+    exports.getPenaltyN1 = function getPenaltyN1(data) {
+      const size = data.size;
+      let points = 0;
+      let sameCountCol = 0;
+      let sameCountRow = 0;
+      let lastCol = null;
+      let lastRow = null;
+      for (let row = 0; row < size; row++) {
+        sameCountCol = sameCountRow = 0;
+        lastCol = lastRow = null;
+        for (let col = 0; col < size; col++) {
+          let module2 = data.get(row, col);
+          if (module2 === lastCol) {
+            sameCountCol++;
+          } else {
+            if (sameCountCol >= 5) points += PenaltyScores.N1 + (sameCountCol - 5);
+            lastCol = module2;
+            sameCountCol = 1;
+          }
+          module2 = data.get(col, row);
+          if (module2 === lastRow) {
+            sameCountRow++;
+          } else {
+            if (sameCountRow >= 5) points += PenaltyScores.N1 + (sameCountRow - 5);
+            lastRow = module2;
+            sameCountRow = 1;
+          }
+        }
+        if (sameCountCol >= 5) points += PenaltyScores.N1 + (sameCountCol - 5);
+        if (sameCountRow >= 5) points += PenaltyScores.N1 + (sameCountRow - 5);
+      }
+      return points;
+    };
+    exports.getPenaltyN2 = function getPenaltyN2(data) {
+      const size = data.size;
+      let points = 0;
+      for (let row = 0; row < size - 1; row++) {
+        for (let col = 0; col < size - 1; col++) {
+          const last = data.get(row, col) + data.get(row, col + 1) + data.get(row + 1, col) + data.get(row + 1, col + 1);
+          if (last === 4 || last === 0) points++;
+        }
+      }
+      return points * PenaltyScores.N2;
+    };
+    exports.getPenaltyN3 = function getPenaltyN3(data) {
+      const size = data.size;
+      let points = 0;
+      let bitsCol = 0;
+      let bitsRow = 0;
+      for (let row = 0; row < size; row++) {
+        bitsCol = bitsRow = 0;
+        for (let col = 0; col < size; col++) {
+          bitsCol = bitsCol << 1 & 2047 | data.get(row, col);
+          if (col >= 10 && (bitsCol === 1488 || bitsCol === 93)) points++;
+          bitsRow = bitsRow << 1 & 2047 | data.get(col, row);
+          if (col >= 10 && (bitsRow === 1488 || bitsRow === 93)) points++;
+        }
+      }
+      return points * PenaltyScores.N3;
+    };
+    exports.getPenaltyN4 = function getPenaltyN4(data) {
+      let darkCount = 0;
+      const modulesCount = data.data.length;
+      for (let i2 = 0; i2 < modulesCount; i2++) darkCount += data.data[i2];
+      const k2 = Math.abs(Math.ceil(darkCount * 100 / modulesCount / 5) - 10);
+      return k2 * PenaltyScores.N4;
+    };
+    function getMaskAt(maskPattern, i2, j) {
+      switch (maskPattern) {
+        case exports.Patterns.PATTERN000:
+          return (i2 + j) % 2 === 0;
+        case exports.Patterns.PATTERN001:
+          return i2 % 2 === 0;
+        case exports.Patterns.PATTERN010:
+          return j % 3 === 0;
+        case exports.Patterns.PATTERN011:
+          return (i2 + j) % 3 === 0;
+        case exports.Patterns.PATTERN100:
+          return (Math.floor(i2 / 2) + Math.floor(j / 3)) % 2 === 0;
+        case exports.Patterns.PATTERN101:
+          return i2 * j % 2 + i2 * j % 3 === 0;
+        case exports.Patterns.PATTERN110:
+          return (i2 * j % 2 + i2 * j % 3) % 2 === 0;
+        case exports.Patterns.PATTERN111:
+          return (i2 * j % 3 + (i2 + j) % 2) % 2 === 0;
+        default:
+          throw new Error("bad maskPattern:" + maskPattern);
+      }
+    }
+    exports.applyMask = function applyMask(pattern, data) {
+      const size = data.size;
+      for (let col = 0; col < size; col++) {
+        for (let row = 0; row < size; row++) {
+          if (data.isReserved(row, col)) continue;
+          data.xor(row, col, getMaskAt(pattern, row, col));
+        }
+      }
+    };
+    exports.getBestMask = function getBestMask(data, setupFormatFunc) {
+      const numPatterns = Object.keys(exports.Patterns).length;
+      let bestPattern = 0;
+      let lowerPenalty = Infinity;
+      for (let p2 = 0; p2 < numPatterns; p2++) {
+        setupFormatFunc(p2);
+        exports.applyMask(p2, data);
+        const penalty = exports.getPenaltyN1(data) + exports.getPenaltyN2(data) + exports.getPenaltyN3(data) + exports.getPenaltyN4(data);
+        exports.applyMask(p2, data);
+        if (penalty < lowerPenalty) {
+          lowerPenalty = penalty;
+          bestPattern = p2;
+        }
+      }
+      return bestPattern;
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/error-correction-code.js
+var require_error_correction_code = __commonJS({
+  "node_modules/qrcode/lib/core/error-correction-code.js"(exports) {
+    var ECLevel = require_error_correction_level();
+    var EC_BLOCKS_TABLE = [
+      // L  M  Q  H
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      1,
+      2,
+      2,
+      4,
+      1,
+      2,
+      4,
+      4,
+      2,
+      4,
+      4,
+      4,
+      2,
+      4,
+      6,
+      5,
+      2,
+      4,
+      6,
+      6,
+      2,
+      5,
+      8,
+      8,
+      4,
+      5,
+      8,
+      8,
+      4,
+      5,
+      8,
+      11,
+      4,
+      8,
+      10,
+      11,
+      4,
+      9,
+      12,
+      16,
+      4,
+      9,
+      16,
+      16,
+      6,
+      10,
+      12,
+      18,
+      6,
+      10,
+      17,
+      16,
+      6,
+      11,
+      16,
+      19,
+      6,
+      13,
+      18,
+      21,
+      7,
+      14,
+      21,
+      25,
+      8,
+      16,
+      20,
+      25,
+      8,
+      17,
+      23,
+      25,
+      9,
+      17,
+      23,
+      34,
+      9,
+      18,
+      25,
+      30,
+      10,
+      20,
+      27,
+      32,
+      12,
+      21,
+      29,
+      35,
+      12,
+      23,
+      34,
+      37,
+      12,
+      25,
+      34,
+      40,
+      13,
+      26,
+      35,
+      42,
+      14,
+      28,
+      38,
+      45,
+      15,
+      29,
+      40,
+      48,
+      16,
+      31,
+      43,
+      51,
+      17,
+      33,
+      45,
+      54,
+      18,
+      35,
+      48,
+      57,
+      19,
+      37,
+      51,
+      60,
+      19,
+      38,
+      53,
+      63,
+      20,
+      40,
+      56,
+      66,
+      21,
+      43,
+      59,
+      70,
+      22,
+      45,
+      62,
+      74,
+      24,
+      47,
+      65,
+      77,
+      25,
+      49,
+      68,
+      81
+    ];
+    var EC_CODEWORDS_TABLE = [
+      // L  M  Q  H
+      7,
+      10,
+      13,
+      17,
+      10,
+      16,
+      22,
+      28,
+      15,
+      26,
+      36,
+      44,
+      20,
+      36,
+      52,
+      64,
+      26,
+      48,
+      72,
+      88,
+      36,
+      64,
+      96,
+      112,
+      40,
+      72,
+      108,
+      130,
+      48,
+      88,
+      132,
+      156,
+      60,
+      110,
+      160,
+      192,
+      72,
+      130,
+      192,
+      224,
+      80,
+      150,
+      224,
+      264,
+      96,
+      176,
+      260,
+      308,
+      104,
+      198,
+      288,
+      352,
+      120,
+      216,
+      320,
+      384,
+      132,
+      240,
+      360,
+      432,
+      144,
+      280,
+      408,
+      480,
+      168,
+      308,
+      448,
+      532,
+      180,
+      338,
+      504,
+      588,
+      196,
+      364,
+      546,
+      650,
+      224,
+      416,
+      600,
+      700,
+      224,
+      442,
+      644,
+      750,
+      252,
+      476,
+      690,
+      816,
+      270,
+      504,
+      750,
+      900,
+      300,
+      560,
+      810,
+      960,
+      312,
+      588,
+      870,
+      1050,
+      336,
+      644,
+      952,
+      1110,
+      360,
+      700,
+      1020,
+      1200,
+      390,
+      728,
+      1050,
+      1260,
+      420,
+      784,
+      1140,
+      1350,
+      450,
+      812,
+      1200,
+      1440,
+      480,
+      868,
+      1290,
+      1530,
+      510,
+      924,
+      1350,
+      1620,
+      540,
+      980,
+      1440,
+      1710,
+      570,
+      1036,
+      1530,
+      1800,
+      570,
+      1064,
+      1590,
+      1890,
+      600,
+      1120,
+      1680,
+      1980,
+      630,
+      1204,
+      1770,
+      2100,
+      660,
+      1260,
+      1860,
+      2220,
+      720,
+      1316,
+      1950,
+      2310,
+      750,
+      1372,
+      2040,
+      2430
+    ];
+    exports.getBlocksCount = function getBlocksCount(version4, errorCorrectionLevel) {
+      switch (errorCorrectionLevel) {
+        case ECLevel.L:
+          return EC_BLOCKS_TABLE[(version4 - 1) * 4 + 0];
+        case ECLevel.M:
+          return EC_BLOCKS_TABLE[(version4 - 1) * 4 + 1];
+        case ECLevel.Q:
+          return EC_BLOCKS_TABLE[(version4 - 1) * 4 + 2];
+        case ECLevel.H:
+          return EC_BLOCKS_TABLE[(version4 - 1) * 4 + 3];
+        default:
+          return void 0;
+      }
+    };
+    exports.getTotalCodewordsCount = function getTotalCodewordsCount(version4, errorCorrectionLevel) {
+      switch (errorCorrectionLevel) {
+        case ECLevel.L:
+          return EC_CODEWORDS_TABLE[(version4 - 1) * 4 + 0];
+        case ECLevel.M:
+          return EC_CODEWORDS_TABLE[(version4 - 1) * 4 + 1];
+        case ECLevel.Q:
+          return EC_CODEWORDS_TABLE[(version4 - 1) * 4 + 2];
+        case ECLevel.H:
+          return EC_CODEWORDS_TABLE[(version4 - 1) * 4 + 3];
+        default:
+          return void 0;
+      }
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/galois-field.js
+var require_galois_field = __commonJS({
+  "node_modules/qrcode/lib/core/galois-field.js"(exports) {
+    var EXP_TABLE = new Uint8Array(512);
+    var LOG_TABLE = new Uint8Array(256);
+    (function initTables() {
+      let x2 = 1;
+      for (let i2 = 0; i2 < 255; i2++) {
+        EXP_TABLE[i2] = x2;
+        LOG_TABLE[x2] = i2;
+        x2 <<= 1;
+        if (x2 & 256) {
+          x2 ^= 285;
+        }
+      }
+      for (let i2 = 255; i2 < 512; i2++) {
+        EXP_TABLE[i2] = EXP_TABLE[i2 - 255];
+      }
+    })();
+    exports.log = function log(n2) {
+      if (n2 < 1) throw new Error("log(" + n2 + ")");
+      return LOG_TABLE[n2];
+    };
+    exports.exp = function exp(n2) {
+      return EXP_TABLE[n2];
+    };
+    exports.mul = function mul(x2, y2) {
+      if (x2 === 0 || y2 === 0) return 0;
+      return EXP_TABLE[LOG_TABLE[x2] + LOG_TABLE[y2]];
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/polynomial.js
+var require_polynomial = __commonJS({
+  "node_modules/qrcode/lib/core/polynomial.js"(exports) {
+    var GF = require_galois_field();
+    exports.mul = function mul(p1, p2) {
+      const coeff = new Uint8Array(p1.length + p2.length - 1);
+      for (let i2 = 0; i2 < p1.length; i2++) {
+        for (let j = 0; j < p2.length; j++) {
+          coeff[i2 + j] ^= GF.mul(p1[i2], p2[j]);
+        }
+      }
+      return coeff;
+    };
+    exports.mod = function mod(divident, divisor) {
+      let result = new Uint8Array(divident);
+      while (result.length - divisor.length >= 0) {
+        const coeff = result[0];
+        for (let i2 = 0; i2 < divisor.length; i2++) {
+          result[i2] ^= GF.mul(divisor[i2], coeff);
+        }
+        let offset = 0;
+        while (offset < result.length && result[offset] === 0) offset++;
+        result = result.slice(offset);
+      }
+      return result;
+    };
+    exports.generateECPolynomial = function generateECPolynomial(degree) {
+      let poly = new Uint8Array([1]);
+      for (let i2 = 0; i2 < degree; i2++) {
+        poly = exports.mul(poly, new Uint8Array([1, GF.exp(i2)]));
+      }
+      return poly;
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/reed-solomon-encoder.js
+var require_reed_solomon_encoder = __commonJS({
+  "node_modules/qrcode/lib/core/reed-solomon-encoder.js"(exports, module) {
+    var Polynomial = require_polynomial();
+    function ReedSolomonEncoder(degree) {
+      this.genPoly = void 0;
+      this.degree = degree;
+      if (this.degree) this.initialize(this.degree);
+    }
+    ReedSolomonEncoder.prototype.initialize = function initialize(degree) {
+      this.degree = degree;
+      this.genPoly = Polynomial.generateECPolynomial(this.degree);
+    };
+    ReedSolomonEncoder.prototype.encode = function encode(data) {
+      if (!this.genPoly) {
+        throw new Error("Encoder not initialized");
+      }
+      const paddedData = new Uint8Array(data.length + this.degree);
+      paddedData.set(data);
+      const remainder = Polynomial.mod(paddedData, this.genPoly);
+      const start = this.degree - remainder.length;
+      if (start > 0) {
+        const buff = new Uint8Array(this.degree);
+        buff.set(remainder, start);
+        return buff;
+      }
+      return remainder;
+    };
+    module.exports = ReedSolomonEncoder;
+  }
+});
+
+// node_modules/qrcode/lib/core/version-check.js
+var require_version_check = __commonJS({
+  "node_modules/qrcode/lib/core/version-check.js"(exports) {
+    exports.isValid = function isValid(version4) {
+      return !isNaN(version4) && version4 >= 1 && version4 <= 40;
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/regex.js
+var require_regex = __commonJS({
+  "node_modules/qrcode/lib/core/regex.js"(exports) {
+    var numeric = "[0-9]+";
+    var alphanumeric = "[A-Z $%*+\\-./:]+";
+    var kanji = "(?:[u3000-u303F]|[u3040-u309F]|[u30A0-u30FF]|[uFF00-uFFEF]|[u4E00-u9FAF]|[u2605-u2606]|[u2190-u2195]|u203B|[u2010u2015u2018u2019u2025u2026u201Cu201Du2225u2260]|[u0391-u0451]|[u00A7u00A8u00B1u00B4u00D7u00F7])+";
+    kanji = kanji.replace(/u/g, "\\u");
+    var byte = "(?:(?![A-Z0-9 $%*+\\-./:]|" + kanji + ")(?:.|[\r\n]))+";
+    exports.KANJI = new RegExp(kanji, "g");
+    exports.BYTE_KANJI = new RegExp("[^A-Z0-9 $%*+\\-./:]+", "g");
+    exports.BYTE = new RegExp(byte, "g");
+    exports.NUMERIC = new RegExp(numeric, "g");
+    exports.ALPHANUMERIC = new RegExp(alphanumeric, "g");
+    var TEST_KANJI = new RegExp("^" + kanji + "$");
+    var TEST_NUMERIC = new RegExp("^" + numeric + "$");
+    var TEST_ALPHANUMERIC = new RegExp("^[A-Z0-9 $%*+\\-./:]+$");
+    exports.testKanji = function testKanji(str) {
+      return TEST_KANJI.test(str);
+    };
+    exports.testNumeric = function testNumeric(str) {
+      return TEST_NUMERIC.test(str);
+    };
+    exports.testAlphanumeric = function testAlphanumeric(str) {
+      return TEST_ALPHANUMERIC.test(str);
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/mode.js
+var require_mode = __commonJS({
+  "node_modules/qrcode/lib/core/mode.js"(exports) {
+    var VersionCheck = require_version_check();
+    var Regex = require_regex();
+    exports.NUMERIC = {
+      id: "Numeric",
+      bit: 1 << 0,
+      ccBits: [10, 12, 14]
+    };
+    exports.ALPHANUMERIC = {
+      id: "Alphanumeric",
+      bit: 1 << 1,
+      ccBits: [9, 11, 13]
+    };
+    exports.BYTE = {
+      id: "Byte",
+      bit: 1 << 2,
+      ccBits: [8, 16, 16]
+    };
+    exports.KANJI = {
+      id: "Kanji",
+      bit: 1 << 3,
+      ccBits: [8, 10, 12]
+    };
+    exports.MIXED = {
+      bit: -1
+    };
+    exports.getCharCountIndicator = function getCharCountIndicator(mode, version4) {
+      if (!mode.ccBits) throw new Error("Invalid mode: " + mode);
+      if (!VersionCheck.isValid(version4)) {
+        throw new Error("Invalid version: " + version4);
+      }
+      if (version4 >= 1 && version4 < 10) return mode.ccBits[0];
+      else if (version4 < 27) return mode.ccBits[1];
+      return mode.ccBits[2];
+    };
+    exports.getBestModeForData = function getBestModeForData(dataStr) {
+      if (Regex.testNumeric(dataStr)) return exports.NUMERIC;
+      else if (Regex.testAlphanumeric(dataStr)) return exports.ALPHANUMERIC;
+      else if (Regex.testKanji(dataStr)) return exports.KANJI;
+      else return exports.BYTE;
+    };
+    exports.toString = function toString(mode) {
+      if (mode && mode.id) return mode.id;
+      throw new Error("Invalid mode");
+    };
+    exports.isValid = function isValid(mode) {
+      return mode && mode.bit && mode.ccBits;
+    };
+    function fromString(string) {
+      if (typeof string !== "string") {
+        throw new Error("Param is not a string");
+      }
+      const lcStr = string.toLowerCase();
+      switch (lcStr) {
+        case "numeric":
+          return exports.NUMERIC;
+        case "alphanumeric":
+          return exports.ALPHANUMERIC;
+        case "kanji":
+          return exports.KANJI;
+        case "byte":
+          return exports.BYTE;
+        default:
+          throw new Error("Unknown mode: " + string);
+      }
+    }
+    exports.from = function from(value, defaultValue) {
+      if (exports.isValid(value)) {
+        return value;
+      }
+      try {
+        return fromString(value);
+      } catch (e2) {
+        return defaultValue;
+      }
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/version.js
+var require_version = __commonJS({
+  "node_modules/qrcode/lib/core/version.js"(exports) {
+    var Utils3 = require_utils();
+    var ECCode = require_error_correction_code();
+    var ECLevel = require_error_correction_level();
+    var Mode = require_mode();
+    var VersionCheck = require_version_check();
+    var G18 = 1 << 12 | 1 << 11 | 1 << 10 | 1 << 9 | 1 << 8 | 1 << 5 | 1 << 2 | 1 << 0;
+    var G18_BCH = Utils3.getBCHDigit(G18);
+    function getBestVersionForDataLength(mode, length, errorCorrectionLevel) {
+      for (let currentVersion = 1; currentVersion <= 40; currentVersion++) {
+        if (length <= exports.getCapacity(currentVersion, errorCorrectionLevel, mode)) {
+          return currentVersion;
+        }
+      }
+      return void 0;
+    }
+    function getReservedBitsCount(mode, version4) {
+      return Mode.getCharCountIndicator(mode, version4) + 4;
+    }
+    function getTotalBitsFromDataArray(segments, version4) {
+      let totalBits = 0;
+      segments.forEach(function(data) {
+        const reservedBits = getReservedBitsCount(data.mode, version4);
+        totalBits += reservedBits + data.getBitsLength();
+      });
+      return totalBits;
+    }
+    function getBestVersionForMixedData(segments, errorCorrectionLevel) {
+      for (let currentVersion = 1; currentVersion <= 40; currentVersion++) {
+        const length = getTotalBitsFromDataArray(segments, currentVersion);
+        if (length <= exports.getCapacity(currentVersion, errorCorrectionLevel, Mode.MIXED)) {
+          return currentVersion;
+        }
+      }
+      return void 0;
+    }
+    exports.from = function from(value, defaultValue) {
+      if (VersionCheck.isValid(value)) {
+        return parseInt(value, 10);
+      }
+      return defaultValue;
+    };
+    exports.getCapacity = function getCapacity(version4, errorCorrectionLevel, mode) {
+      if (!VersionCheck.isValid(version4)) {
+        throw new Error("Invalid QR Code version");
+      }
+      if (typeof mode === "undefined") mode = Mode.BYTE;
+      const totalCodewords = Utils3.getSymbolTotalCodewords(version4);
+      const ecTotalCodewords = ECCode.getTotalCodewordsCount(version4, errorCorrectionLevel);
+      const dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8;
+      if (mode === Mode.MIXED) return dataTotalCodewordsBits;
+      const usableBits = dataTotalCodewordsBits - getReservedBitsCount(mode, version4);
+      switch (mode) {
+        case Mode.NUMERIC:
+          return Math.floor(usableBits / 10 * 3);
+        case Mode.ALPHANUMERIC:
+          return Math.floor(usableBits / 11 * 2);
+        case Mode.KANJI:
+          return Math.floor(usableBits / 13);
+        case Mode.BYTE:
+        default:
+          return Math.floor(usableBits / 8);
+      }
+    };
+    exports.getBestVersionForData = function getBestVersionForData(data, errorCorrectionLevel) {
+      let seg;
+      const ecl = ECLevel.from(errorCorrectionLevel, ECLevel.M);
+      if (Array.isArray(data)) {
+        if (data.length > 1) {
+          return getBestVersionForMixedData(data, ecl);
+        }
+        if (data.length === 0) {
+          return 1;
+        }
+        seg = data[0];
+      } else {
+        seg = data;
+      }
+      return getBestVersionForDataLength(seg.mode, seg.getLength(), ecl);
+    };
+    exports.getEncodedBits = function getEncodedBits(version4) {
+      if (!VersionCheck.isValid(version4) || version4 < 7) {
+        throw new Error("Invalid QR Code version");
+      }
+      let d = version4 << 12;
+      while (Utils3.getBCHDigit(d) - G18_BCH >= 0) {
+        d ^= G18 << Utils3.getBCHDigit(d) - G18_BCH;
+      }
+      return version4 << 12 | d;
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/format-info.js
+var require_format_info = __commonJS({
+  "node_modules/qrcode/lib/core/format-info.js"(exports) {
+    var Utils3 = require_utils();
+    var G15 = 1 << 10 | 1 << 8 | 1 << 5 | 1 << 4 | 1 << 2 | 1 << 1 | 1 << 0;
+    var G15_MASK = 1 << 14 | 1 << 12 | 1 << 10 | 1 << 4 | 1 << 1;
+    var G15_BCH = Utils3.getBCHDigit(G15);
+    exports.getEncodedBits = function getEncodedBits(errorCorrectionLevel, mask) {
+      const data = errorCorrectionLevel.bit << 3 | mask;
+      let d = data << 10;
+      while (Utils3.getBCHDigit(d) - G15_BCH >= 0) {
+        d ^= G15 << Utils3.getBCHDigit(d) - G15_BCH;
+      }
+      return (data << 10 | d) ^ G15_MASK;
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/numeric-data.js
+var require_numeric_data = __commonJS({
+  "node_modules/qrcode/lib/core/numeric-data.js"(exports, module) {
+    var Mode = require_mode();
+    function NumericData(data) {
+      this.mode = Mode.NUMERIC;
+      this.data = data.toString();
+    }
+    NumericData.getBitsLength = function getBitsLength(length) {
+      return 10 * Math.floor(length / 3) + (length % 3 ? length % 3 * 3 + 1 : 0);
+    };
+    NumericData.prototype.getLength = function getLength() {
+      return this.data.length;
+    };
+    NumericData.prototype.getBitsLength = function getBitsLength() {
+      return NumericData.getBitsLength(this.data.length);
+    };
+    NumericData.prototype.write = function write(bitBuffer) {
+      let i2, group, value;
+      for (i2 = 0; i2 + 3 <= this.data.length; i2 += 3) {
+        group = this.data.substr(i2, 3);
+        value = parseInt(group, 10);
+        bitBuffer.put(value, 10);
+      }
+      const remainingNum = this.data.length - i2;
+      if (remainingNum > 0) {
+        group = this.data.substr(i2);
+        value = parseInt(group, 10);
+        bitBuffer.put(value, remainingNum * 3 + 1);
+      }
+    };
+    module.exports = NumericData;
+  }
+});
+
+// node_modules/qrcode/lib/core/alphanumeric-data.js
+var require_alphanumeric_data = __commonJS({
+  "node_modules/qrcode/lib/core/alphanumeric-data.js"(exports, module) {
+    var Mode = require_mode();
+    var ALPHA_NUM_CHARS = [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+      "J",
+      "K",
+      "L",
+      "M",
+      "N",
+      "O",
+      "P",
+      "Q",
+      "R",
+      "S",
+      "T",
+      "U",
+      "V",
+      "W",
+      "X",
+      "Y",
+      "Z",
+      " ",
+      "$",
+      "%",
+      "*",
+      "+",
+      "-",
+      ".",
+      "/",
+      ":"
+    ];
+    function AlphanumericData(data) {
+      this.mode = Mode.ALPHANUMERIC;
+      this.data = data;
+    }
+    AlphanumericData.getBitsLength = function getBitsLength(length) {
+      return 11 * Math.floor(length / 2) + 6 * (length % 2);
+    };
+    AlphanumericData.prototype.getLength = function getLength() {
+      return this.data.length;
+    };
+    AlphanumericData.prototype.getBitsLength = function getBitsLength() {
+      return AlphanumericData.getBitsLength(this.data.length);
+    };
+    AlphanumericData.prototype.write = function write(bitBuffer) {
+      let i2;
+      for (i2 = 0; i2 + 2 <= this.data.length; i2 += 2) {
+        let value = ALPHA_NUM_CHARS.indexOf(this.data[i2]) * 45;
+        value += ALPHA_NUM_CHARS.indexOf(this.data[i2 + 1]);
+        bitBuffer.put(value, 11);
+      }
+      if (this.data.length % 2) {
+        bitBuffer.put(ALPHA_NUM_CHARS.indexOf(this.data[i2]), 6);
+      }
+    };
+    module.exports = AlphanumericData;
+  }
+});
+
+// node_modules/qrcode/lib/core/byte-data.js
+var require_byte_data = __commonJS({
+  "node_modules/qrcode/lib/core/byte-data.js"(exports, module) {
+    var Mode = require_mode();
+    function ByteData(data) {
+      this.mode = Mode.BYTE;
+      if (typeof data === "string") {
+        this.data = new TextEncoder().encode(data);
+      } else {
+        this.data = new Uint8Array(data);
+      }
+    }
+    ByteData.getBitsLength = function getBitsLength(length) {
+      return length * 8;
+    };
+    ByteData.prototype.getLength = function getLength() {
+      return this.data.length;
+    };
+    ByteData.prototype.getBitsLength = function getBitsLength() {
+      return ByteData.getBitsLength(this.data.length);
+    };
+    ByteData.prototype.write = function(bitBuffer) {
+      for (let i2 = 0, l2 = this.data.length; i2 < l2; i2++) {
+        bitBuffer.put(this.data[i2], 8);
+      }
+    };
+    module.exports = ByteData;
+  }
+});
+
+// node_modules/qrcode/lib/core/kanji-data.js
+var require_kanji_data = __commonJS({
+  "node_modules/qrcode/lib/core/kanji-data.js"(exports, module) {
+    var Mode = require_mode();
+    var Utils3 = require_utils();
+    function KanjiData(data) {
+      this.mode = Mode.KANJI;
+      this.data = data;
+    }
+    KanjiData.getBitsLength = function getBitsLength(length) {
+      return length * 13;
+    };
+    KanjiData.prototype.getLength = function getLength() {
+      return this.data.length;
+    };
+    KanjiData.prototype.getBitsLength = function getBitsLength() {
+      return KanjiData.getBitsLength(this.data.length);
+    };
+    KanjiData.prototype.write = function(bitBuffer) {
+      let i2;
+      for (i2 = 0; i2 < this.data.length; i2++) {
+        let value = Utils3.toSJIS(this.data[i2]);
+        if (value >= 33088 && value <= 40956) {
+          value -= 33088;
+        } else if (value >= 57408 && value <= 60351) {
+          value -= 49472;
+        } else {
+          throw new Error(
+            "Invalid SJIS character: " + this.data[i2] + "\nMake sure your charset is UTF-8"
+          );
+        }
+        value = (value >>> 8 & 255) * 192 + (value & 255);
+        bitBuffer.put(value, 13);
+      }
+    };
+    module.exports = KanjiData;
+  }
+});
+
+// node_modules/dijkstrajs/dijkstra.js
+var require_dijkstra = __commonJS({
+  "node_modules/dijkstrajs/dijkstra.js"(exports, module) {
+    "use strict";
+    var dijkstra = {
+      single_source_shortest_paths: function(graph, s2, d) {
+        var predecessors = {};
+        var costs = {};
+        costs[s2] = 0;
+        var open = dijkstra.PriorityQueue.make();
+        open.push(s2, 0);
+        var closest, u2, v2, cost_of_s_to_u, adjacent_nodes, cost_of_e, cost_of_s_to_u_plus_cost_of_e, cost_of_s_to_v, first_visit;
+        while (!open.empty()) {
+          closest = open.pop();
+          u2 = closest.value;
+          cost_of_s_to_u = closest.cost;
+          adjacent_nodes = graph[u2] || {};
+          for (v2 in adjacent_nodes) {
+            if (adjacent_nodes.hasOwnProperty(v2)) {
+              cost_of_e = adjacent_nodes[v2];
+              cost_of_s_to_u_plus_cost_of_e = cost_of_s_to_u + cost_of_e;
+              cost_of_s_to_v = costs[v2];
+              first_visit = typeof costs[v2] === "undefined";
+              if (first_visit || cost_of_s_to_v > cost_of_s_to_u_plus_cost_of_e) {
+                costs[v2] = cost_of_s_to_u_plus_cost_of_e;
+                open.push(v2, cost_of_s_to_u_plus_cost_of_e);
+                predecessors[v2] = u2;
+              }
+            }
+          }
+        }
+        if (typeof d !== "undefined" && typeof costs[d] === "undefined") {
+          var msg = ["Could not find a path from ", s2, " to ", d, "."].join("");
+          throw new Error(msg);
+        }
+        return predecessors;
+      },
+      extract_shortest_path_from_predecessor_list: function(predecessors, d) {
+        var nodes = [];
+        var u2 = d;
+        var predecessor;
+        while (u2) {
+          nodes.push(u2);
+          predecessor = predecessors[u2];
+          u2 = predecessors[u2];
+        }
+        nodes.reverse();
+        return nodes;
+      },
+      find_path: function(graph, s2, d) {
+        var predecessors = dijkstra.single_source_shortest_paths(graph, s2, d);
+        return dijkstra.extract_shortest_path_from_predecessor_list(
+          predecessors,
+          d
+        );
+      },
+      /**
+       * A very naive priority queue implementation.
+       */
+      PriorityQueue: {
+        make: function(opts) {
+          var T = dijkstra.PriorityQueue, t2 = {}, key;
+          opts = opts || {};
+          for (key in T) {
+            if (T.hasOwnProperty(key)) {
+              t2[key] = T[key];
+            }
+          }
+          t2.queue = [];
+          t2.sorter = opts.sorter || T.default_sorter;
+          return t2;
+        },
+        default_sorter: function(a, b2) {
+          return a.cost - b2.cost;
+        },
+        /**
+         * Add a new item to the queue and ensure the highest priority element
+         * is at the front of the queue.
+         */
+        push: function(value, cost) {
+          var item = { value, cost };
+          this.queue.push(item);
+          this.queue.sort(this.sorter);
+        },
+        /**
+         * Return the highest priority element in the queue.
+         */
+        pop: function() {
+          return this.queue.shift();
+        },
+        empty: function() {
+          return this.queue.length === 0;
+        }
+      }
+    };
+    if (typeof module !== "undefined") {
+      module.exports = dijkstra;
+    }
+  }
+});
+
+// node_modules/qrcode/lib/core/segments.js
+var require_segments = __commonJS({
+  "node_modules/qrcode/lib/core/segments.js"(exports) {
+    var Mode = require_mode();
+    var NumericData = require_numeric_data();
+    var AlphanumericData = require_alphanumeric_data();
+    var ByteData = require_byte_data();
+    var KanjiData = require_kanji_data();
+    var Regex = require_regex();
+    var Utils3 = require_utils();
+    var dijkstra = require_dijkstra();
+    function getStringByteLength(str) {
+      return unescape(encodeURIComponent(str)).length;
+    }
+    function getSegments(regex, mode, str) {
+      const segments = [];
+      let result;
+      while ((result = regex.exec(str)) !== null) {
+        segments.push({
+          data: result[0],
+          index: result.index,
+          mode,
+          length: result[0].length
+        });
+      }
+      return segments;
+    }
+    function getSegmentsFromString(dataStr) {
+      const numSegs = getSegments(Regex.NUMERIC, Mode.NUMERIC, dataStr);
+      const alphaNumSegs = getSegments(Regex.ALPHANUMERIC, Mode.ALPHANUMERIC, dataStr);
+      let byteSegs;
+      let kanjiSegs;
+      if (Utils3.isKanjiModeEnabled()) {
+        byteSegs = getSegments(Regex.BYTE, Mode.BYTE, dataStr);
+        kanjiSegs = getSegments(Regex.KANJI, Mode.KANJI, dataStr);
+      } else {
+        byteSegs = getSegments(Regex.BYTE_KANJI, Mode.BYTE, dataStr);
+        kanjiSegs = [];
+      }
+      const segs = numSegs.concat(alphaNumSegs, byteSegs, kanjiSegs);
+      return segs.sort(function(s1, s2) {
+        return s1.index - s2.index;
+      }).map(function(obj) {
+        return {
+          data: obj.data,
+          mode: obj.mode,
+          length: obj.length
+        };
+      });
+    }
+    function getSegmentBitsLength(length, mode) {
+      switch (mode) {
+        case Mode.NUMERIC:
+          return NumericData.getBitsLength(length);
+        case Mode.ALPHANUMERIC:
+          return AlphanumericData.getBitsLength(length);
+        case Mode.KANJI:
+          return KanjiData.getBitsLength(length);
+        case Mode.BYTE:
+          return ByteData.getBitsLength(length);
+      }
+    }
+    function mergeSegments(segs) {
+      return segs.reduce(function(acc, curr) {
+        const prevSeg = acc.length - 1 >= 0 ? acc[acc.length - 1] : null;
+        if (prevSeg && prevSeg.mode === curr.mode) {
+          acc[acc.length - 1].data += curr.data;
+          return acc;
+        }
+        acc.push(curr);
+        return acc;
+      }, []);
+    }
+    function buildNodes(segs) {
+      const nodes = [];
+      for (let i2 = 0; i2 < segs.length; i2++) {
+        const seg = segs[i2];
+        switch (seg.mode) {
+          case Mode.NUMERIC:
+            nodes.push([
+              seg,
+              { data: seg.data, mode: Mode.ALPHANUMERIC, length: seg.length },
+              { data: seg.data, mode: Mode.BYTE, length: seg.length }
+            ]);
+            break;
+          case Mode.ALPHANUMERIC:
+            nodes.push([
+              seg,
+              { data: seg.data, mode: Mode.BYTE, length: seg.length }
+            ]);
+            break;
+          case Mode.KANJI:
+            nodes.push([
+              seg,
+              { data: seg.data, mode: Mode.BYTE, length: getStringByteLength(seg.data) }
+            ]);
+            break;
+          case Mode.BYTE:
+            nodes.push([
+              { data: seg.data, mode: Mode.BYTE, length: getStringByteLength(seg.data) }
+            ]);
+        }
+      }
+      return nodes;
+    }
+    function buildGraph(nodes, version4) {
+      const table = {};
+      const graph = { start: {} };
+      let prevNodeIds = ["start"];
+      for (let i2 = 0; i2 < nodes.length; i2++) {
+        const nodeGroup = nodes[i2];
+        const currentNodeIds = [];
+        for (let j = 0; j < nodeGroup.length; j++) {
+          const node = nodeGroup[j];
+          const key = "" + i2 + j;
+          currentNodeIds.push(key);
+          table[key] = { node, lastCount: 0 };
+          graph[key] = {};
+          for (let n2 = 0; n2 < prevNodeIds.length; n2++) {
+            const prevNodeId = prevNodeIds[n2];
+            if (table[prevNodeId] && table[prevNodeId].node.mode === node.mode) {
+              graph[prevNodeId][key] = getSegmentBitsLength(table[prevNodeId].lastCount + node.length, node.mode) - getSegmentBitsLength(table[prevNodeId].lastCount, node.mode);
+              table[prevNodeId].lastCount += node.length;
+            } else {
+              if (table[prevNodeId]) table[prevNodeId].lastCount = node.length;
+              graph[prevNodeId][key] = getSegmentBitsLength(node.length, node.mode) + 4 + Mode.getCharCountIndicator(node.mode, version4);
+            }
+          }
+        }
+        prevNodeIds = currentNodeIds;
+      }
+      for (let n2 = 0; n2 < prevNodeIds.length; n2++) {
+        graph[prevNodeIds[n2]].end = 0;
+      }
+      return { map: graph, table };
+    }
+    function buildSingleSegment(data, modesHint) {
+      let mode;
+      const bestMode = Mode.getBestModeForData(data);
+      mode = Mode.from(modesHint, bestMode);
+      if (mode !== Mode.BYTE && mode.bit < bestMode.bit) {
+        throw new Error('"' + data + '" cannot be encoded with mode ' + Mode.toString(mode) + ".\n Suggested mode is: " + Mode.toString(bestMode));
+      }
+      if (mode === Mode.KANJI && !Utils3.isKanjiModeEnabled()) {
+        mode = Mode.BYTE;
+      }
+      switch (mode) {
+        case Mode.NUMERIC:
+          return new NumericData(data);
+        case Mode.ALPHANUMERIC:
+          return new AlphanumericData(data);
+        case Mode.KANJI:
+          return new KanjiData(data);
+        case Mode.BYTE:
+          return new ByteData(data);
+      }
+    }
+    exports.fromArray = function fromArray(array) {
+      return array.reduce(function(acc, seg) {
+        if (typeof seg === "string") {
+          acc.push(buildSingleSegment(seg, null));
+        } else if (seg.data) {
+          acc.push(buildSingleSegment(seg.data, seg.mode));
+        }
+        return acc;
+      }, []);
+    };
+    exports.fromString = function fromString(data, version4) {
+      const segs = getSegmentsFromString(data, Utils3.isKanjiModeEnabled());
+      const nodes = buildNodes(segs);
+      const graph = buildGraph(nodes, version4);
+      const path = dijkstra.find_path(graph.map, "start", "end");
+      const optimizedSegs = [];
+      for (let i2 = 1; i2 < path.length - 1; i2++) {
+        optimizedSegs.push(graph.table[path[i2]].node);
+      }
+      return exports.fromArray(mergeSegments(optimizedSegs));
+    };
+    exports.rawSplit = function rawSplit(data) {
+      return exports.fromArray(
+        getSegmentsFromString(data, Utils3.isKanjiModeEnabled())
+      );
+    };
+  }
+});
+
+// node_modules/qrcode/lib/core/qrcode.js
+var require_qrcode = __commonJS({
+  "node_modules/qrcode/lib/core/qrcode.js"(exports) {
+    var Utils3 = require_utils();
+    var ECLevel = require_error_correction_level();
+    var BitBuffer = require_bit_buffer();
+    var BitMatrix = require_bit_matrix();
+    var AlignmentPattern = require_alignment_pattern();
+    var FinderPattern = require_finder_pattern();
+    var MaskPattern = require_mask_pattern();
+    var ECCode = require_error_correction_code();
+    var ReedSolomonEncoder = require_reed_solomon_encoder();
+    var Version = require_version();
+    var FormatInfo = require_format_info();
+    var Mode = require_mode();
+    var Segments = require_segments();
+    function setupFinderPattern(matrix, version4) {
+      const size = matrix.size;
+      const pos = FinderPattern.getPositions(version4);
+      for (let i2 = 0; i2 < pos.length; i2++) {
+        const row = pos[i2][0];
+        const col = pos[i2][1];
+        for (let r2 = -1; r2 <= 7; r2++) {
+          if (row + r2 <= -1 || size <= row + r2) continue;
+          for (let c2 = -1; c2 <= 7; c2++) {
+            if (col + c2 <= -1 || size <= col + c2) continue;
+            if (r2 >= 0 && r2 <= 6 && (c2 === 0 || c2 === 6) || c2 >= 0 && c2 <= 6 && (r2 === 0 || r2 === 6) || r2 >= 2 && r2 <= 4 && c2 >= 2 && c2 <= 4) {
+              matrix.set(row + r2, col + c2, true, true);
+            } else {
+              matrix.set(row + r2, col + c2, false, true);
+            }
+          }
+        }
+      }
+    }
+    function setupTimingPattern(matrix) {
+      const size = matrix.size;
+      for (let r2 = 8; r2 < size - 8; r2++) {
+        const value = r2 % 2 === 0;
+        matrix.set(r2, 6, value, true);
+        matrix.set(6, r2, value, true);
+      }
+    }
+    function setupAlignmentPattern(matrix, version4) {
+      const pos = AlignmentPattern.getPositions(version4);
+      for (let i2 = 0; i2 < pos.length; i2++) {
+        const row = pos[i2][0];
+        const col = pos[i2][1];
+        for (let r2 = -2; r2 <= 2; r2++) {
+          for (let c2 = -2; c2 <= 2; c2++) {
+            if (r2 === -2 || r2 === 2 || c2 === -2 || c2 === 2 || r2 === 0 && c2 === 0) {
+              matrix.set(row + r2, col + c2, true, true);
+            } else {
+              matrix.set(row + r2, col + c2, false, true);
+            }
+          }
+        }
+      }
+    }
+    function setupVersionInfo(matrix, version4) {
+      const size = matrix.size;
+      const bits = Version.getEncodedBits(version4);
+      let row, col, mod;
+      for (let i2 = 0; i2 < 18; i2++) {
+        row = Math.floor(i2 / 3);
+        col = i2 % 3 + size - 8 - 3;
+        mod = (bits >> i2 & 1) === 1;
+        matrix.set(row, col, mod, true);
+        matrix.set(col, row, mod, true);
+      }
+    }
+    function setupFormatInfo(matrix, errorCorrectionLevel, maskPattern) {
+      const size = matrix.size;
+      const bits = FormatInfo.getEncodedBits(errorCorrectionLevel, maskPattern);
+      let i2, mod;
+      for (i2 = 0; i2 < 15; i2++) {
+        mod = (bits >> i2 & 1) === 1;
+        if (i2 < 6) {
+          matrix.set(i2, 8, mod, true);
+        } else if (i2 < 8) {
+          matrix.set(i2 + 1, 8, mod, true);
+        } else {
+          matrix.set(size - 15 + i2, 8, mod, true);
+        }
+        if (i2 < 8) {
+          matrix.set(8, size - i2 - 1, mod, true);
+        } else if (i2 < 9) {
+          matrix.set(8, 15 - i2 - 1 + 1, mod, true);
+        } else {
+          matrix.set(8, 15 - i2 - 1, mod, true);
+        }
+      }
+      matrix.set(size - 8, 8, 1, true);
+    }
+    function setupData(matrix, data) {
+      const size = matrix.size;
+      let inc = -1;
+      let row = size - 1;
+      let bitIndex = 7;
+      let byteIndex = 0;
+      for (let col = size - 1; col > 0; col -= 2) {
+        if (col === 6) col--;
+        while (true) {
+          for (let c2 = 0; c2 < 2; c2++) {
+            if (!matrix.isReserved(row, col - c2)) {
+              let dark = false;
+              if (byteIndex < data.length) {
+                dark = (data[byteIndex] >>> bitIndex & 1) === 1;
+              }
+              matrix.set(row, col - c2, dark);
+              bitIndex--;
+              if (bitIndex === -1) {
+                byteIndex++;
+                bitIndex = 7;
+              }
+            }
+          }
+          row += inc;
+          if (row < 0 || size <= row) {
+            row -= inc;
+            inc = -inc;
+            break;
+          }
+        }
+      }
+    }
+    function createData(version4, errorCorrectionLevel, segments) {
+      const buffer = new BitBuffer();
+      segments.forEach(function(data) {
+        buffer.put(data.mode.bit, 4);
+        buffer.put(data.getLength(), Mode.getCharCountIndicator(data.mode, version4));
+        data.write(buffer);
+      });
+      const totalCodewords = Utils3.getSymbolTotalCodewords(version4);
+      const ecTotalCodewords = ECCode.getTotalCodewordsCount(version4, errorCorrectionLevel);
+      const dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8;
+      if (buffer.getLengthInBits() + 4 <= dataTotalCodewordsBits) {
+        buffer.put(0, 4);
+      }
+      while (buffer.getLengthInBits() % 8 !== 0) {
+        buffer.putBit(0);
+      }
+      const remainingByte = (dataTotalCodewordsBits - buffer.getLengthInBits()) / 8;
+      for (let i2 = 0; i2 < remainingByte; i2++) {
+        buffer.put(i2 % 2 ? 17 : 236, 8);
+      }
+      return createCodewords(buffer, version4, errorCorrectionLevel);
+    }
+    function createCodewords(bitBuffer, version4, errorCorrectionLevel) {
+      const totalCodewords = Utils3.getSymbolTotalCodewords(version4);
+      const ecTotalCodewords = ECCode.getTotalCodewordsCount(version4, errorCorrectionLevel);
+      const dataTotalCodewords = totalCodewords - ecTotalCodewords;
+      const ecTotalBlocks = ECCode.getBlocksCount(version4, errorCorrectionLevel);
+      const blocksInGroup2 = totalCodewords % ecTotalBlocks;
+      const blocksInGroup1 = ecTotalBlocks - blocksInGroup2;
+      const totalCodewordsInGroup1 = Math.floor(totalCodewords / ecTotalBlocks);
+      const dataCodewordsInGroup1 = Math.floor(dataTotalCodewords / ecTotalBlocks);
+      const dataCodewordsInGroup2 = dataCodewordsInGroup1 + 1;
+      const ecCount = totalCodewordsInGroup1 - dataCodewordsInGroup1;
+      const rs = new ReedSolomonEncoder(ecCount);
+      let offset = 0;
+      const dcData = new Array(ecTotalBlocks);
+      const ecData = new Array(ecTotalBlocks);
+      let maxDataSize = 0;
+      const buffer = new Uint8Array(bitBuffer.buffer);
+      for (let b2 = 0; b2 < ecTotalBlocks; b2++) {
+        const dataSize = b2 < blocksInGroup1 ? dataCodewordsInGroup1 : dataCodewordsInGroup2;
+        dcData[b2] = buffer.slice(offset, offset + dataSize);
+        ecData[b2] = rs.encode(dcData[b2]);
+        offset += dataSize;
+        maxDataSize = Math.max(maxDataSize, dataSize);
+      }
+      const data = new Uint8Array(totalCodewords);
+      let index = 0;
+      let i2, r2;
+      for (i2 = 0; i2 < maxDataSize; i2++) {
+        for (r2 = 0; r2 < ecTotalBlocks; r2++) {
+          if (i2 < dcData[r2].length) {
+            data[index++] = dcData[r2][i2];
+          }
+        }
+      }
+      for (i2 = 0; i2 < ecCount; i2++) {
+        for (r2 = 0; r2 < ecTotalBlocks; r2++) {
+          data[index++] = ecData[r2][i2];
+        }
+      }
+      return data;
+    }
+    function createSymbol(data, version4, errorCorrectionLevel, maskPattern) {
+      let segments;
+      if (Array.isArray(data)) {
+        segments = Segments.fromArray(data);
+      } else if (typeof data === "string") {
+        let estimatedVersion = version4;
+        if (!estimatedVersion) {
+          const rawSegments = Segments.rawSplit(data);
+          estimatedVersion = Version.getBestVersionForData(rawSegments, errorCorrectionLevel);
+        }
+        segments = Segments.fromString(data, estimatedVersion || 40);
+      } else {
+        throw new Error("Invalid data");
+      }
+      const bestVersion = Version.getBestVersionForData(segments, errorCorrectionLevel);
+      if (!bestVersion) {
+        throw new Error("The amount of data is too big to be stored in a QR Code");
+      }
+      if (!version4) {
+        version4 = bestVersion;
+      } else if (version4 < bestVersion) {
+        throw new Error(
+          "\nThe chosen QR Code version cannot contain this amount of data.\nMinimum version required to store current data is: " + bestVersion + ".\n"
+        );
+      }
+      const dataBits = createData(version4, errorCorrectionLevel, segments);
+      const moduleCount = Utils3.getSymbolSize(version4);
+      const modules = new BitMatrix(moduleCount);
+      setupFinderPattern(modules, version4);
+      setupTimingPattern(modules);
+      setupAlignmentPattern(modules, version4);
+      setupFormatInfo(modules, errorCorrectionLevel, 0);
+      if (version4 >= 7) {
+        setupVersionInfo(modules, version4);
+      }
+      setupData(modules, dataBits);
+      if (isNaN(maskPattern)) {
+        maskPattern = MaskPattern.getBestMask(
+          modules,
+          setupFormatInfo.bind(null, modules, errorCorrectionLevel)
+        );
+      }
+      MaskPattern.applyMask(maskPattern, modules);
+      setupFormatInfo(modules, errorCorrectionLevel, maskPattern);
+      return {
+        modules,
+        version: version4,
+        errorCorrectionLevel,
+        maskPattern,
+        segments
+      };
+    }
+    exports.create = function create(data, options) {
+      if (typeof data === "undefined" || data === "") {
+        throw new Error("No input text");
+      }
+      let errorCorrectionLevel = ECLevel.M;
+      let version4;
+      let mask;
+      if (typeof options !== "undefined") {
+        errorCorrectionLevel = ECLevel.from(options.errorCorrectionLevel, ECLevel.M);
+        version4 = Version.from(options.version);
+        mask = MaskPattern.from(options.maskPattern);
+        if (options.toSJISFunc) {
+          Utils3.setToSJISFunction(options.toSJISFunc);
+        }
+      }
+      return createSymbol(data, version4, errorCorrectionLevel, mask);
+    };
+  }
+});
+
+// node_modules/qrcode/lib/renderer/utils.js
+var require_utils2 = __commonJS({
+  "node_modules/qrcode/lib/renderer/utils.js"(exports) {
+    function hex2rgba(hex) {
+      if (typeof hex === "number") {
+        hex = hex.toString();
+      }
+      if (typeof hex !== "string") {
+        throw new Error("Color should be defined as hex string");
+      }
+      let hexCode = hex.slice().replace("#", "").split("");
+      if (hexCode.length < 3 || hexCode.length === 5 || hexCode.length > 8) {
+        throw new Error("Invalid hex color: " + hex);
+      }
+      if (hexCode.length === 3 || hexCode.length === 4) {
+        hexCode = Array.prototype.concat.apply([], hexCode.map(function(c2) {
+          return [c2, c2];
+        }));
+      }
+      if (hexCode.length === 6) hexCode.push("F", "F");
+      const hexValue = parseInt(hexCode.join(""), 16);
+      return {
+        r: hexValue >> 24 & 255,
+        g: hexValue >> 16 & 255,
+        b: hexValue >> 8 & 255,
+        a: hexValue & 255,
+        hex: "#" + hexCode.slice(0, 6).join("")
+      };
+    }
+    exports.getOptions = function getOptions(options) {
+      if (!options) options = {};
+      if (!options.color) options.color = {};
+      const margin = typeof options.margin === "undefined" || options.margin === null || options.margin < 0 ? 4 : options.margin;
+      const width = options.width && options.width >= 21 ? options.width : void 0;
+      const scale = options.scale || 4;
+      return {
+        width,
+        scale: width ? 4 : scale,
+        margin,
+        color: {
+          dark: hex2rgba(options.color.dark || "#000000ff"),
+          light: hex2rgba(options.color.light || "#ffffffff")
+        },
+        type: options.type,
+        rendererOpts: options.rendererOpts || {}
+      };
+    };
+    exports.getScale = function getScale(qrSize, opts) {
+      return opts.width && opts.width >= qrSize + opts.margin * 2 ? opts.width / (qrSize + opts.margin * 2) : opts.scale;
+    };
+    exports.getImageWidth = function getImageWidth(qrSize, opts) {
+      const scale = exports.getScale(qrSize, opts);
+      return Math.floor((qrSize + opts.margin * 2) * scale);
+    };
+    exports.qrToImageData = function qrToImageData(imgData, qr, opts) {
+      const size = qr.modules.size;
+      const data = qr.modules.data;
+      const scale = exports.getScale(size, opts);
+      const symbolSize = Math.floor((size + opts.margin * 2) * scale);
+      const scaledMargin = opts.margin * scale;
+      const palette = [opts.color.light, opts.color.dark];
+      for (let i2 = 0; i2 < symbolSize; i2++) {
+        for (let j = 0; j < symbolSize; j++) {
+          let posDst = (i2 * symbolSize + j) * 4;
+          let pxColor = opts.color.light;
+          if (i2 >= scaledMargin && j >= scaledMargin && i2 < symbolSize - scaledMargin && j < symbolSize - scaledMargin) {
+            const iSrc = Math.floor((i2 - scaledMargin) / scale);
+            const jSrc = Math.floor((j - scaledMargin) / scale);
+            pxColor = palette[data[iSrc * size + jSrc] ? 1 : 0];
+          }
+          imgData[posDst++] = pxColor.r;
+          imgData[posDst++] = pxColor.g;
+          imgData[posDst++] = pxColor.b;
+          imgData[posDst] = pxColor.a;
+        }
+      }
+    };
+  }
+});
+
+// node_modules/qrcode/lib/renderer/canvas.js
+var require_canvas = __commonJS({
+  "node_modules/qrcode/lib/renderer/canvas.js"(exports) {
+    var Utils3 = require_utils2();
+    function clearCanvas(ctx, canvas, size) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!canvas.style) canvas.style = {};
+      canvas.height = size;
+      canvas.width = size;
+      canvas.style.height = size + "px";
+      canvas.style.width = size + "px";
+    }
+    function getCanvasElement() {
+      try {
+        return document.createElement("canvas");
+      } catch (e2) {
+        throw new Error("You need to specify a canvas element");
+      }
+    }
+    exports.render = function render(qrData, canvas, options) {
+      let opts = options;
+      let canvasEl = canvas;
+      if (typeof opts === "undefined" && (!canvas || !canvas.getContext)) {
+        opts = canvas;
+        canvas = void 0;
+      }
+      if (!canvas) {
+        canvasEl = getCanvasElement();
+      }
+      opts = Utils3.getOptions(opts);
+      const size = Utils3.getImageWidth(qrData.modules.size, opts);
+      const ctx = canvasEl.getContext("2d");
+      const image = ctx.createImageData(size, size);
+      Utils3.qrToImageData(image.data, qrData, opts);
+      clearCanvas(ctx, canvasEl, size);
+      ctx.putImageData(image, 0, 0);
+      return canvasEl;
+    };
+    exports.renderToDataURL = function renderToDataURL(qrData, canvas, options) {
+      let opts = options;
+      if (typeof opts === "undefined" && (!canvas || !canvas.getContext)) {
+        opts = canvas;
+        canvas = void 0;
+      }
+      if (!opts) opts = {};
+      const canvasEl = exports.render(qrData, canvas, opts);
+      const type = opts.type || "image/png";
+      const rendererOpts = opts.rendererOpts || {};
+      return canvasEl.toDataURL(type, rendererOpts.quality);
+    };
+  }
+});
+
+// node_modules/qrcode/lib/renderer/svg-tag.js
+var require_svg_tag = __commonJS({
+  "node_modules/qrcode/lib/renderer/svg-tag.js"(exports) {
+    var Utils3 = require_utils2();
+    function getColorAttrib(color, attrib) {
+      const alpha = color.a / 255;
+      const str = attrib + '="' + color.hex + '"';
+      return alpha < 1 ? str + " " + attrib + '-opacity="' + alpha.toFixed(2).slice(1) + '"' : str;
+    }
+    function svgCmd(cmd, x2, y2) {
+      let str = cmd + x2;
+      if (typeof y2 !== "undefined") str += " " + y2;
+      return str;
+    }
+    function qrToPath(data, size, margin) {
+      let path = "";
+      let moveBy = 0;
+      let newRow = false;
+      let lineLength = 0;
+      for (let i2 = 0; i2 < data.length; i2++) {
+        const col = Math.floor(i2 % size);
+        const row = Math.floor(i2 / size);
+        if (!col && !newRow) newRow = true;
+        if (data[i2]) {
+          lineLength++;
+          if (!(i2 > 0 && col > 0 && data[i2 - 1])) {
+            path += newRow ? svgCmd("M", col + margin, 0.5 + row + margin) : svgCmd("m", moveBy, 0);
+            moveBy = 0;
+            newRow = false;
+          }
+          if (!(col + 1 < size && data[i2 + 1])) {
+            path += svgCmd("h", lineLength);
+            lineLength = 0;
+          }
+        } else {
+          moveBy++;
+        }
+      }
+      return path;
+    }
+    exports.render = function render(qrData, options, cb) {
+      const opts = Utils3.getOptions(options);
+      const size = qrData.modules.size;
+      const data = qrData.modules.data;
+      const qrcodesize = size + opts.margin * 2;
+      const bg = !opts.color.light.a ? "" : "<path " + getColorAttrib(opts.color.light, "fill") + ' d="M0 0h' + qrcodesize + "v" + qrcodesize + 'H0z"/>';
+      const path = "<path " + getColorAttrib(opts.color.dark, "stroke") + ' d="' + qrToPath(data, size, opts.margin) + '"/>';
+      const viewBox = 'viewBox="0 0 ' + qrcodesize + " " + qrcodesize + '"';
+      const width = !opts.width ? "" : 'width="' + opts.width + '" height="' + opts.width + '" ';
+      const svgTag = '<svg xmlns="http://www.w3.org/2000/svg" ' + width + viewBox + ' shape-rendering="crispEdges">' + bg + path + "</svg>\n";
+      if (typeof cb === "function") {
+        cb(null, svgTag);
+      }
+      return svgTag;
+    };
+  }
+});
+
+// node_modules/qrcode/lib/browser.js
+var require_browser = __commonJS({
+  "node_modules/qrcode/lib/browser.js"(exports) {
+    var canPromise = require_can_promise();
+    var QRCode2 = require_qrcode();
+    var CanvasRenderer = require_canvas();
+    var SvgRenderer = require_svg_tag();
+    function renderCanvas(renderFunc, canvas, text, opts, cb) {
+      const args = [].slice.call(arguments, 1);
+      const argsNum = args.length;
+      const isLastArgCb = typeof args[argsNum - 1] === "function";
+      if (!isLastArgCb && !canPromise()) {
+        throw new Error("Callback required as last argument");
+      }
+      if (isLastArgCb) {
+        if (argsNum < 2) {
+          throw new Error("Too few arguments provided");
+        }
+        if (argsNum === 2) {
+          cb = text;
+          text = canvas;
+          canvas = opts = void 0;
+        } else if (argsNum === 3) {
+          if (canvas.getContext && typeof cb === "undefined") {
+            cb = opts;
+            opts = void 0;
+          } else {
+            cb = opts;
+            opts = text;
+            text = canvas;
+            canvas = void 0;
+          }
+        }
+      } else {
+        if (argsNum < 1) {
+          throw new Error("Too few arguments provided");
+        }
+        if (argsNum === 1) {
+          text = canvas;
+          canvas = opts = void 0;
+        } else if (argsNum === 2 && !canvas.getContext) {
+          opts = text;
+          text = canvas;
+          canvas = void 0;
+        }
+        return new Promise(function(resolve, reject) {
+          try {
+            const data = QRCode2.create(text, opts);
+            resolve(renderFunc(data, canvas, opts));
+          } catch (e2) {
+            reject(e2);
+          }
+        });
+      }
+      try {
+        const data = QRCode2.create(text, opts);
+        cb(null, renderFunc(data, canvas, opts));
+      } catch (e2) {
+        cb(e2);
+      }
+    }
+    exports.create = QRCode2.create;
+    exports.toCanvas = renderCanvas.bind(null, CanvasRenderer.render);
+    exports.toDataURL = renderCanvas.bind(null, CanvasRenderer.renderToDataURL);
+    exports.toString = renderCanvas.bind(null, function(data, _, opts) {
+      return SvgRenderer.render(data, opts);
+    });
+  }
+});
+
 // web/src/gestion.js
 function fechaDato(valor) {
   const fecha = valor?.toDate?.() ?? new Date(valor ?? "");
@@ -18,6 +2126,9 @@ function destinatariosAviso(datos) {
   if (!unidades.length || unidades.length > 30) throw new Error("Eleg\xED entre 1 y 30 unidades para un aviso dirigido.");
   return unidades;
 }
+
+// web/src/main.js
+var import_qrcode = __toESM(require_browser(), 1);
 
 // node_modules/@firebase/util/dist/postinstall.mjs
 var getDefaultsFromPostinstall = () => void 0;
@@ -24677,6 +26788,58 @@ $.Pr = "full_replace";
 function __PRIVATE_readUserDataHelper(e2, t2) {
   return __PRIVATE_isUserData(e2) ? e2._readUserData(t2) : Array.isArray(e2) ? e2.forEach(((e3) => e3._readUserData(t2))) : e2 instanceof Map ? e2.forEach(((e3) => e3._readUserData(t2))) : Object.values(e2).forEach(((e3) => e3._readUserData(t2))), e2;
 }
+var __PRIVATE_RealtimePipeline = class ___PRIVATE_RealtimePipeline {
+  /**
+   * @internal
+   * @private
+   * @param _db
+   * @param userDataReader
+   * @param _userDataWriter
+   * @param _documentReferenceFactory
+   * @param stages
+   */
+  constructor(e2, t2, n2, r2) {
+    this._db = e2, this.userDataReader = t2, this._userDataWriter = n2, this.stages = r2;
+  }
+  /**
+   * Reads user data for each expression in the expressionMap.
+   * @param name Name of the calling function. Used for error messages when invalid user data is encountered.
+   * @param expressionMap
+   * @return the expressionMap argument.
+   * @private
+   * @internal
+   */
+  Ar(e2, t2) {
+    const n2 = this.userDataReader.createContext(3, e2);
+    return __PRIVATE_isUserData(t2) ? t2._readUserData(n2) : Array.isArray(t2) ? t2.forEach(((e3) => e3._readUserData(n2))) : t2.forEach(((e3) => e3._readUserData(n2))), t2;
+  }
+  where(e2) {
+    const t2 = this.stages.map(((e3) => e3));
+    return this.Ar("where", e2), t2.push(new A(e2, {})), new ___PRIVATE_RealtimePipeline(this._db, this.userDataReader, this._userDataWriter, t2);
+  }
+  limit(e2) {
+    const t2 = this.stages.map(((e3) => e3));
+    return t2.push(new v(e2, {})), new ___PRIVATE_RealtimePipeline(this._db, this.userDataReader, this._userDataWriter, t2);
+  }
+  sort(e2, ...t2) {
+    const n2 = this.stages.map(((e3) => e3));
+    return "orderings" in e2 ? n2.push(new L(this.Ar("sort", e2.orderings), {})) : (
+      // Ordering object
+      n2.push(new L(this.Ar("sort", [e2, ...t2]), {}))
+    ), new ___PRIVATE_RealtimePipeline(this._db, this.userDataReader, this._userDataWriter, n2);
+  }
+  /**
+   * @internal
+   * @private
+   */
+  Vr(e2) {
+    return {
+      pipeline: {
+        stages: this.stages.map(((t2) => t2._toProto(e2)))
+      }
+    };
+  }
+};
 var CorePipeline = class {
   constructor(e2, t2, n2) {
     this.serializer = e2, this.stages = t2, this.listenOptions = n2, this.isCorePipeline = true;
@@ -26384,6 +28547,26 @@ function __PRIVATE_canonifyTargetOrPipeline(e2) {
 }
 function __PRIVATE_targetOrPipelineEqual(e2, t2) {
   return e2 instanceof CorePipeline && t2 instanceof CorePipeline ? __PRIVATE_pipelineEq(e2, t2) : !(e2 instanceof CorePipeline && !(t2 instanceof CorePipeline) || !(e2 instanceof CorePipeline) && t2 instanceof CorePipeline) && __PRIVATE_targetEquals(e2, t2);
+}
+function __PRIVATE_toCorePipeline(e2, t2) {
+  const n2 = (function __PRIVATE_rewriteStages(e3) {
+    let t3 = false;
+    const n3 = [];
+    for (const r2 of e3)
+      if (r2 instanceof L)
+        if (t3 = true, r2.orderings.some(((e4) => e4.expr instanceof o && e4.expr.fieldName === Ce))) n3.push(r2);
+        else {
+          const e4 = r2.orderings.map(((e5) => e5));
+          e4.push(s(Ce).ascending()), n3.push(new L(e4, {}));
+        }
+      else r2 instanceof v ? (t3 || (n3.push(new L([s(Ce).ascending()], {})), t3 = true), n3.push(r2)) : n3.push(r2);
+    return t3 || n3.push(new L([s(Ce).ascending()], {})), n3;
+  })(e2.stages);
+  if (e2.userDataReader) {
+    const t3 = e2.userDataReader.createContext(3, "toCorePipeline");
+    n2.forEach(((e3) => e3._readUserData(t3)));
+  }
+  return new CorePipeline(e2.userDataReader.serializer, n2, t2);
 }
 var MutationBatch = class {
   /**
@@ -29825,6 +32008,21 @@ function __PRIVATE_firestoreClientListen(e2, t2, n2, r2) {
     i2.Aa(), e2.asyncQueue.enqueueAndForget((async () => __PRIVATE_eventManagerUnlisten(await __PRIVATE_getEventManager(e2), s2)));
   };
 }
+function __PRIVATE_firestoreClientGetDocumentsViaSnapshotListener(t2, n2, r2 = {}) {
+  const i2 = new __PRIVATE_Deferred();
+  return t2.asyncQueue.enqueueAndForget((async () => (function __PRIVATE_executeQueryViaSnapshotListener(t3, n3, r3, i3, s2) {
+    const _ = new __PRIVATE_AsyncObserver({
+      next: (r4) => {
+        _.Aa(), n3.enqueueAndForget((() => __PRIVATE_eventManagerUnlisten(t3, o2))), r4.fromCache && "server" === i3.source ? s2.reject(new e(ta.UNAVAILABLE, 'Failed to get documents from server. (However, these documents may exist in the local cache. Run again without setting source to "server" to retrieve the cached documents.)')) : s2.resolve(r4);
+      },
+      error: (e2) => s2.reject(e2)
+    }), o2 = new __PRIVATE_QueryListener(r3 instanceof __PRIVATE_RealtimePipeline ? __PRIVATE_toCorePipeline(r3) : r3, _, {
+      includeMetadataChanges: true,
+      waitForSyncWhenOnline: true
+    });
+    return __PRIVATE_eventManagerListen(t3, o2);
+  })(await __PRIVATE_getEventManager(t2), t2.asyncQueue, n2, r2, i2))), i2.promise;
+}
 var mr = class DocumentSnapshot {
   // Note: This class is stripped down version of the DocumentSnapshot in
   // the legacy SDK. The changes are:
@@ -30630,6 +32828,11 @@ function __PRIVATE_isPartialObserver(e2) {
     return false;
   })(e2, ["next", "error", "complete"]);
 }
+function getDocs(e2) {
+  e2 = ra(e2, Query);
+  const t2 = ra(e2.firestore, da), n2 = oa(t2), r2 = new ua(t2);
+  return __PRIVATE_validateHasExplicitOrderByForLimitToLast(e2._query), __PRIVATE_firestoreClientGetDocumentsViaSnapshotListener(n2, e2._query).then(((n3) => new QuerySnapshot(t2, r2, e2, n3)));
+}
 function onSnapshot(e2, ...t2) {
   e2 = getModularInstance(e2);
   let n2 = {
@@ -30727,6 +32930,8 @@ var estado = {
   amenities: [],
   reservas: [],
   obras: [],
+  autorizaciones: [],
+  periodoSeleccionado: "",
   avisos: [],
   filtroAvisos: "",
   filtrosReservas: { estado: "todos", amenity: "todos", fecha: "" },
@@ -30739,6 +32944,7 @@ var estado = {
 };
 var temporizadorResumen;
 var solicitudResumen = 0;
+var focoAntesModal;
 var login = $2("#login");
 var appShell = $2("#aplicacion");
 var loginForm = $2("#form-login");
@@ -30805,6 +33011,10 @@ onAuthStateChanged(auth, async (usuario) => {
 });
 function suscribirTiempoReal() {
   const cid = estado.complejoId;
+  escuchar(query(collection(db, `complejos/${cid}/autorizaciones`)), (snap) => {
+    estado.autorizaciones = snap.docs.map(datosDoc);
+    renderAccesos();
+  });
   escuchar(doc(db, "complejos", cid), (snap) => {
     const revisionAnterior = estado.complejo?.revisionCuenta;
     estado.complejo = snap.exists() ? { id: snap.id, ...snap.data() } : null;
@@ -30854,6 +33064,8 @@ function escuchar(referencia, callback) {
   }));
 }
 function limpiarListeners() {
+  estado.autorizaciones = [];
+  estado.periodoSeleccionado = "";
   clearTimeout(temporizadorResumen);
   solicitudResumen += 1;
   for (const clave of ["unidades", "eventos", "reclamos", "periodos", "amenities", "reservas", "obras", "avisos"]) estado[clave] = [];
@@ -30892,6 +33104,7 @@ function renderDashboard() {
   const accesosHoy = estado.eventos.filter((e2) => e2.resultado === "permitido").length;
   $2("#section-dashboard").innerHTML = `
     ${heading("Dashboard", `La operaci\xF3n de ${estado.complejo?.nombre ?? "tu complejo"}, en una sola vista.`, '<button class="button button--secondary" data-action="nuevo-aviso">+ Nuevo aviso</button>')}
+    <div class="toolbar quick-actions"><button class="button button--primary" data-action="nuevo-periodo">Cargar gastos</button><button class="button button--secondary" data-action="pago-manual">Registrar pago recibido</button><button class="button button--secondary" data-action="nueva-autorizacion">Autorizar visita</button><button class="button button--secondary" data-action="nueva-obra">Cargar obra</button></div>
     <div class="metrics">
       ${metric("Unidades", estado.unidades.length, "Unidades registradas", "\u25A6")}
       ${metric("Recaudaci\xF3n del per\xEDodo", dinero(resumen.recaudado), `${numero(resumen.porcentajeRecaudado)}% del total`, "$")}
@@ -30935,14 +33148,15 @@ function renderUnidades() {
   });
 }
 function renderExpensas() {
-  const periodo = estado.periodos[0];
+  const periodo = estado.periodos.find((p2) => p2.id === estado.periodoSeleccionado) ?? estado.periodos[0];
   const ordinario = periodo?.totalOrdinario ?? sumarGastos(periodo?.gastosOrdinarios);
   const extraordinario = periodo?.totalExtraordinario ?? sumarGastos(periodo?.gastosExtraordinarios);
   const fondo = periodo?.totalFondoReserva ?? Number(periodo?.fondoReserva?.valor ?? 0);
   const total = periodo?.totalLiquidado ?? ordinario + extraordinario + fondo;
   $2("#section-expensas").innerHTML = `
     ${heading("Liquidaci\xF3n de expensas", periodo ? `${safe(periodo.etiqueta ?? periodo.id)} \xB7 ${estado.unidades.length} unidades` : "Cre\xE1 el primer per\xEDodo para comenzar.", '<button class="button button--primary" data-action="nuevo-periodo">+ Nuevo per\xEDodo</button>')}
-    ${periodo ? `<div class="metrics">
+    <div class="workflow"><div><strong>1. Carg\xE1 los gastos</strong><p>Agreg\xE1 cada concepto del mes en un borrador.</p></div><div><strong>2. Revis\xE1 el reparto</strong><p>Consult\xE1 cu\xE1nto corresponde a cada unidad.</p></div><div><strong>3. Public\xE1 y cobr\xE1</strong><p>Los residentes pagan desde Mis expensas en la app.</p><button class="button button--ghost" data-nav="cobranza">Ver cobranza \u2192</button></div></div>
+    ${periodo ? `<label class="period-picker">Per\xEDodo a consultar<select data-periodo>${estado.periodos.map((p2) => `<option value="${safe(p2.id)}" ${p2.id === periodo.id ? "selected" : ""}>${safe(p2.etiqueta ?? p2.id)} \xB7 ${textoEstado(p2.estado)}</option>`).join("")}</select></label><div class="metrics">
       ${metric("Gasto total", dinero(total), periodo.estado === "cerrado" ? "Per\xEDodo cerrado" : "Borrador", "$")}
       ${metric("Gastos ordinarios", dinero(ordinario), porcentaje(ordinario, total), "\u25CB")}
       ${metric("Gastos extraordinarios", dinero(extraordinario), porcentaje(extraordinario, total), "\u25B3")}
@@ -30952,10 +33166,10 @@ function renderExpensas() {
       <article class="card">
         <div class="card__header"><div><h3>Distribuci\xF3n del gasto</h3><p>Composici\xF3n del per\xEDodo</p></div><span class="chip ${periodo.estado === "cerrado" ? "chip--success" : "chip--warning"}">${textoEstado(periodo.estado)}</span></div>
         ${donutGastos({ ordinario, extraordinario, fondo, total })}
-        <div class="verification"><span>\u2713 La suma de liquidaciones individuales coincide con el gasto total.</span><strong>Diferencia $ 0,00</strong></div>
+        <div class="verification">${periodo.estado === "cerrado" ? "Publicado: las unidades ya pueden consultar su liquidaci\xF3n." : "Borrador: revis\xE1 el reparto antes de publicar. Todav\xEDa no se cobra a los residentes."}</div>
       </article>
       <article class="card">
-        <div class="card__header"><div><h3>Control del per\xEDodo</h3><p>El cierre es at\xF3mico e irreversible</p></div></div>
+        <div class="card__header"><div><h3>Revisar y publicar</h3><p>Despu\xE9s de publicar, los importes no se pueden editar.</p></div></div>
         <div class="access-line"><span class="access-line__icon">1</span><span><strong>${periodo.gastosOrdinarios?.length ?? 0} gastos ordinarios</strong><small>Criterios por coeficiente y partes iguales</small></span></div>
         <div class="access-line"><span class="access-line__icon">2</span><span><strong>${periodo.gastosExtraordinarios?.length ?? 0} gastos extraordinarios</strong><small>Separados por propietario u ocupante</small></span></div>
         <div class="access-line"><span class="access-line__icon">3</span><span><strong>${estado.unidades.length} liquidaciones</strong><small>Prorrateo exacto al centavo</small></span></div>
@@ -30982,7 +33196,8 @@ function renderAccesos() {
   const permitidos = estado.eventos.filter((e2) => e2.resultado === "permitido");
   const dentro = presentes(estado.eventos);
   $2("#section-accesos").innerHTML = `
-    ${heading("Control de accesos", "Eventos append-only y validaci\xF3n transaccional en cada ingreso.", '<button class="button button--primary" data-action="validar-acceso">Validar credencial</button>')}
+    ${heading("Visitas y accesos", "Autoriz\xE1 a una persona y luego valid\xE1 su credencial al entrar o salir.", '<button class="button button--secondary" data-action="validar-acceso">Registrar ingreso / salida</button><button class="button button--primary" data-action="nueva-autorizacion">+ Autorizar persona</button>')}
+    <article class="card"><div class="card__header"><div><h3>Autorizaciones</h3><p>Crear una autorizaci\xF3n no registra un ingreso. La guardia valida la credencial al llegar.</p></div></div>${tablaAutorizaciones()}</article>
     <div class="metrics">${metric("Personas dentro", dentro.length, "Seg\xFAn \xFAltimo movimiento", "\u25C7")}${metric("Ingresos recientes", permitidos.filter((e2) => e2.sentido === "ingreso").length, "Tiempo real", "\u2192")}${metric("Rechazos", estado.eventos.filter((e2) => e2.resultado === "rechazado").length, "Con motivo auditable", "!", true)}${metric("Puntos activos", estado.complejo?.puntosAcceso?.length ?? 0, "Torre y garaje", "\u2302")}</div>
     <div class="grid grid--2"><article class="card card--flush"><div class="card__header" style="padding:18px 18px 0"><div><h3>Historial reciente</h3><p>Este registro no se puede editar ni borrar</p></div><span class="live-pill"><span class="status-dot"></span>En vivo</span></div>${tablaAccesos(estado.eventos)}</article><article class="card"><div class="card__header"><div><h3>Ahora en el complejo</h3><p>${dentro.length} personas o veh\xEDculos</p></div></div>${lineasAcceso(dentro.slice(0, 8))}</article></div>`;
 }
@@ -31044,7 +33259,8 @@ function listaAvisos() {
 }
 function renderObras() {
   $2("#section-obras").innerHTML = `
-    ${heading("Obras", "Avance f\xEDsico, presupuesto y camino cr\xEDtico en la misma vista.", "")}
+    ${heading("Obras", "Cre\xE1 la obra, agreg\xE1 sus tareas y registr\xE1 los avances.", '<button class="button button--primary" data-action="nueva-obra">+ Cargar obra</button>')}
+    <div class="toolbar">${estado.obras.map((o2) => `<button class="button button--secondary" data-action="gestionar-obra" data-id="${safe(o2.id)}">Gestionar ${safe(o2.nombre)}</button>`).join("")}</div>
     <div class="work-grid">${estado.obras.map((o2) => `<article class="work-card"><div class="amenity-card__top"><span class="chip chip--info">${o2.tipo === "comun" ? "Obra com\xFAn" : "Obra privada"}</span><span class="chip ${o2.estado === "en_progreso" ? "chip--warning" : "chip--success"}">${textoEstado(o2.estado)}</span></div><h3>${safe(o2.nombre)}</h3><p>Avance f\xEDsico <strong>${numero(o2.avanceFisicoPorcentaje)}%</strong> \xB7 gasto ejecutado <strong>${porcentaje(o2.gastoEjecutado, o2.presupuestoAprobado)}</strong></p><div class="progress"><span style="width:${Math.min(100, o2.avanceFisicoPorcentaje ?? 0)}%"></span></div><div class="amenity-card__meta" style="margin-top:14px"><span>Presupuesto ${dinero(o2.presupuestoAprobado)}</span><span>${o2.caminoCritico?.length ?? 0} partidas cr\xEDticas</span></div></article>`).join("") || vacio("No hay obras activas", "Las obras comunes y privadas aparecer\xE1n ac\xE1.")}</div>`;
 }
 function renderConfiguracion() {
@@ -31056,6 +33272,21 @@ function renderConfiguracion() {
       <article class="card"><div class="card__header"><div><h3>Reglas financieras</h3><p>Fuente \xFAnica de verdad para el motor</p></div></div><div class="form-grid"><label>Fondo de reserva (%)<input name="porcentajeFondoReserva" type="number" min="0" max="100" step=".1" value="${c2.porcentajeFondoReserva ?? 0}"></label><label>Inter\xE9s por mora (%)<input name="tasaMoraMensual" type="number" min="0" step=".1" value="${c2.tasaMoraMensual ?? 0}"></label><label>D\xEDas de gracia<input name="diasGraciaMora" type="number" min="0" value="${c2.diasGraciaMora ?? 0}"></label><label>Zona horaria<input name="zonaHoraria" value="${safe(c2.zonaHoraria ?? "America/Argentina/Buenos_Aires")}"></label></div><div class="form-actions"><button class="button button--primary" type="submit">Guardar configuraci\xF3n</button></div></article>
     </form>`;
 }
+document.addEventListener("keydown", (e2) => {
+  if ($2("#modal").hidden) return;
+  if (e2.key === "Escape") cerrarModal();
+  if (e2.key === "Tab") {
+    const campos = $$("button, input, select, textarea, a[href], summary", $2("#modal")).filter((el) => !el.disabled && el.offsetParent !== null);
+    const primero = campos[0], ultimo = campos.at(-1);
+    if (e2.shiftKey && document.activeElement === primero) {
+      e2.preventDefault();
+      ultimo?.focus();
+    } else if (!e2.shiftKey && document.activeElement === ultimo) {
+      e2.preventDefault();
+      primero?.focus();
+    }
+  }
+});
 $2("#navegacion").addEventListener("click", (e2) => {
   const boton = e2.target.closest("[data-section]");
   if (!boton) return;
@@ -31087,6 +33318,13 @@ document.addEventListener("submit", async (e2) => {
     if (form.id === "form-configuracion") await guardarConfiguracion(form);
     else if (form.dataset.form) await enviarModal(form.dataset.form, form);
   } catch (error) {
+    let aviso = $2("[data-form-error]", form);
+    if (!aviso) {
+      form.insertAdjacentHTML("afterbegin", '<p data-form-error role="alert" class="form-error"></p>');
+      aviso = $2("[data-form-error]", form);
+    }
+    aviso.textContent = error.message;
+    aviso.scrollIntoView({ block: "nearest" });
     mostrarToast("Revis\xE1 los datos", error.message, "error");
   } finally {
     if (boton) boton.disabled = false;
@@ -31105,6 +33343,11 @@ document.addEventListener("input", (e2) => {
   renderTablaReclamos();
 });
 document.addEventListener("change", (e2) => {
+  if (e2.target.matches("[data-periodo]")) {
+    estado.periodoSeleccionado = e2.target.value;
+    renderExpensas();
+    return;
+  }
   if (e2.target.dataset.reservaFiltro) {
     estado.filtrosReservas[e2.target.dataset.reservaFiltro] = e2.target.value;
     $2("#tabla-reservas").innerHTML = tablaReservas();
@@ -31120,6 +33363,24 @@ document.addEventListener("change", (e2) => {
   renderTablaReclamos();
 });
 async function ejecutarAccion(accion, boton) {
+  if (accion === "nueva-obra") return modalObra();
+  if (accion === "gestionar-obra") return modalGestionObra(boton.dataset.id);
+  if (accion === "nueva-autorizacion") return modalAutorizacion();
+  if (accion === "ver-credencial") return mostrarCredencial(estado.autorizaciones.find((a) => a.id === boton.dataset.id));
+  if (accion === "revocar-autorizacion") {
+    if (!confirm("\xBFRevocar esta autorizaci\xF3n? Ya no permitir\xE1 nuevos ingresos.")) return;
+    await api(`/complejos/${estado.complejoId}/accesos/autorizaciones/${boton.dataset.id}/revocar`, { method: "PATCH" });
+    mostrarToast("Autorizaci\xF3n revocada", "Los nuevos ingresos con esta credencial ser\xE1n rechazados.");
+    return;
+  }
+  if (accion === "agregar-gasto") {
+    $2("#gastos-periodo").insertAdjacentHTML("beforeend", filaGasto());
+    return;
+  }
+  if (accion === "quitar-gasto") {
+    if ($$("[data-gasto]").length > 1) boton.closest("[data-gasto]").remove();
+    return;
+  }
   if (accion === "nueva-unidad") return modalUnidad();
   if (accion === "editar-unidad") return modalUnidad(estado.unidades.find((u2) => u2.id === boton.dataset.id));
   if (accion === "nueva-unidad") return modalUnidad();
@@ -31155,25 +33416,65 @@ function navegar(seccion) {
 }
 function modalUnidad(unidad = null) {
   abrirModal(unidad ? "Editar unidad" : "Nueva unidad", "Configuraci\xF3n y unidades", `
-    <form data-form="unidad" data-id="${unidad?.id ?? ""}"><div class="form-grid"><label>Identificador<input name="identificador" value="${safe(unidad?.identificador ?? "")}" placeholder="3A" required></label><label>Coeficiente (%)<input name="coeficiente" type="number" step=".0001" min=".0001" max="100" value="${unidad?.coeficiente ?? ""}" required></label><label>Superficie (m\xB2)<input name="superficie" type="number" min="0" value="${unidad?.superficie ?? ""}"></label><label>Estado<select name="estado">${opciones(["ocupada", "vacante", "en_obra"], unidad?.estado ?? "ocupada")}</select></label><label class="span-2">Patentes autorizadas<input name="patentesAutorizadas" value="${safe(unidad?.patentesAutorizadas?.join(", ") ?? "")}" placeholder="ABC123, AB123CD"></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">${unidad ? "Guardar cambios" : "Crear unidad"}</button></div></form>`);
+    <form data-form="unidad" data-id="${unidad?.id ?? ""}"><div class="form-grid"><label>Identificador<input name="identificador" value="${safe(unidad?.identificador ?? "")}" placeholder="3A" required></label><label>Coeficiente (%)<input name="coeficiente" type="number" step=".0001" min=".0001" max="100" value="${unidad?.coeficiente ?? ""}" required></label><label>Superficie (m\xB2)<input name="superficie" type="number" min="0" value="${unidad?.superficie ?? ""}"></label><label>Estado<select name="estado">${opciones(["ocupada", "vacante", "en_obra"], unidad?.estado ?? "ocupada")}</select></label><label>Habitantes<input name="habitantes" type="number" min="1" step="1" value="${unidad?.habitantes ?? 1}" required></label><label class="span-2">Patentes autorizadas<input name="patentesAutorizadas" value="${safe(unidad?.patentesAutorizadas?.join(", ") ?? "")}" placeholder="ABC123, AB123CD"></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">${unidad ? "Guardar cambios" : "Crear unidad"}</button></div></form>`);
+}
+function filaGasto() {
+  return `<fieldset data-gasto class="expense-line"><legend>Concepto de gasto</legend><div class="form-grid"><label class="span-2">Descripci\xF3n<input data-campo="concepto" placeholder="Ej.: limpieza de espacios comunes" required maxlength="200"></label><label>Importe ($)<input data-campo="monto" type="number" min="0.01" step=".01" required></label><label>Tipo<select data-campo="tipo"><option value="ordinario">Ordinario \xB7 habitual</option><option value="extraordinario">Extraordinario \xB7 excepcional</option></select></label><label>Repartir por<select data-campo="criterio"><option value="coeficiente">Coeficiente de la unidad</option><option value="partesIguales">Partes iguales</option></select></label><label>A cargo de<select data-campo="aCargoDe"><option value="ocupante">Ocupante</option><option value="propietario">Propietario</option></select></label></div><button type="button" class="button button--ghost" data-action="quitar-gasto">Quitar concepto</button></fieldset>`;
 }
 function modalPeriodo() {
+  if (!estado.unidades.length) throw new Error("Cre\xE1 las unidades y sus coeficientes antes de liquidar expensas.");
   const proximo = proximoPeriodo();
-  abrirModal("Nuevo per\xEDodo", "Liquidaci\xF3n de expensas", `
-    <form data-form="periodo"><div class="form-grid"><label>Per\xEDodo<input name="periodoId" value="${proximo}" pattern="\\d{4}-(0[1-9]|1[0-2])" required></label><label>Etiqueta<input name="etiqueta" value="${etiquetaPeriodo(proximo)}" required></label><label>Vencimiento<input name="vencimiento" type="date" required></label><label>Fondo de reserva ($)<input name="fondo" type="number" min="0" value="320000"></label><label class="span-2">Gasto ordinario principal<input name="ordinarioConcepto" value="Personal y cargas sociales" required></label><label>Monto ordinario ($)<input name="ordinarioMonto" type="number" min="0" value="3680000" required></label><label>Criterio<select name="ordinarioCriterio">${opciones(["coeficiente", "partesIguales"], "coeficiente")}</select></label><label class="span-2">Gasto extraordinario<input name="extraConcepto" value="Obra extraordinaria"></label><label>Monto extraordinario ($)<input name="extraMonto" type="number" min="0" value="0"></label><label>A cargo de<select name="extraCargo">${opciones(["propietario", "ocupante"], "propietario")}</select></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Crear borrador</button></div></form>`);
+  abrirModal("Cargar gastos del per\xEDodo", "Paso 1 de 3 \xB7 Borrador", `
+    <form data-form="periodo"><p class="form-help">Carg\xE1 los importes en pesos. Pod\xE9s sumar varios conceptos; todav\xEDa no se publicar\xE1n a los residentes.</p><div class="form-grid"><label>Mes<input type="month" name="periodoId" value="${proximo}" required></label><label>Nombre visible<input name="etiqueta" value="${etiquetaPeriodo(proximo)}" required></label><label>Vencimiento<input name="vencimiento" type="date" required></label><label>Fondo de reserva ($)<input name="fondo" type="number" min="0" step=".01" value="0" required></label></div><div id="gastos-periodo">${filaGasto()}</div><button type="button" class="button button--secondary" data-action="agregar-gasto">+ Agregar otro gasto</button><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Guardar borrador</button></div></form>`);
 }
 function modalAcceso() {
-  abrirModal("Validar credencial", "Control de acceso", `
-    <form data-form="acceso"><div class="segmented"><button type="button" class="is-active">C\xF3digo QR</button><button type="button">Patente</button></div><div class="form-grid" style="margin-top:16px"><label class="span-2">C\xF3digo o patente<input name="credencial" value="HBA-DEMO-VISITA-01" required></label><label>Punto de acceso<select name="punto">${(estado.complejo?.puntosAcceso ?? []).map((p2) => `<option value="${safe(p2.id)}">${safe(p2.nombre)}</option>`).join("")}</select></label><label>Sentido<select name="sentido">${opciones(["ingreso", "egreso"], "ingreso")}</select></label></div><p style="color:var(--texto-suave);margin-top:14px">La validaci\xF3n se rechaza cuando se agotan los usos. El QR demo tiene dos usos y cada intento queda registrado.</p><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Validar ahora</button></div></form>`);
+  const puntos = (estado.complejo?.puntosAcceso ?? []).filter((p2) => p2.activo !== false);
+  if (!puntos.length) throw new Error("El complejo no tiene puntos de acceso activos configurados.");
+  abrirModal("Registrar ingreso o salida", "Validar credencial", `<form data-form="acceso"><div class="form-grid"><label>M\xE9todo<select name="metodo"><option value="codigo">C\xF3digo de la credencial QR</option><option value="patente">Patente del veh\xEDculo</option></select></label><label>Movimiento<select name="sentido">${opciones(["ingreso", "egreso"], "ingreso")}</select></label><label class="span-2">C\xF3digo o patente<input name="credencial" placeholder="Peg\xE1 el contenido del QR o escrib\xED la patente" required autocomplete="off"></label><label class="span-2">Punto de acceso<select name="punto">${puntos.map((p2) => `<option value="${safe(p2.id)}">${safe(p2.nombre)}</option>`).join("")}</select></label></div><p class="form-help">Se comprobar\xE1n la vigencia, los usos y el punto habilitado. Cada intento queda en el historial.</p><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Validar y registrar</button></div></form>`);
 }
 function modalAmenity(amenity = null) {
   abrirModal(amenity ? "Configurar espacio" : "Nuevo espacio", "Espacios comunes", `<form data-form="amenity" data-id="${safe(amenity?.id ?? "")}"><div class="form-grid"><label>Nombre<input name="nombre" maxlength="120" value="${safe(amenity?.nombre ?? "")}" required placeholder="Quincho"></label><label>Capacidad<input name="capacidad" type="number" min="1" step="1" value="${amenity?.capacidad ?? ""}" required></label><label class="span-2">Descripci\xF3n<textarea name="descripcion" maxlength="1000" placeholder="Equipamiento y recomendaciones de uso">${safe(amenity?.descripcion ?? "")}</textarea></label><label>Estado<select name="activo"><option value="true" ${amenity?.activo !== false ? "selected" : ""}>Habilitado</option><option value="false" ${amenity?.activo === false ? "selected" : ""}>No habilitado</option></select></label><label>Requiere aprobaci\xF3n<select name="requiereAprobacion"><option value="false">No</option><option value="true" ${amenity?.requiereAprobacion ? "selected" : ""}>S\xED</option></select></label></div><p class="form-help">Deshabilitar impide nuevas reservas. Las existentes conservan su estado.</p><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Guardar espacio</button></div></form>`);
 }
 function modalPago() {
-  abrirModal("Registrar pago manual", "Cobranza", `<form data-form="pago"><input type="hidden" name="idempotencyKey" value="${crypto.randomUUID()}"><div class="form-grid"><label>Unidad<select name="unidadId">${estado.unidades.map((u2) => `<option value="${u2.id}">${safe(u2.identificador)}</option>`).join("")}</select></label><label>Per\xEDodo<select name="periodoId">${estado.periodos.filter((p2) => p2.estado === "cerrado").map((p2) => `<option value="${p2.id}">${safe(p2.etiqueta ?? p2.id)}</option>`).join("")}</select></label><label>Monto ($)<input name="monto" type="number" min=".01" step=".01" required></label><label>Medio<select name="medio">${opciones(["transferencia", "efectivo", "debito"], "transferencia")}</select></label><label class="span-2">Observaci\xF3n<textarea name="observacion" placeholder="Referencia o comprobante"></textarea></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Registrar e imputar</button></div></form>`);
+  if (!estado.unidades.length || !estado.periodos.some((p2) => p2.estado === "cerrado")) throw new Error("Para registrar un pago necesit\xE1s unidades y al menos un per\xEDodo publicado.");
+  abrirModal("Registrar pago manual", "Cobranza", `<form data-form="pago"><p class="form-help">Us\xE1 este formulario s\xF3lo despu\xE9s de comprobar que recibiste el dinero. El registro acredita el saldo de la unidad; no inicia un cobro. Para pagar con Mercado Pago, el residente usa Mis expensas en la app.</p><input type="hidden" name="idempotencyKey" value="${crypto.randomUUID()}"><div class="form-grid"><label>Unidad<select name="unidadId">${estado.unidades.map((u2) => `<option value="${u2.id}">${safe(u2.identificador)}</option>`).join("")}</select></label><label>Per\xEDodo<select name="periodoId">${estado.periodos.filter((p2) => p2.estado === "cerrado").map((p2) => `<option value="${p2.id}">${safe(p2.etiqueta ?? p2.id)}</option>`).join("")}</select></label><label>Monto ($)<input name="monto" type="number" min=".01" step=".01" required></label><label>Medio<select name="medio">${opciones(["transferencia", "efectivo", "debito"], "transferencia")}</select></label><label class="span-2">Observaci\xF3n<textarea name="observacion" placeholder="Referencia o comprobante"></textarea></label></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Registrar e imputar</button></div></form>`);
 }
 function modalAviso() {
   abrirModal("Nuevo aviso", "Comunicaciones", `<form data-form="aviso"><div class="form-grid"><label class="span-2">T\xEDtulo<input name="titulo" maxlength="120" required placeholder="Corte de agua programado"></label><label class="span-2">Mensaje<textarea name="cuerpo" maxlength="4000" required rows="5"></textarea></label><label>Tipo<select name="tipo">${opciones(["administracion", "mantenimiento", "asamblea", "seguridad"], "administracion")}</select></label><label>Destinatarios<select name="alcance"><option value="todos">Todo el complejo</option><option value="unidades">Elegir unidades</option></select></label><fieldset id="unidades-aviso" class="span-2 audience-picker" hidden><legend>Unidades destinatarias (hasta 30)</legend>${estado.unidades.map((u2) => `<label><input type="checkbox" name="unidades" value="${safe(u2.id)}"> ${safe(u2.identificador)}</label>`).join("") || "<p>No hay unidades registradas.</p>"}</fieldset></div><div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Publicar aviso</button></div></form>`);
+}
+function accionesFormulario(texto) {
+  return `<div class="form-actions"><button type="button" class="button button--ghost" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">${texto}</button></div>`;
+}
+function modalObra() {
+  abrirModal("Cargar obra", "Obras \xB7 Datos iniciales", `<form data-form="obra"><p class="form-help">Primero cre\xE1 la obra. Despu\xE9s agreg\xE1 las tareas para planificar y registrar su avance.</p><div class="form-grid"><label class="span-2">Nombre<input name="nombre" minlength="3" maxlength="120" required placeholder="Ej.: renovaci\xF3n del ascensor"></label><label>Tipo<select name="tipo"><option value="comun">Com\xFAn \xB7 todo el complejo</option><option value="privada">Privada \xB7 una unidad</option></select></label><label>Unidad (para obra privada)<select name="unidadId"><option value="">Sin unidad \xB7 obra com\xFAn</option>${estado.unidades.map((u2) => `<option value="${safe(u2.id)}">${safe(u2.identificador)}</option>`).join("")}</select></label><label>Fecha de inicio<input type="date" name="fechaInicio" required></label><label>Presupuesto aprobado ($)<input type="number" name="presupuestoAprobado" min="0" step=".01" required></label></div>${accionesFormulario("Crear obra")}</form>`);
+}
+async function modalGestionObra(id) {
+  const obra = estado.obras.find((o2) => o2.id === id);
+  if (!obra) throw new Error("La obra ya no est\xE1 disponible.");
+  const snap = await getDocs(collection(db, `complejos/${estado.complejoId}/obras/${id}/partidas`));
+  const partidas = snap.docs.map(datosDoc);
+  abrirModal(safe(obra.nombre), "Planificaci\xF3n y avances", `<h3>Tareas de la obra</h3><div class="table-wrap"><table><thead><tr><th>Tarea</th><th>Duraci\xF3n</th><th>Avance</th></tr></thead><tbody>${partidas.map((p2) => `<tr><td>${safe(p2.nombre)}</td><td>${numero(p2.duracionEstimada)} d\xEDas</td><td>${numero(p2.avancePorcentaje)}%</td></tr>`).join("") || '<tr><td colspan="3">Agreg\xE1 la primera tarea para comenzar.</td></tr>'}</tbody></table></div><details open><summary>Agregar tarea</summary><form data-form="partida" data-id="${safe(id)}"><div class="form-grid"><label class="span-2">Nombre<input name="nombre" required minlength="3"></label><label>Duraci\xF3n (d\xEDas)<input name="duracionEstimada" type="number" min="1" step="1" required></label><label>Presupuesto ($)<input name="presupuesto" type="number" min="0" step=".01" required></label><label class="span-2">Comienza despu\xE9s de<select name="predecesora"><option value="">No depende de otra tarea</option>${partidas.map((p2) => `<option value="${safe(p2.id)}">${safe(p2.nombre)}</option>`).join("")}</select></label></div>${accionesFormulario("Agregar tarea")}</form></details>${partidas.length ? `<details><summary>Registrar avance</summary><form data-form="avance" data-id="${safe(id)}"><input type="hidden" name="idempotencyKey" value="${crypto.randomUUID()}"><div class="form-grid"><label>Tarea<select name="partidaId">${partidas.map((p2) => `<option value="${safe(p2.id)}">${safe(p2.nombre)}</option>`).join("")}</select></label><label>Avance total de la tarea (%)<input type="number" name="porcentaje" min="0" max="100" step=".1" required></label><label class="span-2">Observaci\xF3n<textarea name="observacion" required></textarea></label></div><p class="form-help">Ingres\xE1 el porcentaje alcanzado, no cu\xE1nto aument\xF3. El registro queda en el historial.</p>${accionesFormulario("Guardar avance")}</form></details>` : ""}`);
+}
+function modalAutorizacion() {
+  if (!estado.unidades.length) throw new Error("Primero cre\xE1 la unidad que recibir\xE1 a la persona.");
+  const puntos = (estado.complejo?.puntosAcceso ?? []).filter((p2) => p2.activo !== false);
+  if (!puntos.length) throw new Error("El complejo necesita un punto de acceso activo.");
+  abrirModal("Autorizar persona", "Visitas, proveedores y personal de obra", `<form data-form="autorizacion"><div class="form-grid"><label>Nombre y apellido<input name="nombre" minlength="2" required></label><label>Documento<input name="documento" minlength="6" required></label><label>Tipo<select name="tipo">${opciones(["visita", "proveedor", "obra"], "visita")}</select></label><label>Unidad<select name="unidadId">${estado.unidades.map((u2) => `<option value="${safe(u2.id)}">${safe(u2.identificador)}</option>`).join("")}</select></label><label>V\xE1lida desde<input type="datetime-local" name="vigenciaDesde" required></label><label>V\xE1lida hasta<input type="datetime-local" name="vigenciaHasta" required></label><label>Ingresos permitidos<input name="usosPermitidos" type="number" min="1" max="10" value="1" required></label><label>Patente (opcional)<input name="patente" placeholder="AB123CD"></label><label>Punto habilitado<select name="punto">${puntos.map((p2) => `<option value="${safe(p2.id)}">${safe(p2.nombre)}</option>`).join("")}</select></label><label>D\xEDas habilitados<select name="dias"><option value="todos">Todos los d\xEDas</option><option value="laborables">Lunes a viernes</option><option value="obra">Lunes a s\xE1bado</option></select></label><label>Horario diario desde<input name="horaDesde" type="time" value="00:00" required></label><label>Horario diario hasta<input name="horaHasta" type="time" value="23:59" required></label></div><p class="form-help">Las fechas usan la hora de este dispositivo; el horario diario se aplica en la zona del complejo (${safe(estado.complejo?.zonaHoraria ?? "America/Argentina/Buenos_Aires")}). La credencial se genera al guardar.</p>${accionesFormulario("Crear autorizaci\xF3n")}</form>`);
+}
+function tablaAutorizaciones() {
+  const lista = estado.autorizaciones ?? [];
+  if (!lista.length) return '<p class="form-help">Todav\xEDa no hay autorizaciones. Us\xE1 \xABAutorizar persona\xBB para crear la primera.</p>';
+  return `<div class="table-wrap"><table><thead><tr><th>Persona / unidad</th><th>Vigencia</th><th>Ingresos usados</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${lista.map((a) => {
+    const hasta = a.vigenciaHasta?.toDate?.() ?? new Date(a.vigenciaHasta);
+    const desde = a.vigenciaDesde?.toDate?.() ?? new Date(a.vigenciaDesde);
+    const etiqueta = a.estado === "revocada" ? "Revocada" : hasta < /* @__PURE__ */ new Date() ? "Vencida" : a.usosConsumidos >= a.usosPermitidos ? "Sin usos" : desde > /* @__PURE__ */ new Date() ? "Programada" : "Vigente";
+    return `<tr><td><strong>${safe(a.nombre)}</strong><br>${safe(idUnidad(a.unidadId))} \xB7 ${safe(textoEstado(a.tipo))}</td><td>${fechaHora(a.vigenciaDesde)}<br>${fechaHora(a.vigenciaHasta)}</td><td>${numero(a.usosConsumidos)} / ${numero(a.usosPermitidos)}</td><td>${etiqueta}</td><td><button class="button button--ghost" data-action="ver-credencial" data-id="${safe(a.id)}">Ver credencial</button>${a.estado !== "revocada" ? `<button class="button button--ghost" data-action="revocar-autorizacion" data-id="${safe(a.id)}">Revocar</button>` : ""}</td></tr>`;
+  }).join("")}</tbody></table></div>`;
+}
+async function mostrarCredencial(a) {
+  if (!a) throw new Error("No se encontr\xF3 la autorizaci\xF3n.");
+  const imagen = await import_qrcode.default.toDataURL(a.codigoQr, { width: 256, margin: 4 });
+  abrirModal("Credencial de acceso", a.nombre, `<div class="credential"><img src="${imagen}" width="256" height="256" alt="QR de la autorizaci\xF3n"><a class="button button--secondary" href="${imagen}" download="habita-acceso.png">Descargar QR</a></div><p>Compart\xED este c\xF3digo s\xF3lo con la persona autorizada. La guardia puede pegarlo en \xABRegistrar ingreso / salida\xBB.</p><label>C\xF3digo de la credencial QR<input readonly value="${safe(a.codigoQr)}" onclick="this.select()"></label><p class="form-help">Unidad ${safe(idUnidad(a.unidadId))} \xB7 V\xE1lida desde ${fechaHora(a.vigenciaDesde)} hasta ${fechaHora(a.vigenciaHasta)}. Hasta ${numero(a.usosPermitidos)} ingresos, sujetos a los d\xEDas y horarios autorizados.</p>`);
 }
 async function enviarModal(tipo, form) {
   const datos = Object.fromEntries(new FormData(form));
@@ -31181,11 +33482,29 @@ async function enviarModal(tipo, form) {
   if (tipo === "unidad") {
     const cuerpo = { ...datos, coeficiente: Number(datos.coeficiente), superficie: Number(datos.superficie || 0), habitantes: Number(datos.habitantes || 4), patentesAutorizadas: datos.patentesAutorizadas.split(",").map((p2) => p2.trim()).filter(Boolean) };
     await api(`/complejos/${cid}/unidades${form.dataset.id ? `/${form.dataset.id}` : ""}`, { method: form.dataset.id ? "PATCH" : "POST", body: cuerpo });
+  } else if (tipo === "obra") {
+    if (datos.tipo === "privada" && !datos.unidadId) throw new Error("Eleg\xED la unidad de la obra privada.");
+    await api(`/complejos/${cid}/obras`, { method: "POST", body: { nombre: datos.nombre.trim(), tipo: datos.tipo, unidadId: datos.tipo === "privada" ? datos.unidadId : null, fechaInicio: datos.fechaInicio, presupuestoAprobado: Number(datos.presupuestoAprobado) } });
+  } else if (tipo === "partida") {
+    await api(`/complejos/${cid}/obras/${form.dataset.id}/partidas`, { method: "POST", body: { nombre: datos.nombre.trim(), duracionEstimada: Number(datos.duracionEstimada), presupuesto: Number(datos.presupuesto), predecesoras: datos.predecesora ? [datos.predecesora] : [] } });
+    await modalGestionObra(form.dataset.id);
+    return;
+  } else if (tipo === "avance") {
+    await api(`/complejos/${cid}/obras/${form.dataset.id}/avances`, { method: "POST", body: { partidaId: datos.partidaId, porcentaje: Number(datos.porcentaje), observacion: datos.observacion, idempotencyKey: datos.idempotencyKey } });
+    await modalGestionObra(form.dataset.id);
+    return;
+  } else if (tipo === "autorizacion") {
+    if (new Date(datos.vigenciaHasta) <= new Date(datos.vigenciaDesde)) throw new Error("El vencimiento debe ser posterior al inicio.");
+    const autorizacion = await api(`/complejos/${cid}/accesos/autorizaciones`, { method: "POST", body: { nombre: datos.nombre.trim(), documento: datos.documento.trim(), tipo: datos.tipo, unidadId: datos.unidadId, patente: datos.patente.trim() || null, vigenciaDesde: new Date(datos.vigenciaDesde).toISOString(), vigenciaHasta: new Date(datos.vigenciaHasta).toISOString(), usosPermitidos: Number(datos.usosPermitidos), puntosHabilitados: [datos.punto], diasPermitidos: datos.dias === "todos" ? [0, 1, 2, 3, 4, 5, 6] : datos.dias === "obra" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5], franjaHoraria: { desde: datos.horaDesde, hasta: datos.horaHasta } } });
+    await mostrarCredencial(autorizacion);
+    return;
   } else if (tipo === "periodo") {
-    await api(`/complejos/${cid}/expensas/periodos`, { method: "POST", body: { periodoId: datos.periodoId, etiqueta: datos.etiqueta, vencimiento: datos.vencimiento, gastosOrdinarios: [{ concepto: datos.ordinarioConcepto, monto: Number(datos.ordinarioMonto), criterio: datos.ordinarioCriterio, aCargoDe: "ocupante" }], gastosExtraordinarios: Number(datos.extraMonto) > 0 ? [{ concepto: datos.extraConcepto, monto: Number(datos.extraMonto), criterio: "coeficiente", aCargoDe: datos.extraCargo }] : [], fondoReserva: { modo: "monto", valor: Math.round(Number(datos.fondo) * 100) } } });
+    const gastos = $$("[data-gasto]", form).map((fila) => Object.fromEntries($$("[data-campo]", fila).map((input) => [input.dataset.campo, input.dataset.campo === "monto" ? Number(input.value) : input.value.trim()])));
+    await api(`/complejos/${cid}/expensas/periodos`, { method: "POST", body: { periodoId: datos.periodoId, etiqueta: datos.etiqueta, vencimiento: datos.vencimiento, gastosOrdinarios: gastos.filter((g) => g.tipo === "ordinario"), gastosExtraordinarios: gastos.filter((g) => g.tipo === "extraordinario"), fondoReserva: { modo: "monto", valor: Math.round(Number(datos.fondo) * 100) } } });
+    estado.periodoSeleccionado = datos.periodoId;
   } else if (tipo === "acceso") {
     const credencial = datos.credencial.trim();
-    const cuerpo = /^[A-Z]{2,3}\d{3}[A-Z]{0,2}$/i.test(credencial.replace(/[^A-Z0-9]/gi, "")) ? { patente: credencial } : { codigo: credencial };
+    const cuerpo = datos.metodo === "patente" ? { patente: credencial } : { codigo: credencial };
     const resultado = await api(`/complejos/${cid}/accesos/validar`, { method: "POST", body: { ...cuerpo, punto: datos.punto, sentido: datos.sentido } });
     cerrarModal();
     mostrarResultadoAcceso(resultado);
@@ -31208,9 +33527,11 @@ async function enviarModal(tipo, form) {
 }
 async function previsualizarPeriodo(id) {
   const resultado = await api(`/complejos/${estado.complejoId}/expensas/periodos/${id}/borrador`);
-  abrirModal(`Vista previa \xB7 ${id}`, "Cierre exacto", `<div class="metrics" style="grid-template-columns:1fr 1fr">${metric("Total del per\xEDodo", dinero(resultado.totales.periodo), `${resultado.detalle.length} unidades`, "$")}${metric("Diferencia", dinero(resultado.verificacion.total?.diferencia ?? 0), resultado.verificacion.cierra ? "Cierra exacto" : "No cerrar", "\u2713")}</div><div class="verification">${resultado.verificacion.cierra ? "\u2713 La suma de todas las liquidaciones coincide exactamente con el gasto total." : "Hay una diferencia; el backend impedir\xE1 el cierre."}</div><div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Unidad</th><th>Ordinario</th><th>Extraordinario</th><th>Total</th></tr></thead><tbody>${resultado.detalle.slice(0, 12).map((d) => `<tr><td>${safe(d.identificador)}</td><td>${dinero(d.ordinario)}</td><td>${dinero(d.extraordinario)}</td><td><strong>${dinero(d.totalAPagar)}</strong></td></tr>`).join("")}</tbody></table></div>`);
+  abrirModal(`Vista previa \xB7 ${id}`, "Cierre exacto", `<div class="metrics" style="grid-template-columns:1fr 1fr">${metric("Total del per\xEDodo", dinero(resultado.totales.periodo), `${resultado.detalle.length} unidades`, "$")}${metric("Diferencia", dinero(resultado.verificacion.total?.diferencia ?? 0), resultado.verificacion.cierra ? "Cierra exacto" : "No cerrar", "\u2713")}</div><div class="verification">${resultado.verificacion.cierra ? "\u2713 La suma de todas las liquidaciones coincide exactamente con el gasto total." : "Hay una diferencia; el backend impedir\xE1 el cierre."}</div><div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Unidad</th><th>Ordinario</th><th>Extraordinario</th><th>Total</th></tr></thead><tbody>${resultado.detalle.map((d) => `<tr><td>${safe(d.identificador)}</td><td>${dinero(d.ordinario)}</td><td>${dinero(d.extraordinario)}</td><td><strong>${dinero(d.totalAPagar)}</strong></td></tr>`).join("")}</tbody></table></div>`);
 }
 async function cerrarPeriodo(id) {
+  const borrador = await api(`/complejos/${estado.complejoId}/expensas/periodos/${id}/borrador`);
+  if (!borrador.verificacion?.cierra) throw new Error("El reparto no cierra. Revis\xE1 los gastos y coeficientes antes de publicar.");
   if (!confirm(`\xBFCerrar ${id}? Las liquidaciones publicadas no podr\xE1n editarse.`)) return;
   await api(`/complejos/${estado.complejoId}/expensas/periodos/${id}/cerrar`, { method: "POST" });
   await cargarResumen();
@@ -31293,6 +33614,8 @@ function lineasAcceso(eventos) {
   return eventos.map((e2) => `<div class="access-line"><span class="access-line__icon ${e2.resultado === "rechazado" ? "access-line__icon--danger" : ""}">${e2.sentido === "egreso" ? "\u2190" : e2.resultado === "rechazado" ? "\xD7" : "\u2192"}</span><span><strong>${safe(e2.nombre ?? e2.patente ?? "Movimiento")}</strong><small>${safe(idUnidad(e2.unidadId))} \xB7 ${safe(textoEstado(e2.punto ?? e2.metodo))}</small></span><time>${hora(e2.timestampServidor)}</time></div>`).join("") || '<p style="color:var(--texto-suave)">Sin movimientos recientes.</p>';
 }
 function abrirModal(titulo, eyebrow, cuerpo) {
+  focoAntesModal = document.activeElement;
+  $2("#aplicacion").inert = true;
   $2("#modal-title").textContent = titulo;
   $2("#modal-eyebrow").textContent = eyebrow;
   $2("#modal-body").innerHTML = cuerpo;
@@ -31303,6 +33626,8 @@ function abrirModal(titulo, eyebrow, cuerpo) {
 function cerrarModal() {
   $2("#modal").hidden = true;
   document.body.style.overflow = "";
+  $2("#aplicacion").inert = false;
+  focoAntesModal?.focus();
 }
 function mostrarToast(titulo, mensaje, tipo = "ok") {
   const id = crypto.randomUUID();
@@ -31402,6 +33727,26 @@ function actualizarConectividad() {
   $2("#conectividad").hidden = navigator.onLine;
 }
 /*! Bundled license information:
+
+@firebase/util/dist/postinstall.mjs:
+@firebase/firestore/dist/common-CE5hrKY-.esm.js:
+@firebase/firestore/dist/common-CE5hrKY-.esm.js:
+  (**
+   * @license
+   * Copyright 2025 Google LLC
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *   http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   *)
 
 @firebase/util/dist/index.esm.js:
 @firebase/util/dist/index.esm.js:
@@ -32643,8 +34988,6 @@ re2js/build/index.js:
    * See the License for the specific language governing permissions and
    * limitations under the License.
    *)
-
-@firebase/firestore/dist/common-CE5hrKY-.esm.js:
   (* Copyright 2024 Google LLC* @license *)
   (**
    * @license
@@ -32868,25 +35211,6 @@ re2js/build/index.js:
   (**
    * @license
    * Copyright 2020 Google LLC
-   *
-   * Licensed under the Apache License, Version 2.0 (the "License");
-   * you may not use this file except in compliance with the License.
-   * You may obtain a copy of the License at
-   *
-   *   http://www.apache.org/licenses/LICENSE-2.0
-   *
-   * Unless required by applicable law or agreed to in writing, software
-   * distributed under the License is distributed on an "AS IS" BASIS,
-   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   * See the License for the specific language governing permissions and
-   * limitations under the License.
-   *)
-
-@firebase/firestore/dist/common-CE5hrKY-.esm.js:
-@firebase/firestore/dist/common-CE5hrKY-.esm.js:
-  (**
-   * @license
-   * Copyright 2025 Google LLC
    *
    * Licensed under the Apache License, Version 2.0 (the "License");
    * you may not use this file except in compliance with the License.

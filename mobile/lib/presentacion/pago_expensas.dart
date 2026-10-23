@@ -108,8 +108,11 @@ class _PagoExpensasState extends State<PagoExpensas> {
   }
 
   @override
-  Widget build(BuildContext context) => FilledButton(
+  Widget build(BuildContext context) => FilledButton.icon(
     onPressed: _ocupado ? null : _pagar,
-    child: Text(_ocupado ? 'Preparando pago…' : 'Pagar saldo con Mercado Pago'),
+    icon: _ocupado
+        ? const Icon(Icons.hourglass_top)
+        : const Icon(Icons.payments_outlined),
+    label: Text(_ocupado ? 'Preparando pago…' : 'Pagar saldo con Mercado Pago'),
   );
 }

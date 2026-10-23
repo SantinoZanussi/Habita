@@ -551,12 +551,28 @@ class _Visitas extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         final docs = snap.data!.docs;
+        if (docs.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('Todavía no autorizaste visitas. Tocá «Autorizar visita» para crear una credencial QR y compartirla con quien viene a verte.', textAlign: TextAlign.center),
+            ),
+          );
+        }
         return ListView(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 96),
           children: docs.map((d) {
             final datos = d.data();
             final nombreVisita = datos['nombre']?.toString() ?? 'visita';
-            final estado = datos['estado']?.toString() ?? 'vigente';
+            final vencimiento = (datos['vigenciaHasta'] as Timestamp?)?.toDate();
+            final inicio = (datos['vigenciaDesde'] as Timestamp?)?.toDate();
+            final estado = datos['estado'] == 'revocada'
+                ? 'revocada'
+                : vencimiento != null && vencimiento.isBefore(DateTime.now())
+                ? 'vencida'
+                : (datos['usosConsumidos'] as num? ?? 0) >= (datos['usosPermitidos'] as num? ?? 1)
+                ? 'sin usos'
+                : inicio != null && inicio.isAfter(DateTime.now()) ? 'programada' : 'vigente';
             final codigoQr = datos['codigoQr'];
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -567,7 +583,7 @@ class _Visitas extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           backgroundColor: HabitaColores.superficieSuave,
-                          child: Text(nombreVisita[0]),
+                          child: Text(nombreVisita.isEmpty ? '?' : nombreVisita[0]),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -599,7 +615,7 @@ class _Visitas extends StatelessWidget {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
-                          onPressed: estado == 'vigente'
+                          onPressed: ['vigente', 'programada'].contains(estado)
                               ? () =>
                                     _mostrarQr(context, codigoQr, nombreVisita)
                               : null,
