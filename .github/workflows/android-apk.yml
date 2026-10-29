@@ -1,0 +1,36 @@
+name: APK Android
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar Flutter y Java
+        run: |
+          git clone --depth 1 --branch 3.47.7 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_17_X64/bin" >> "$GITHUB_PATH"
+      - name: Configurar entorno publicado
+        env:
+          FIREBASE_CONFIG: ${{ secrets.HABITA_FIREBASE_CONFIG }}
+        run: |
+          test -n "$FIREBASE_CONFIG" || { echo 'Falta el secreto HABITA_FIREBASE_CONFIG'; exit 1; }
+          printf '%s' "$FIREBASE_CONFIG" > mobile/firebase.production.json
+      - name: Compilar APK release
+        working-directory: mobile
+        run: flutter build apk --release --dart-define-from-file=firebase.production.json
+      - name: Conservar APK instalable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Habita-Android
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
