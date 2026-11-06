@@ -102,6 +102,37 @@ void main() {
     });
   }
 
+  for (final codigo in ['invalid-credential', 'invalid-login-credentials']) {
+    testWidgets('Login explica el rechazo de credenciales $codigo', (
+      tester,
+    ) async {
+      final auth = _AuthPrueba()..error = FirebaseAuthException(code: codigo);
+      await tester.pumpWidget(
+        MaterialApp(home: LoginScreen(usarEmuladores: false, auth: auth)),
+      );
+      await tester.enterText(
+        find.byType(TextField).first,
+        'vecino@example.com',
+      );
+      await tester.enterText(find.byType(TextField).last, 'clave de prueba');
+      await tester.ensureVisible(find.text('Ingresar'));
+      await tester.tap(find.text('Ingresar'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('El correo o la contraseña no son correctos.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('No pudimos iniciar sesión. Intentá de nuevo más tarde.'),
+        findsNothing,
+      );
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNotNull,
+      );
+    });
+  }
+
   testWidgets('Login online sin credenciales demo y con logo sin tinte', (
     tester,
   ) async {
@@ -136,6 +167,14 @@ class _AuthPrueba extends Fake implements FirebaseAuth {
   final correos = <String>[];
   Future<void>? respuesta;
   FirebaseAuthException? error;
+
+  @override
+  Future<UserCredential> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    throw error ?? StateError('Falta configurar el rechazo de prueba.');
+  }
 
   @override
   Future<void> sendPasswordResetEmail({

@@ -104,7 +104,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       setState(
         () => _error = switch (error.code) {
-          'invalid-credential' || 'user-not-found' || 'wrong-password' =>
+          'invalid-credential' ||
+          'invalid-login-credentials' ||
+          'user-not-found' ||
+          'wrong-password' =>
             'El correo o la contraseña no son correctos. Usá la cuenta que te asignó la administración.',
           'invalid-email' => 'Revisá el formato del correo electrónico.',
           'network-request-failed' =>
