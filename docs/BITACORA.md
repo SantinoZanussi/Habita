@@ -722,3 +722,16 @@ Verificar el uso real y las dimensiones de la UI en dispositivos físicos.
 - Cambios: solamente esta bitácora. No se recompiló ni se alteraron servicios; se registra la APK del 29/10 como referencia que el usuario pudo instalar y autenticar. Revisión documental con `git diff --check`; sin repetir pruebas de software.
 - Pendiente: localizar el archivo o la procedencia exacta de la APK del 04/11 para comparar configuración, versión, firma y revisión. Sin ese binario no se atribuye el fallo a una diferencia concreta.
 - Supuesto: el resultado apunta a una diferencia entre APK o su estado local y reduce la probabilidad de una caída general de Firebase/Render; no demuestra por sí solo una causa técnica específica.
+
+## 2026-11-06 - Guía breve para entregar al equipo de QA
+
+- Objetivo: preparar un documento breve de uso de APK y panel, accesos por rol y recorrido sugerido de pruebas para otro grupo del colegio.
+- Estado inicial: `main` limpio en `fafd8f9`; se conserva el fallo previo del pull por referencia interna inválida. La APK adjunta `Habita-Android-2026-10-29 (1).apk` tiene el mismo SHA-256 que la entrega verificada del 29/10 y el usuario confirma que permite iniciar sesión.
+- Verificado: el README documenta cuentas demo locales; no se asume que esas credenciales funcionen en Firebase real sin comprobarlo.
+- Verificado: Firebase tiene habilitadas las cuentas demo de residente, guardia y administración. Las tres ingresaron con la contraseña demo documentada en README, conservaron los roles esperados y obtuvieron HTTP 200 al consultar su perfil en Render. No se crearon ni modificaron usuarios, permisos, datos de negocio ni pagos. No existen online las cuentas demo de obra ni superadministración; la guía no las ofrece como accesos disponibles.
+- Verificado: `npm run verificar:servicios` aprobó los siete controles; los indicadores activos de MP/IA/FCM no se presentan como pruebas completas de esas integraciones.
+- Cambios: [guía fuente](GUIA_QA_GRUPO.md), [PDF de dos páginas](entrega/Habita-Guia-para-testers.pdf), [Word editable](entrega/Habita-Guia-para-testers.docx), [generador](entrega/fuentes/build-guia-qa.py) y enlace desde [Fase 3](FASE_3_QA.md). Incluyen APK válida, enlaces, accesos demo, uso por rol, siete recorridos sugeridos, límites de la entrega y formato de reporte.
+- Verificado: PDF A4 de dos páginas mediante `pdfinfo`, ambas páginas renderizadas con `pdftoppm` e inspeccionadas visualmente sin recortes. `pypdf` confirmó dos páginas, cuentas y cierre del texto; `python-docx` comprobó tabla de tres cuentas, enlaces y salto de página del Word. `git diff --check` sin errores. No se repitieron suites de producto para cambios documentales.
+- Entorno: la extracción auxiliar inicial con `pdftotext` no estaba disponible; una comprobación Python inline falló por escape de comillas en PowerShell. Se reemplazaron por un script local con `pypdf`/`python-docx`, que aprobó. Fallos de herramientas auxiliares, no del producto.
+- Pendiente: entregar APK y guía al grupo, ejecutar los casos y recibir su reporte. No se marca QA externo ni pruebas sandbox, de cámara/push u obras como realizadas por crear esta guía. La APK del 04/11 sigue sin localizarse.
+- Supuesto: entregar una guía para testers que usarán los servicios publicados, sin exigir instalar herramientas de desarrollo.

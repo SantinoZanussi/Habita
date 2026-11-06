@@ -1,5 +1,7 @@
 # Fase 3 — Preparación de QA cruzado
 
+Para entregar al otro grupo y probar los servicios publicados, usar la [guía rápida](GUIA_QA_GRUPO.md), disponible también en [PDF](entrega/Habita-Guia-para-testers.pdf) y [Word](entrega/Habita-Guia-para-testers.docx). Incluye los tres accesos demo comprobados online el 06/11/2026; la preparación local de emuladores que sigue es una alternativa para desarrollo.
+
 ## Objetivo
 
 Dejar una prueba reproducible para que otra persona o equipo use la app móvil y el panel con datos demo, intente romper los flujos principales y registre cada hallazgo. Esta guía prepara la Fase 3; no reemplaza el intercambio presencial con otro equipo.
