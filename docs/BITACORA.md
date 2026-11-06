@@ -711,3 +711,14 @@ Verificar el uso real y las dimensiones de la UI en dispositivos físicos.
 - Verificado: el usuario informa Galaxy A71 con Android 16 y que la APK ya funcionó en ese teléfono. ADB local disponible, sin dispositivos conectados ni servicios mDNS descubiertos. Se prepara el siguiente paso de depuración inalámbrica; aún requiere habilitarla y emparejar el teléfono. No se modificó ni borró información del dispositivo.
 - Pendiente: obtener el código nativo de Firebase desde el dispositivo para diagnosticar el ingreso. No se afirma una causa ni una solución del fallo sin reproducirlo. La APK instalada conserva el mensaje anterior; no se generó una nueva APK en esta sesión.
 - Supuesto: que el panel acepte la misma cuenta reduce la posibilidad de un fallo general de Firebase o de credenciales, pero no demuestra que el teléfono pueda autenticarse. El funcionamiento general del Wi-Fi tampoco descarta filtrado específico de conexiones.
+
+## 2026-11-06 - Acceso recuperado con la APK del 29 de octubre
+
+- Objetivo: incorporar la prueba física informada por el usuario y localizar la APK del 4 de noviembre para comparar los artefactos.
+- Estado inicial: `main` limpio en `5562092`; remoto confirmado en la misma revisión. Se conserva el fallo conocido del pull por una referencia interna ajena al producto; no se modifican referencias para esta revisión.
+- Verificado: el usuario informa que instaló la APK del 29/10 e inició sesión correctamente; aclara que el rechazo ocurría con una APK del 04/11. Es evidencia reportada por el usuario, no una sesión observada por el agente.
+- Verificado: búsqueda de APK en Descargas sólo localiza el artefacto del 29/10; la bitácora y el historial local no documentan una compilación del 04/11.
+- Verificado: API de GitHub Actions del workflow Android devuelve únicamente la compilación exitosa del 29/10 (`40895102438`, revisión `55b4e1e`), sin ejecución del 04/11. No se encontró su procedencia por esta vía.
+- Cambios: solamente esta bitácora. No se recompiló ni se alteraron servicios; se registra la APK del 29/10 como referencia que el usuario pudo instalar y autenticar. Revisión documental con `git diff --check`; sin repetir pruebas de software.
+- Pendiente: localizar el archivo o la procedencia exacta de la APK del 04/11 para comparar configuración, versión, firma y revisión. Sin ese binario no se atribuye el fallo a una diferencia concreta.
+- Supuesto: el resultado apunta a una diferencia entre APK o su estado local y reduce la probabilidad de una caída general de Firebase/Render; no demuestra por sí solo una causa técnica específica.
