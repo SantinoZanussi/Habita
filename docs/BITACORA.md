@@ -1,4 +1,12 @@
-﻿## 2026-09-17 - Generación de APK Android actualizada
+## 2026-11-25 - QA de la defensa y acceso a Obras
+
+- Objetivo inicial: reproducir el rechazo de Obras en Android, revisar los flujos y preparar el material de la exposición. Se sincronizó main por fast-forward preservando la presentación local.
+- Verificado: 94 pruebas de backend, 6 web, 30 en emuladores, 28 Flutter. Servicios online correctos. Los cinco archivos versionados coinciden con Hosting. La recompilación local con Node 24 produjo un bundle distinto; se conservó el versionado. El primer intento de login inmediato en Chrome no abrió el panel; al esperar la inicialización online se pudo entrar y navegar.
+- Verificado: el acceso de Obras con credenciales demo fue rechazado inicialmente. Se creó mediante la API administrativa una obra demo y una partida, se asignó el responsable y se comprobó el ingreso y lectura de ambos recursos. Residente, guardia y admin devolvieron perfil válido desde Render. El superadmin local no autenticó online.
+- Pendiente: ensayo físico de cámara, avisos push y sincronización móvil-panel. No se ejecutaron pagos reales. Material actualizado en [guía de defensa](DEFENSA_HABITA.md) y [paquete de presentación](presentacion-viernes/Habita-viernes.zip).
+- Supuesto: el escenario online de un solo complejo utiliza el administrador de Torre del Parque; la cuenta de cartera se ensaya en emuladores.
+
+## 2026-09-17 - Generación de APK Android actualizada
 
 - Objetivo: compilar una APK release instalable con los últimos cambios de `main`, conectada a Firebase y Render reales mediante la configuración productiva local.
 - Estado inicial: `main` sincronizado con `origin/main` en `2211697`; `mobile/firebase.production.json` está disponible localmente y no se incluirá en Git.
