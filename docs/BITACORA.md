@@ -1,3 +1,9 @@
+## 2026-11-26 - Capturas para la exposición
+
+- Objetivo: incorporar evidencia del celular y del panel al pitch de nueve diapositivas.
+- Verificado: las capturas muestran Inicio, QR dinámico de residente, lector del guardia y formulario del reclamo. El panel muestra el mismo texto para 3A, área Electricidad, confianza 95 %, urgencia media y estado pendiente. Se recortó Inicio para proyectar solo el saldo y los accesos rápidos.
+- Pendiente: mostrar en vivo el resultado del escaneo si se presenta la validación de una visita. La imagen recibida muestra el lector abierto.
+
 ## 2026-11-25 - QA de la defensa y acceso a Obras
 
 - Objetivo inicial: reproducir el rechazo de Obras en Android, revisar los flujos y preparar el material de la exposición. Se sincronizó main por fast-forward preservando la presentación local.
