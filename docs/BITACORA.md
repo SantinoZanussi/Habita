@@ -1,3 +1,10 @@
+## 2026-11-26 - Guion para presentar en clase
+
+- Objetivo inicial: convertir el guion HTML en un PDF de ensayo y orientar la exposición a los compañeros de Programación II. Se parte del pitch de nueve diapositivas de `0c608a6`.
+- Cambios: [guion en PDF](presentacion-viernes/Guion.pdf), [generador](presentacion-viernes/preparacion/render.cjs) y [paquete de exposición](presentacion-viernes/Habita-viernes.zip). El guion incluye nueve intervenciones sin reparto obligatorio y acotaciones para el QR, el reclamo en vivo y la landing. La diapositiva del problema plantea la situación desde el punto de vista del vecino.
+- Verificado: inspección visual de las tres páginas del guion y comprobación del PDF incluido en el ZIP. El primer comando de inspección no encontró PyMuPDF en el entorno. Se usaron PDFium y pypdf.
+- Pendiente: ensayo físico del reclamo desde el celular con el panel abierto.
+
 ## 2026-11-26 - Pitch comercial de Habita
 
 - Objetivo inicial: adaptar el pitch y el guion para una administración interesada en Habita. Se parte de las nueve diapositivas con capturas de Android y del panel. Los créditos académicos van en la portada.
