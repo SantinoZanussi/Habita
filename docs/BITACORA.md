@@ -1,3 +1,10 @@
+## 2026-11-26 - Pitch comercial de Habita
+
+- Objetivo inicial: adaptar el pitch y el guion para una administración interesada en Habita. Se parte de las nueve diapositivas con capturas de Android y del panel. Los créditos académicos van en la portada.
+- Cambios: [generador](presentacion-viernes/preparacion/render.cjs) y [paquete para la exposición](presentacion-viernes/Habita-viernes.zip). El guion recorre problemas de una administración y deja libre el reparto de la palabra. La portada acredita a Juan Manuel Goiburu y Santino Zanussi, la materia Programación II y al profesor Juan Francisco Martin.
+- Verificado: revisión visual del conjunto, PDF de nueve páginas, créditos extraídos de la portada y ZIP íntegro con nueve PNG, PDF, guion y guía de defensa.
+- Pendiente: ensayo de la demostración en vivo con el celular y el panel del mismo complejo.
+
 ## 2026-11-26 - Capturas para la exposición
 
 - Objetivo: incorporar evidencia del celular y del panel al pitch de nueve diapositivas.
